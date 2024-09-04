@@ -28,6 +28,7 @@ global_decl :
 | extend_decl
 | inline_module_sig_decl
 | inline_module_decl
+| inline_module_alias_decl
 # END WESL
 ;
 
@@ -241,13 +242,17 @@ type_alias_decl :
   'alias' ident '=' type_specifier
 ;
 
+# BEGIN WESL
+
 type_specifier :
   template_elaborated_ident
 ;
 
 template_elaborated_ident :
-  ident _disambiguate_template template_list ?
+  item_usage_path _disambiguate_template template_list ?
 ;
+
+# END WESL
 
 variable_or_value_statement :
   variable_decl
@@ -601,12 +606,12 @@ module_usage_path:
   module_usage_path_relative? ident ('/' ident)*
 ;
 
-item_usage_path:
-  member_ident ("." member_ident)*
+item_usage_path :
+  ident ("." member_ident)*
 ;
 
 as_alias:
-  'as' ident
+  'as' optionally_typed_ident
 ;
 
 # END WESL COMMON USAGES 
@@ -620,6 +625,9 @@ import_decl :
 # END WESL IMPORTS
 
 # BEGIN WESL INLINE MODULES
+
+module_specifier:
+  item_usage_path
 
 inline_module_decl :
   'mod' optionally_typed_ident "{" global_decl * "}" ";"?
@@ -686,7 +694,7 @@ function_decl :
 ;
 
 function_header :
-  'fn' ident '(' param_list ? ')' ( '->' attribute * template_elaborated_ident ) ?
+  'fn' ident '(' param_list ? ')' ( '->' attribute * type_specifier ) ?
 ;
 
 param_list :
