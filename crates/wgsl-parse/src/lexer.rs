@@ -305,6 +305,21 @@ pub enum Token {
     #[token("while")]
     KwWhile,
 
+    // BEGIN WESL KEYWORDS
+    #[token("import")]
+    KwImport,
+    #[token("mod")]
+    KwMod,
+    #[token("as")]
+    KwAs,
+    #[token("include")]
+    KwInclude,
+    #[token("extend")]
+    KwExtend,
+    #[token("sig")]
+    KwSig,
+    // END WESL KEYWORDS
+
     // XXX: should we also register reserved words as tokens?
     #[regex(r#"([_\p{XID_Start}][\p{XID_Continue}]+)|([\p{XID_Start}])"#, |lex| lex.slice().to_string())]
     Ident(String),
@@ -426,6 +441,12 @@ impl Token {
                 | Token::KwTrue
                 | Token::KwVar
                 | Token::KwWhile
+                | Token::KwImport
+                | Token::KwMod
+                | Token::KwAs
+                | Token::KwInclude
+                | Token::KwSig
+                | Token::KwExtend
         )
     }
 
@@ -518,6 +539,12 @@ impl Display for Token {
             Token::KwTrue => f.write_str("true"),
             Token::KwVar => f.write_str("var"),
             Token::KwWhile => f.write_str("while"),
+            Token::KwImport => f.write_str("import"),
+            Token::KwMod => f.write_str("mod"),
+            Token::KwAs => f.write_str("as"),
+            Token::KwInclude => f.write_str("include"),
+            Token::KwSig => f.write_str("sig"),
+            Token::KwExtend => f.write_str("extend"),
             Token::Ident(s) => write!(f, "identifier `{s}`"),
             Token::AbstractInt(n) => write!(f, "{n}"),
             Token::AbstractFloat(n) => write!(f, "{n}"),

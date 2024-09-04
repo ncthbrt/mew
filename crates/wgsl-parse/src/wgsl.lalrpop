@@ -89,7 +89,12 @@ extern {
         "true" => Token::KwTrue,
         "var" => Token::KwVar,
         "while" => Token::KwWhile,
-
+        "import" => Token::KwImport,
+        "mod" => Token::KwMod,
+        "as" => Token::KwAs,
+        "include" => Token::KwInclude,
+        "sig" => Token::KwSig,
+        "extend" => Token::KwExtend,
         IdentPatternToken => Token::Ident(<String>),
         TokAbstractInt => Token::AbstractInt(<i64>),
         TokAbstractFloat => Token::AbstractFloat(<f64>),
@@ -130,6 +135,8 @@ GlobalDecl: GlobalDeclaration = {
     <StructDecl>               => GlobalDeclaration::Struct(<>),
     <FunctionDecl>             => GlobalDeclaration::Function(<>),
     <ConstAssertStatement> ";" => GlobalDeclaration::ConstAssert(<>),
+    // BEGIN WESL global decls
+    // END WESL global decls
 };
 
 DiagnosticRuleName: String = {
