@@ -23,12 +23,11 @@ global_decl :
 | function_decl
 | const_assert_statement ';'
 # BEGIN WESL
-| import_decl
+| load_decl
 | include_decl
-| extend_decl
-| inline_module_sig_decl
-| inline_module_decl
-| inline_module_alias_decl
+| module_sig_decl
+| module_decl
+| module_alias_decl
 # END WESL
 ;
 
@@ -249,9 +248,8 @@ type_specifier :
 ;
 
 template_elaborated_ident :
-  item_usage_path _disambiguate_template template_list ?
+  (module_path '::')? ident _disambiguate_template template_list ?
 ;
-
 # END WESL
 
 variable_or_value_statement :
@@ -569,96 +567,54 @@ variable_updating_statement :
 | decrement_statement
 ;
 
-# BEGIN WESL
 
-# BEGIN WESL COMMON USAGES 
-usage :
-    module_usage_path ('.' item_usage_path)? as_alias? ';'
-  | module_usage_path ('.' item_usage_path)? usage_collection ';'?
-;
-
-anonymous_usage :
-    module_usage_path ('.' item_usage_path)? ';'
-  | module_usage_path ('.' item_usage_path)? anonymous_usage_collection ';'?
-;
-
-
-usage_collection: 
-  '{' (item_usage_path (usage_collection | as_alias)?) (',' item_usage_path (usage_collection | as_alias)?)* ','? '}'
-;
-
-
-anonymous_usage_collection: 
-  '{' (item_usage_path anonymous_usage_collection?) (',' item_usage_path anonymous_usage_collection?)* ','? '}'
-;
-
-module_usage_path_relative :  
+# BEGIN WESL LOADS
+file_load_path_relative :  
   ('.' | '..') '/' ('..' '/')*
-| module_usage_path_absolute
+| '/' # This indicates that the load is relative to the wesl root directory for a given package
 ;
 
-# This indicates that the import is relative to the wesl root directory for a given package
-module_usage_path_absolute :
-  '/'
+file_load_path: 
+  file_load_path_relative? ident ('/' ident)*
 ;
 
-module_usage_path:  
-  module_usage_path_relative? ident ('/' ident)*
+load_decl :
+  'load' file_load_path ';'
 ;
 
-item_usage_path :
-  ident ("." member_ident)*
-;
-
-as_alias:
-  'as' optionally_typed_ident
-;
-
-# END WESL COMMON USAGES 
-
-# BEGIN WESL IMPORTS
-
-import_decl :
-  'import' usage
-;
-
-# END WESL IMPORTS
+# END WESL LOADS
 
 # BEGIN WESL INLINE MODULES
 
-module_specifier:
-  item_usage_path
-
-inline_module_decl :
+module_decl :
   'mod' optionally_typed_ident "{" global_decl * "}" ";"?
 ;
 
 # END WESL INLINE MODULES
 
-# BEGIN WESL INCLUDES
-include_decl :
-  'include' usage
-;
-# END WESL INCLUDES
+# BEGIN WESL MODULE PATH COMMON 
 
-# BEGIN WESL EXTENDS
-extend_decl :
-  'extend' anonymous_usage
+module_path :
+  ident ('::' ident)*
 ;
-# END WESL EXTENDS
+
+# END WESL MODULE PATH COMMON 
+
+# BEGIN WESL INCLUDE
+include_decl :
+  'include' module_path ';'
+;
+# END WESL INCLUDE
 
 # BEGIN MODULE SIG DECL
 
-inline_module_sig_decl :
+module_sig_decl :
   'mod' 'sig' "{" global_sig * "}" ";"?
 ;
 
-module_sig_decl :
-  global_sig * 
-;
-
 global_sig :
-  | extend_decl 
+  | load_decl
+  | include_decl 
   | function_sig
   | associated_type_sig
   | nested_mod_sig
