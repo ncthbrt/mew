@@ -113,7 +113,7 @@ impl Display for WithSource<'_, &GlobalDeclaration> {
             GlobalDeclaration::Declaration(print) => {
                 write!(f, "{}", print.with_source(self.source()))
             }
-            GlobalDeclaration::TypeAlias(print) => {
+            GlobalDeclaration::Alias(print) => {
                 write!(f, "{}", print.with_source(self.source()))
             }
             GlobalDeclaration::Struct(print) => write!(f, "{}", print.with_source(self.source())),
@@ -156,7 +156,7 @@ impl Display for WithSource<'_, &Declaration> {
 //     }
 // }
 
-impl Display for WithSource<'_, &TypeAlias> {
+impl Display for WithSource<'_, &Alias> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let name = &self.source()[self.name.clone()];
         let typ = self.typ.with_source(self.source());

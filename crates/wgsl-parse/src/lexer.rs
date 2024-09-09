@@ -177,6 +177,12 @@ pub enum Token {
     SymBraceLeft,
     #[token("}")]
     SymBraceRight,
+    // BEGIN WESL SYNTACTIC TOKENS
+    #[token("::")]
+    SymDoubleColon,
+    #[token("..")]
+    SymDoublePeriod,
+    // END WESL SYNTACTIC TOKENS
     #[token(":")]
     SymColon,
     #[token(",")]
@@ -306,16 +312,12 @@ pub enum Token {
     KwWhile,
 
     // BEGIN WESL KEYWORDS
-    #[token("import")]
-    KwImport,
+    #[token("load")]
+    KwLoad,
     #[token("mod")]
     KwMod,
-    #[token("as")]
-    KwAs,
     #[token("include")]
     KwInclude,
-    #[token("extend")]
-    KwExtend,
     #[token("sig")]
     KwSig,
     // END WESL KEYWORDS
@@ -441,12 +443,10 @@ impl Token {
                 | Token::KwTrue
                 | Token::KwVar
                 | Token::KwWhile
-                | Token::KwImport
+                | Token::KwLoad
                 | Token::KwMod
-                | Token::KwAs
                 | Token::KwInclude
                 | Token::KwSig
-                | Token::KwExtend
         )
     }
 
@@ -539,12 +539,10 @@ impl Display for Token {
             Token::KwTrue => f.write_str("true"),
             Token::KwVar => f.write_str("var"),
             Token::KwWhile => f.write_str("while"),
-            Token::KwImport => f.write_str("import"),
+            Token::KwLoad => f.write_str("load"),
             Token::KwMod => f.write_str("mod"),
-            Token::KwAs => f.write_str("as"),
             Token::KwInclude => f.write_str("include"),
             Token::KwSig => f.write_str("sig"),
-            Token::KwExtend => f.write_str("extend"),
             Token::Ident(s) => write!(f, "identifier `{s}`"),
             Token::AbstractInt(n) => write!(f, "{n}"),
             Token::AbstractFloat(n) => write!(f, "{n}"),
@@ -554,6 +552,8 @@ impl Display for Token {
             Token::F16(n) => write!(f, "{n}h"),
             Token::TemplateArgsStart => f.write_str("<"),
             Token::TemplateArgsEnd => f.write_str(">"),
+            Token::SymDoubleColon => f.write_str("::"),
+            Token::SymDoublePeriod => f.write_str(".."),
         }
     }
 }

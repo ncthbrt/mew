@@ -64,10 +64,51 @@ pub struct RequiresDirective {
 pub enum GlobalDeclaration {
     Void,
     Declaration(Declaration),
-    TypeAlias(TypeAlias),
+    Alias(Alias),
     Struct(Struct),
     Function(Function),
     ConstAssert(ConstAssert),
+    Load(Load),
+    Module(Module),
+}
+
+#[derive(Clone, Debug, PartialEq)]
+
+pub struct Module {
+    pub attributes: Vec<Attribute>,
+    pub name: IdentifierExpression,
+    pub members: Vec<ModuleMemberDeclaration>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum ModuleMemberDeclaration {
+    Void,
+    Declaration(Declaration),
+    Alias(Alias),
+    Struct(Struct),
+    Function(Function),
+    ConstAssert(ConstAssert),
+    Load(Load),
+    Module(Module),
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Load {
+    pub attributes: Vec<Attribute>,
+    pub load_relative: Option<LoadRelative>,
+    pub load_path: Vec<IdentifierExpression>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum LoadRelative {
+    Root,
+    Relative(Vec<LoadRelativeAtom>),
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum LoadRelativeAtom {
+    Super,
+    CurrentDirectory,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -89,7 +130,7 @@ pub enum DeclarationKind {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct TypeAlias {
+pub struct Alias {
     pub name: String,
     pub typ: TypeExpression,
 }

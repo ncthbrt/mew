@@ -63,7 +63,7 @@ impl SpannedSyntax for EnableDirective {}
 impl SpannedSyntax for RequiresDirective {}
 impl SpannedSyntax for GlobalDeclaration {}
 impl SpannedSyntax for Declaration {}
-impl SpannedSyntax for TypeAlias {}
+impl SpannedSyntax for Alias {}
 impl SpannedSyntax for Struct {}
 impl SpannedSyntax for StructMember {}
 impl SpannedSyntax for Function {}
@@ -139,7 +139,7 @@ pub struct RequiresDirective {
 pub enum GlobalDeclaration {
     Void,
     Declaration(Declaration),
-    TypeAlias(TypeAlias),
+    Alias(Alias),
     Struct(Struct),
     Function(Function),
     ConstAssert(ConstAssert),
@@ -167,7 +167,7 @@ pub struct Declaration {
 
 #[derive(Clone, Debug, PartialEq)]
 #[allow(unused)]
-pub struct TypeAlias {
+pub struct Alias {
     pub name: Span,
     pub typ: TypeExpression,
 }

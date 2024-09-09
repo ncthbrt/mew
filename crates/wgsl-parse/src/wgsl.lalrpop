@@ -14,6 +14,11 @@ extern {
     enum Token {
         // syntactic tokens
         // https://www.w3.org/TR/WGSL/#syntactic-tokens
+
+        // BEGIN WESL ADDITIONS
+        ".." => Token::SymDoublePeriod,
+        "::" => Token::SymDoubleColon,
+        // END WESL ADDITIONS
         "&" => Token::SymAnd,
         "&&" => Token::SymAndAnd,
         "->" => Token::SymArrow,
@@ -89,12 +94,12 @@ extern {
         "true" => Token::KwTrue,
         "var" => Token::KwVar,
         "while" => Token::KwWhile,
-        "import" => Token::KwImport,
-        "mod" => Token::KwMod,
-        "as" => Token::KwAs,
+        // BEGIN WESL ADDITIONS
+        "load" => Token::KwLoad,
+        "mod" => Token::KwMod,        
         "include" => Token::KwInclude,
         "sig" => Token::KwSig,
-        "extend" => Token::KwExtend,
+        // END WESL ADDITIONS
         IdentPatternToken => Token::Ident(<String>),
         TokAbstractInt => Token::AbstractInt(<i64>),
         TokAbstractFloat => Token::AbstractFloat(<f64>),
@@ -131,13 +136,70 @@ GlobalDecl: GlobalDeclaration = {
     ";"                        => GlobalDeclaration::Void,
     <GlobalVariableDecl> ";"   => GlobalDeclaration::Declaration(<>),
     <GlobalValueDecl> ";"      => GlobalDeclaration::Declaration(<>),
-    <TypeAliasDecl> ";"        => GlobalDeclaration::TypeAlias(<>),
+    <AliasDecl> ";"        => GlobalDeclaration::Alias(<>),
     <StructDecl>               => GlobalDeclaration::Struct(<>),
     <FunctionDecl>             => GlobalDeclaration::Function(<>),
     <ConstAssertStatement> ";" => GlobalDeclaration::ConstAssert(<>),
     // BEGIN WESL global decls
+    <LoadDecl> ";" => GlobalDeclaration::Load(<>),
+    <ModuleDecl> => GlobalDeclaration::Module(<>),
     // END WESL global decls
 };
+
+// BEGIN WESL ROOT ADDITIONS
+ModuleDecl : Module = {
+    <attributes: Attribute*> "mod" <name: Ident>  "{" <members: ModuleMemberDecl*> "}"  => Module {
+        name, 
+        members,
+        attributes,
+    }
+};
+
+ModuleMemberDecl: ModuleMemberDeclaration = {
+    ";"                        => ModuleMemberDeclaration::Void,
+    <GlobalVariableDecl> ";"   => ModuleMemberDeclaration::Declaration(<>),
+    <ModuleValueDecl> ";"      => ModuleMemberDeclaration::Declaration(<>),
+    <AliasDecl> ";"        => ModuleMemberDeclaration::Alias(<>),
+    <StructDecl>               => ModuleMemberDeclaration::Struct(<>),
+    <FunctionDecl>             => ModuleMemberDeclaration::Function(<>),
+    <ConstAssertStatement> ";" => ModuleMemberDeclaration::ConstAssert(<>),
+    <LoadDecl> ";" => ModuleMemberDeclaration::Load(<>),
+    <ModuleDecl> => ModuleMemberDeclaration::Module(<>),
+};
+
+
+LoadDecl : Load = {
+    <attributes: Attribute*> "load" <load_relative: LoadRelative?> <load_path: LoadPath>  => Load { load_relative, load_path, attributes }
+};
+
+LoadRelative: LoadRelative  = {
+    "/" => LoadRelative::Root,
+    <fst: LoadRelativeAtom> "/" <mut rst: (<LoadRelativeSuper> "/")*>  => {
+        let mut v = vec![fst];
+        v.append(&mut rst);
+        LoadRelative::Relative(v)
+    }
+};
+
+LoadRelativeAtom: LoadRelativeAtom = {
+    ".." => LoadRelativeAtom::Super,
+    "." => LoadRelativeAtom::CurrentDirectory
+};
+
+
+LoadRelativeSuper: LoadRelativeAtom = {
+    ".." => LoadRelativeAtom::Super,
+};
+
+
+LoadPath : Vec<IdentifierExpression> = {
+    <mut v: (<Ident> "/")*> <e: Ident> => {
+        v.push(e);
+        v
+    }
+};
+
+// END WESL ROOT ADDITIONS
 
 DiagnosticRuleName: String = {
     DiagnosticNameToken,
@@ -274,8 +336,8 @@ StructMember: StructMember = {
     },
 };
 
-TypeAliasDecl: TypeAlias = {
-    "alias" <name: Ident> "=" <typ: TypeSpecifier> => TypeAlias {
+AliasDecl: Alias = {
+    "alias" <name: Ident> "=" <typ: TypeSpecifier> => Alias {
         name, typ
     },
 };
@@ -348,10 +410,25 @@ GlobalVariableDecl: Declaration = {
     },
 };
 
+// BEGIN WESL MODIFICATIONS
+ModuleValueDecl: Declaration = {
+    "const" <ident: OptionallyTypedIdent> "=" <initializer: Expression> => {
+        let (name, typ) = ident;
+        return Declaration {
+            attributes: Vec::new(),
+            kind: DeclarationKind::Const,
+            template_args: None,
+            name,
+            typ,
+            initializer: Some(initializer)
+        }
+    },
+};
+
 GlobalValueDecl: Declaration = {
     "const" <ident: OptionallyTypedIdent> "=" <initializer: Expression> => {
         let (name, typ) = ident;
-        Declaration {
+        return Declaration {
             attributes: Vec::new(),
             kind: DeclarationKind::Const,
             template_args: None,
@@ -370,8 +447,9 @@ GlobalValueDecl: Declaration = {
             typ,
             initializer: initializer.map(Into::into),
         }
-    },
+    }
 };
+// END WESL MODIFICATIONS
 
 // 8. EXPRESSIONS
 // https://www.w3.org/TR/WGSL/#expressions
@@ -842,3 +920,4 @@ Comma1<T>: Vec<T> = {
         v
     }
 };
+

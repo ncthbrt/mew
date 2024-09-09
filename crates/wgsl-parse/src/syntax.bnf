@@ -22,13 +22,12 @@ global_decl :
 | struct_decl
 | function_decl
 | const_assert_statement ';'
-# BEGIN WESL
-| load_decl
-| include_decl
-| module_sig_decl
+# BEGIN WESL CHANGE
+| load_decl ';'
 | module_decl
-| module_alias_decl
-# END WESL
+| module_sig_decl
+| include_decl
+# END WESL CHANGE
 ;
 
 bool_literal :
@@ -111,12 +110,6 @@ template_arg_expression :
 align_attr :
   '@' 'align' '(' expression ',' ? ')'
 ;
-
-# BEGIN WESL
-override_attr :
-  '@' 'override'
-;
-# END WESL
 
 binding_attr :
   '@' 'binding' '(' expression ',' ? ')'
@@ -216,9 +209,6 @@ attribute :
 | vertex_attr
 | fragment_attr
 | compute_attr
-# BEGIN WESL
-| override_attr
-# END WESL
 ;
 
 diagnostic_control :
@@ -238,19 +228,18 @@ struct_member :
 ;
 
 type_alias_decl :
-  'alias' ident '=' type_specifier
+    'alias' ident (':' type_specifier ('+' type_specifier) *) ? '=' type_specifier
 ;
-
-# BEGIN WESL
 
 type_specifier :
   template_elaborated_ident
 ;
 
+# BEGIN WESL CHANGE
 template_elaborated_ident :
-  (module_path '::')? ident _disambiguate_template template_list ?
+    (module_path '::')? ident _disambiguate_template template_list ?
 ;
-# END WESL
+# END WESL CHANGE
 
 variable_or_value_statement :
   variable_decl
@@ -271,8 +260,12 @@ global_variable_decl :
   attribute * variable_decl ( '=' expression ) ?
 ;
 
+# BEGIN WESL CHANGE
+const_value_decl :
+    'const' optionally_typed_ident '=' expression
+;
 global_value_decl :
-  'const' optionally_typed_ident '=' expression
+  const_value_decl
 | attribute * 'override' optionally_typed_ident ( '=' expression ) ?
 ;
 
@@ -567,90 +560,12 @@ variable_updating_statement :
 | decrement_statement
 ;
 
-
-# BEGIN WESL LOADS
-file_load_path_relative :  
-  ('.' | '..') '/' ('..' '/')*
-| '/' # This indicates that the load is relative to the wesl root directory for a given package
-;
-
-file_load_path: 
-  file_load_path_relative? ident ('/' ident)*
-;
-
-load_decl :
-  'load' file_load_path ';'
-;
-
-# END WESL LOADS
-
-# BEGIN WESL INLINE MODULES
-
-module_decl :
-  'mod' optionally_typed_ident "{" global_decl * "}" ";"?
-;
-
-# END WESL INLINE MODULES
-
-# BEGIN WESL MODULE PATH COMMON 
-
-module_path :
-  ident ('::' ident)*
-;
-
-# END WESL MODULE PATH COMMON 
-
-# BEGIN WESL INCLUDE
-include_decl :
-  'include' module_path ';'
-;
-# END WESL INCLUDE
-
-# BEGIN MODULE SIG DECL
-
-module_sig_decl :
-  'mod' 'sig' "{" global_sig * "}" ";"?
-;
-
-global_sig :
-  | load_decl
-  | include_decl 
-  | function_sig
-  | associated_type_sig
-  | nested_mod_sig
-  | global_variable_sig
-  | global_value_sig
-;
-
-function_sig : 
-  attribute * function_header ';'
-
-nested_mod_sig : 
-  attribute * 'mod' optionally_typed_ident ';'
-;
-
-associated_type_sig : 
-  attribute * 'type' ident ';'
-;
-
-global_variable_sig :
-  attribute * variable_decl ? ';'
-;
-
-global_value_sig :
-  'const' ident ( ':' type_specifier )  ';'
-| attribute * 'override' ident ( ':' type_specifier )  ';'
-;
-# END MODULE SIG
-
-# END WESL
-
 function_decl :
-  attribute * function_header compound_statement
+    attribute * 'patch' ? function_header compound_statement
 ;
 
 function_header :
-  'fn' ident '(' param_list ? ')' ( '->' attribute * type_specifier ) ?
+  'fn' ident '(' param_list ? ')' ( '->' attribute * template_elaborated_ident ) ?
 ;
 
 param_list :
@@ -703,3 +618,102 @@ swizzle_name :
 | /[xyzw][xyzw][xyzw]/
 | /[xyzw][xyzw][xyzw][xyzw]/
 ;
+
+# BEGIN WESL
+load_decl: 
+| 'load' load_relative? load_path
+;
+
+load_relative: 
+| ('.' | '..') '/' ('..' '/')*  
+| '/'
+;
+
+load_path:  
+| ident ('/' ident)*
+;
+
+include_decl :
+  'include' module_path ';'
+;
+
+module_member_decl :
+  ';'
+| global_variable_decl ';'
+| const_value_decl ';'
+| type_alias_decl ';'
+| struct_decl
+| function_decl
+| const_assert_statement ';'
+| module_decl
+| module_sig_decl
+;
+
+module_sig_decl :
+  attribute * 'mod' 'sig' ident _disambiguate_template module_template_param_list 
+  '{' global_sig * '}' 
+  ';'?
+;
+
+global_sig :
+  | function_sig
+  | nested_mod_sig
+  | global_variable_sig
+  | global_const_value_sig
+  | associated_type_sig
+  | include_decl
+;
+
+function_sig : 
+  attribute * function_header ';'
+
+nested_mod_sig : 
+  attribute * 'mod' ident ':' module_type_specifier_set ';'
+;
+
+global_variable_sig :
+  attribute * variable_decl ? ';'
+;
+
+global_const_value_sig :
+  'const' ident ( ':' type_specifier )  ';'
+;
+
+associated_type_sig :
+    attribute * 'type' optionally_typed_ident ';'
+;
+
+module_decl:  
+  attribute * 'mod' ident _disambiguate_template module_template_param_list  ('->'  module_type_specifier_set)? 
+  "{" module_member_decl * "}" 
+  ";"?
+;
+
+module_type_specifier_set :  
+  module_type_specifier ('+' module_type_specifier) * 
+;
+
+module_template_param_list :
+  _template_args_start module_template_param_comma_list _template_args_end
+;
+
+module_template_param_comma_list : 
+  module_template_param ( ',' module_template_param ) * ',' ?
+;
+
+module_template_param : 
+  attribute * ident ':' module_type_specifier_set
+;
+
+module_type_specifier : 
+  (module_path '::')? ident _disambiguate_template template_list ?
+;
+
+module_path :
+  module_path_part ('::' module_path_part)*
+;
+
+module_path_part :
+  ident _disambiguate_template template_list ?
+;
+# END WESL

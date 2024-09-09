@@ -1,6 +1,6 @@
 use crate::syntax::*;
 use core::fmt;
-use std::fmt::{Display, Formatter};
+use std::fmt::{write, Display, Formatter};
 
 use itertools::Itertools;
 
@@ -79,10 +79,13 @@ impl Display for GlobalDeclaration {
         match self {
             GlobalDeclaration::Void => write!(f, ";"),
             GlobalDeclaration::Declaration(print) => write!(f, "{}", print),
-            GlobalDeclaration::TypeAlias(print) => write!(f, "{}", print),
+            GlobalDeclaration::Alias(print) => write!(f, "{}", print),
             GlobalDeclaration::Struct(print) => write!(f, "{}", print),
             GlobalDeclaration::Function(print) => write!(f, "{}", print),
             GlobalDeclaration::ConstAssert(print) => write!(f, "{}", print),
+            // Loads are always erased in output
+            GlobalDeclaration::Load(print) => write!(f, "{}", print),
+            GlobalDeclaration::Module(print) => write!(f, "{}", print),
         }
     }
 }
@@ -118,7 +121,7 @@ impl Display for DeclarationKind {
     }
 }
 
-impl Display for TypeAlias {
+impl Display for Alias {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let name = &self.name;
         let typ = &self.typ;
@@ -557,5 +560,60 @@ impl Display for WhileStatement {
         let cond = &self.condition;
         let body = &self.body;
         write!(f, "{attrs}while ({cond}) {body}")
+    }
+}
+
+// BEGIN WESL ADDITIONS
+
+impl Display for Load {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str("load ")?;
+        match &self.load_relative {
+            Some(LoadRelative::Root) => {
+                f.write_str("/")?;
+            }
+            Some(LoadRelative::Relative(parts)) => {
+                let str = parts.iter().map(|x| x.to_string()).join("/");
+                f.write_str(&str)?;
+                if !str.is_empty() {
+                    f.write_str("/")?;
+                }
+            }
+            None => {}
+        };
+        f.write_str(&self.load_path.join("/"))?;
+        f.write_str(";\n")
+    }
+}
+
+impl Display for LoadRelativeAtom {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            LoadRelativeAtom::Super => f.write_str(".."),
+            LoadRelativeAtom::CurrentDirectory => f.write_str("."),
+        }
+    }
+}
+
+impl Display for ModuleMemberDeclaration {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            &ModuleMemberDeclaration::Void => write!(f, ";"),
+            ModuleMemberDeclaration::Declaration(print) => write!(f, "{}", print),
+            ModuleMemberDeclaration::Alias(print) => write!(f, "{}", print),
+            ModuleMemberDeclaration::Struct(print) => write!(f, "{}", print),
+            ModuleMemberDeclaration::Function(print) => write!(f, "{}", print),
+            ModuleMemberDeclaration::ConstAssert(print) => write!(f, "{}", print),
+            ModuleMemberDeclaration::Load(print) => write!(f, "{}", print),
+            ModuleMemberDeclaration::Module(print) => write!(f, "{}", print),
+        }
+    }
+}
+
+impl Display for Module {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let attrs = fmt_attrs(&self.attributes, false);
+        let members = self.members.iter().format("\n\n");
+        write!(f, "{} mod {} {{\n{}\n}}", attrs, self.name, members)
     }
 }

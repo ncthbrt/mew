@@ -89,7 +89,12 @@ extern {
         "true" => Token::KwTrue,
         "var" => Token::KwVar,
         "while" => Token::KwWhile,
-
+        // BEGIN WESL ADDITIONS
+        "load" => Token::KwLoad,
+        "mod" => Token::KwMod,        
+        "include" => Token::KwInclude,
+        "sig" => Token::KwSig,
+        // END WESL ADDITIONS
         IdentPatternToken => Token::Ident(<String>),
         TokAbstractInt => Token::AbstractInt(<i64>),
         TokAbstractFloat => Token::AbstractFloat(<f64>),
@@ -126,7 +131,7 @@ GlobalDecl: GlobalDeclaration = {
     ";"                        => GlobalDeclaration::Void,
     <GlobalVariableDecl> ";"   => GlobalDeclaration::Declaration(<>),
     <GlobalValueDecl> ";"      => GlobalDeclaration::Declaration(<>),
-    <TypeAliasDecl> ";"        => GlobalDeclaration::TypeAlias(<>),
+    <AliasDecl> ";"        => GlobalDeclaration::Alias(<>),
     <StructDecl>               => GlobalDeclaration::Struct(<>),
     <FunctionDecl>             => GlobalDeclaration::Function(<>),
     <ConstAssertStatement> ";" => GlobalDeclaration::ConstAssert(<>),
@@ -267,8 +272,8 @@ StructMember: StructMember = {
     },
 };
 
-TypeAliasDecl: TypeAlias = {
-    "alias" <name: Ident> "=" <typ: TypeSpecifier> => TypeAlias {
+AliasDecl: Alias = {
+    "alias" <name: Ident> "=" <typ: TypeSpecifier> => Alias {
         name, typ
     },
 };

@@ -121,7 +121,7 @@ GlobalDecl: () = {
     ";",
     GlobalVariableDecl ";",
     GlobalValueDecl ";",
-    TypeAliasDecl ";",
+    AliasDecl ";",
     StructDecl,
     FunctionDecl,
     ConstAssertStatement ";",
@@ -210,7 +210,7 @@ StructBodyDecl: () = "{" StructMember ( "," StructMember ) * "," ? "}";
 
 StructMember: () = Attribute * MemberIdent ":" TypeSpecifier;
 
-TypeAliasDecl: () = "alias" Ident "=" TypeSpecifier;
+AliasDecl: () = "alias" Ident "=" TypeSpecifier;
 
 TypeSpecifier: () = TemplateElaboratedIdent;
 
