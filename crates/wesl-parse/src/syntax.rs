@@ -34,6 +34,7 @@ pub enum GlobalDirective {
     Diagnostic(DiagnosticDirective),
     Enable(EnableDirective),
     Requires(RequiresDirective),
+    Load(LoadDirective),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -68,12 +69,10 @@ pub enum GlobalDeclaration {
     Struct(Struct),
     Function(Function),
     ConstAssert(ConstAssert),
-    Load(Load),
     Module(Module),
 }
 
-#[derive(Clone, Debug, PartialEq)]
-
+#[derive(Clone, Debug, PartialEq, Default)]
 pub struct Module {
     pub attributes: Vec<Attribute>,
     pub name: String,
@@ -93,13 +92,11 @@ pub enum ModuleMemberDeclaration {
     Struct(Struct),
     Function(Function),
     ConstAssert(ConstAssert),
-    Load(Load),
     Module(Module),
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Load {
-    pub attributes: Vec<Attribute>,
+pub struct LoadDirective {
     pub load_relative: Option<LoadRelative>,
     pub load_path: Vec<String>,
 }

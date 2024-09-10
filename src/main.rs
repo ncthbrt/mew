@@ -4,7 +4,7 @@
 
 use clap::{Args, Parser, Subcommand};
 use std::{fs, path::PathBuf};
-use wgsl_parse::Parser as WgslParser;
+use wesl_parse::Parser as WgslParser;
 
 #[derive(Parser)]
 #[command(version, author, about)]
@@ -23,6 +23,7 @@ enum Command {
     Parse(CommonArgs),
     /// output the syntax tree to stdout
     Dump(CommonArgs),
+    Bundle(CommonArgs),
 }
 
 #[derive(Args)]
@@ -38,6 +39,7 @@ fn main() {
         Command::Check(args) => args,
         Command::Parse(args) => args,
         Command::Dump(args) => args,
+        Command::Bundle(args) => args,
     };
 
     let source = fs::read_to_string(&args.input).expect("could not open input file");
@@ -59,6 +61,12 @@ fn main() {
             };
         }
         Command::Dump(_) => {
+            match WgslParser::parse_str(&source) {
+                Ok(ast) => println!("{ast:?}"),
+                Err(err) => eprintln!("{err}"),
+            };
+        }
+        Command::Bundle(_) => {
             match WgslParser::parse_str(&source) {
                 Ok(ast) => println!("{ast:?}"),
                 Err(err) => eprintln!("{err}"),

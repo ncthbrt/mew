@@ -37,6 +37,7 @@ impl Display for GlobalDirective {
             GlobalDirective::Diagnostic(print) => write!(f, "{}", print),
             GlobalDirective::Enable(print) => write!(f, "{}", print),
             GlobalDirective::Requires(print) => write!(f, "{}", print),
+            GlobalDirective::Load(print) => write!(f, "{}", print),
         }
     }
 }
@@ -83,8 +84,6 @@ impl Display for GlobalDeclaration {
             GlobalDeclaration::Struct(print) => write!(f, "{}", print),
             GlobalDeclaration::Function(print) => write!(f, "{}", print),
             GlobalDeclaration::ConstAssert(print) => write!(f, "{}", print),
-            // Loads are always erased in output
-            GlobalDeclaration::Load(print) => write!(f, "{}", print),
             GlobalDeclaration::Module(print) => write!(f, "{}", print),
         }
     }
@@ -571,24 +570,26 @@ impl Display for WhileStatement {
 
 // BEGIN WESL ADDITIONS
 
-impl Display for Load {
+impl Display for LoadDirective {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.write_str("load ")?;
-        match &self.load_relative {
-            Some(LoadRelative::Root) => {
-                f.write_str("/")?;
-            }
-            Some(LoadRelative::Relative(parts)) => {
-                let str = parts.iter().map(|x| x.to_string()).join("/");
-                f.write_str(&str)?;
-                if !str.is_empty() {
-                    f.write_str("/")?;
-                }
-            }
-            None => {}
-        };
+        if let Some(load_relative) = &self.load_relative {
+            write!(f, "{load_relative}/")?;
+        }
         f.write_str(&self.load_path.join("/"))?;
         f.write_str(";\n")
+    }
+}
+
+impl Display for LoadRelative {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match &self {
+            LoadRelative::Root => f.write_str("/"),
+            LoadRelative::Relative(parts) => {
+                let str = parts.iter().map(|x| x.to_string()).join("/");
+                f.write_str(&str)
+            }
+        }
     }
 }
 
@@ -610,7 +611,6 @@ impl Display for ModuleMemberDeclaration {
             ModuleMemberDeclaration::Struct(print) => write!(f, "{}", print),
             ModuleMemberDeclaration::Function(print) => write!(f, "{}", print),
             ModuleMemberDeclaration::ConstAssert(print) => write!(f, "{}", print),
-            ModuleMemberDeclaration::Load(print) => write!(f, "{}", print),
             ModuleMemberDeclaration::Module(print) => write!(f, "{}", print),
         }
     }
@@ -620,6 +620,13 @@ impl Display for Module {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let attrs = fmt_attrs(&self.attributes, false);
         let members = self.members.iter().format("\n\n");
-        write!(f, "{} mod {} {{\n{}\n}}", attrs, self.name, members)
+        write!(
+            f,
+            "{}{}mod {}{}\n}}",
+            attrs,
+            if attrs.is_empty() { "" } else { " " },
+            self.name,
+            format!(" {{\n{}", members).replace("\n", "\n    ")
+        )
     }
 }

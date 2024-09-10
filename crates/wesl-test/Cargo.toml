@@ -1,0 +1,12 @@
+[package]
+name = "wesl-test"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+license.workspace = true
+
+[dependencies]
+wesl-parse = { path = '../wesl-parse' }
+wesl-bundle = { path = '../wesl-bundle' }
+tokio = { version="1.40.0", features=["macros", "rt"] }

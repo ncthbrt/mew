@@ -3,9 +3,9 @@
 //! # Parsing a source file
 //!
 //! ```rust
-//! # use wgsl_parse::syntax::*;
+//! # use wesl_parse::syntax::*;
 //! let source = "@fragment fn frag_main() -> @location(0) vec4f { return vec4(1); }";
-//! let parsed = wgsl_parse::Parser::parse_str(source).unwrap();
+//! let parsed = wesl_parse::Parser::parse_str(source).unwrap();
 //!
 //! let compare = TranslationUnit {
 //!     global_directives: vec![],
@@ -47,14 +47,14 @@
 //! Modifying the syntax tree:
 //! ```rust
 //!     let source = "const hello = 0u;";
-//!     let mut module = wgsl_parse::Parser::parse_str(source).unwrap();
+//!     let mut module = wesl_parse::Parser::parse_str(source).unwrap();
 //!
 //!     // modify the module as needed...
 //!     let decl = &mut module
 //!         .global_declarations
 //!         .iter_mut()
 //!         .find_map(|decl| match decl {
-//!             wgsl_parse::syntax::GlobalDeclaration::Declaration(decl) => Some(decl),
+//!             wesl_parse::syntax::GlobalDeclaration::Declaration(decl) => Some(decl),
 //!             _ => None,
 //!         })
 //!         .unwrap();
@@ -72,7 +72,7 @@
 //!
 //! ```rust
 //! let source = "@fragment fn frag_main() -> @location(0) vec4f { return vec4(1); }";
-//! let mut module = wgsl_parse::Parser::parse_str(source).unwrap();
+//! let mut module = wesl_parse::Parser::parse_str(source).unwrap();
 //!
 //! // modify the module as needed...
 //!

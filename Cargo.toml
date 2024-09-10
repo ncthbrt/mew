@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/wgsl-parse", "crates/wgsl-test"]
+members = ["crates/wesl-parse", "crates/wesl-test", "crates/wesl-bundle"]
 
 [workspace.package]
 version = "0.0.2"
@@ -20,4 +20,5 @@ license.workspace = true
 
 [dependencies]
 clap = { version = "4.5.11", features = ["derive"] }
-wgsl-parse = { path = "crates/wgsl-parse", version = "0.0.2" }
+wesl-parse = { path = "crates/wesl-parse", version = "0.0.2" }
+wesl-bundle  = { path = "crates/wesl-bundle", version = "0.0.2" }

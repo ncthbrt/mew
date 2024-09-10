@@ -1,5 +1,5 @@
 [package]
-name = "wgsl-parse"
+name = "wesl-parse"
 description = "Parse a wgsl source file to a syntax tree"
 documentation = "https://docs.rs/wgsl-parse"
 version.workspace = true

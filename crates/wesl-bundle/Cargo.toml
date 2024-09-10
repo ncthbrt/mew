@@ -1,5 +1,5 @@
 [package]
-name = "wgsl-test"
+name = "wesl-bundle"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
@@ -7,4 +7,5 @@ repository.workspace = true
 license.workspace = true
 
 [dependencies]
-wgsl-parse = { path = '../wgsl-parse' }
+wesl-parse = { path = '../wesl-parse' }
+async-trait = "0.1.82"

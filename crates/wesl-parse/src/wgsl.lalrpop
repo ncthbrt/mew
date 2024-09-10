@@ -141,7 +141,6 @@ GlobalDecl: GlobalDeclaration = {
     <FunctionDecl>             => GlobalDeclaration::Function(<>),
     <ConstAssertStatement> ";" => GlobalDeclaration::ConstAssert(<>),
     // BEGIN WESL global decls
-    <LoadDecl> ";" => GlobalDeclaration::Load(<>),
     <ModuleDecl> => GlobalDeclaration::Module(<>),
     // END WESL global decls
 };
@@ -163,13 +162,12 @@ ModuleMemberDecl: ModuleMemberDeclaration = {
     <StructDecl>               => ModuleMemberDeclaration::Struct(<>),
     <FunctionDecl>             => ModuleMemberDeclaration::Function(<>),
     <ConstAssertStatement> ";" => ModuleMemberDeclaration::ConstAssert(<>),
-    <LoadDecl> ";" => ModuleMemberDeclaration::Load(<>),
     <ModuleDecl> => ModuleMemberDeclaration::Module(<>),
 };
 
 
-LoadDecl : Load = {
-    <attributes: Attribute*> "load" <load_relative: LoadRelative?> <load_path: LoadPath>  => Load { load_relative, load_path, attributes }
+LoadDirective : LoadDirective = {
+    "load" <load_relative: LoadRelative?> <load_path: LoadPath> ";" => LoadDirective { load_relative, load_path }
 };
 
 LoadRelative: LoadRelative  = {
@@ -279,11 +277,13 @@ TemplateArgExpression: Expression = {
 
 // 4. DIRECTIVES
 // https://www.w3.org/TR/WGSL/#directives
-
 GlobalDirective: GlobalDirective = {
     DiagnosticDirective => GlobalDirective::Diagnostic(<>),
     EnableDirective     => GlobalDirective::Enable(<>),
     RequiresDirective   => GlobalDirective::Requires(<>),
+// BEGIN WESL
+    LoadDirective => GlobalDirective::Load(<>),
+// END WESL
 };
 
 EnableDirective: EnableDirective = {

@@ -1,4 +1,4 @@
-# WGSL Tools
+# WESL Tools
 
 **A work in progress!**
 
@@ -8,6 +8,7 @@ This will be the home of a few wgsl source manipulation tools:
 
 * A *syntax tree*, allows representing wgsl source.
 * A *parser*, converts source to the syntax tree and provides human-readable error messages.
+* (TODO) A *bundler* that produces a single WESL file from a set of input files and their local dependencies.
 * (TODO) A *checker*, verify that a wgsl code is correct.
 * (TODO) Various implementations of wgsl language extensions, the first ones will be imports and generics.
 
