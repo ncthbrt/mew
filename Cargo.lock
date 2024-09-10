@@ -871,6 +871,7 @@ name = "wgsl-tools"
 version = "0.0.2"
 dependencies = [
  "clap",
+ "tokio",
  "wesl-bundle",
  "wesl-parse",
 ]

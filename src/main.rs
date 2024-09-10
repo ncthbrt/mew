@@ -4,7 +4,12 @@
 
 use clap::{Args, Parser, Subcommand};
 use std::{fs, path::PathBuf};
-use wesl_parse::Parser as WgslParser;
+use wesl_bundle::{
+    bundler,
+    file_system::{self, PhysicalFilesystem},
+    BundleContext, Bundler as WeslBundler,
+};
+use wesl_parse::Parser as WeslParser;
 
 #[derive(Parser)]
 #[command(version, author, about)]
@@ -23,7 +28,7 @@ enum Command {
     Parse(CommonArgs),
     /// output the syntax tree to stdout
     Dump(CommonArgs),
-    Bundle(CommonArgs),
+    Bundle(BundleArgs),
 }
 
 #[derive(Args)]
@@ -32,14 +37,26 @@ struct CommonArgs {
     input: PathBuf,
 }
 
-fn main() {
+#[derive(Args)]
+struct BundleArgs {
+    /// optional module name to enclose output in
+    #[arg(short, long)]
+    module_name: Option<String>,
+    /// wgsl file entry-point
+    input: PathBuf,
+}
+
+#[tokio::main]
+async fn main() {
     let cli = Cli::parse();
 
     let args = match &cli.command {
         Command::Check(args) => args,
         Command::Parse(args) => args,
         Command::Dump(args) => args,
-        Command::Bundle(args) => args,
+        Command::Bundle(args) => &CommonArgs {
+            input: args.input.clone(),
+        },
     };
 
     let source = fs::read_to_string(&args.input).expect("could not open input file");
@@ -47,13 +64,13 @@ fn main() {
     match &cli.command {
         Command::Check(_) => {
             print!("{} -- ", args.input.display());
-            match WgslParser::recognize_str(&source) {
+            match WeslParser::recognize_str(&source) {
                 Ok(()) => println!("OK"),
                 Err(err) => eprintln!("{err}"),
             };
         }
         Command::Parse(_) => {
-            match WgslParser::parse_str(&source) {
+            match WeslParser::parse_str(&source) {
                 Ok(ast) => {
                     println!("{ast}")
                 }
@@ -61,16 +78,28 @@ fn main() {
             };
         }
         Command::Dump(_) => {
-            match WgslParser::parse_str(&source) {
+            match WeslParser::parse_str(&source) {
                 Ok(ast) => println!("{ast:?}"),
                 Err(err) => eprintln!("{err}"),
             };
         }
-        Command::Bundle(_) => {
-            match WgslParser::parse_str(&source) {
-                Ok(ast) => println!("{ast:?}"),
-                Err(err) => eprintln!("{err}"),
+        Command::Bundle(bundle_args) => {
+            let bundler = WeslBundler {
+                file_system: PhysicalFilesystem {
+                    entry_point: args.input.parent().unwrap().to_path_buf(),
+                },
             };
+            match bundler
+                .bundle(&BundleContext {
+                    entry_points: vec![PathBuf::from(bundle_args.input.file_name().unwrap())],
+                    enclosing_module_name: bundle_args.module_name.clone(),
+                })
+                .await
+            {
+                Ok(ast) => println!("\n{ast}"),
+                Err(err) => eprintln!("{err:?}"),
+            };
+            println!()
         }
     }
 }

@@ -22,3 +22,4 @@ license.workspace = true
 clap = { version = "4.5.11", features = ["derive"] }
 wesl-parse = { path = "crates/wesl-parse", version = "0.0.2" }
 wesl-bundle  = { path = "crates/wesl-bundle", version = "0.0.2" }
+tokio = { version="1.40.0", features=["macros", "rt-multi-thread"] }
