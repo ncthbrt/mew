@@ -21,14 +21,14 @@
 //!             arguments: Some(vec![Expression::Literal(LiteralExpression::AbstractInt(0))])
 //!         }],
 //!         return_type: Some(TypeExpression {
-//!             name: "vec4f".to_string(),
+//!             path: vec!["vec4f".to_string()],
 //!             template_args: None
 //!         }),
 //!         body: CompoundStatement {
 //!             attributes: vec![],
 //!             statements: vec![Statement::Return(Some(Expression::FunctionCall(
 //!                 FunctionCallExpression {
-//!                     name: "vec4".to_string(),
+//!                     path: vec!["vec4".to_string()],
 //!                     template_args: None,
 //!                     arguments: vec![Expression::Literal(LiteralExpression::AbstractInt(1))]
 //!                 }

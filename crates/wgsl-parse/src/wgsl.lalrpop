@@ -191,8 +191,7 @@ LoadRelativeSuper: LoadRelativeAtom = {
     ".." => LoadRelativeAtom::Super,
 };
 
-
-LoadPath : Vec<IdentifierExpression> = {
+LoadPath : Vec<String> = {
     <mut v: (<Ident> "/")*> <e: Ident> => {
         v.push(e);
         v
@@ -344,12 +343,20 @@ AliasDecl: Alias = {
 
 TypeSpecifier: TypeExpression = {
     TemplateElaboratedIdent => {
-        let (name, template_args) = <>;
-        TypeExpression { name, template_args }
+        let TemplateElaboratedIdent { path, template_args } = <>;
+        TypeExpression { path, template_args }
     },
 };
 
-TemplateElaboratedIdent = Ident /* DisambiguateTemplate */ TemplateList?;
+TemplateElaboratedIdent: TemplateElaboratedIdent = {
+    <mut path: (<Ident> "::")*> <last: Ident> /* DisambiguateTemplate */ <template_args: TemplateList?> => {
+        path.push(last);
+        TemplateElaboratedIdent {
+            path,
+            template_args
+        }
+    },
+};
 
 // 7. VARIABLE AND VALUE DECLARATIONS
 // https://www.w3.org/TR/WGSL/#var-and-value
@@ -454,18 +461,24 @@ GlobalValueDecl: Declaration = {
 // 8. EXPRESSIONS
 // https://www.w3.org/TR/WGSL/#expressions
 
+// BEGIN WESL MODIFICATIONS
+
 PrimaryExpression: Expression = {
     TemplateElaboratedIdent => {
-        let (name, template_args) = <>;
+        let  TemplateElaboratedIdent { path, template_args } = <>;
         match template_args {
-            Some(_) => Expression::Type(TypeExpression { name, template_args }),
-            None => Expression::Identifier(name),
+            Some(_) => Expression::Type(TypeExpression { path, template_args }),
+            None => Expression::Identifier(IdentifierExpression {
+                path
+            }),
         }
     }, // XXX: not sure about this one, is it type?
     CallExpression,
     Literal => Expression::Literal(<>),
     ParenExpression,
 };
+// END WESL MODIFICATIONS
+
 
 CallExpression: Expression = {
     CallPhrase => Expression::FunctionCall(<>),
@@ -473,9 +486,9 @@ CallExpression: Expression = {
 
 CallPhrase: FunctionCallExpression = {
     <callee: TemplateElaboratedIdent> <arguments: ArgumentExpressionList> => {
-        let (name, template_args) = callee;
+        let TemplateElaboratedIdent { path, template_args } = callee;
         FunctionCallExpression {
-            name, template_args, arguments
+            path, template_args, arguments
         }
     },
 };
@@ -545,7 +558,7 @@ LhsExpression: Expression = {
  };
  
 CoreLhsExpression: Expression = {
-    Ident /* DisambiguateTemplate */ => Expression::Identifier(<>),
+    Ident /* DisambiguateTemplate */ => Expression::Identifier(IdentifierExpression { path: vec![<>] }),
     "(" <LhsExpression> ")" => Expression::Parenthesized(<>.into()),
 };
 
@@ -682,7 +695,7 @@ AssignmentStatement: AssignmentStatement = {
         operator, lhs, rhs
     },
     "_" "=" <rhs: Expression> => {
-        let lhs = Expression::Identifier("_".to_string());
+        let lhs = Expression::Identifier(IdentifierExpression { path: vec!["_".to_string()] });
         AssignmentStatement { operator: AssignmentOperator::Equal, lhs, rhs }
     },
 };
@@ -865,8 +878,8 @@ FunctionDecl: Function = {
 
 FunctionHeader: (String, Vec<FormalParameter>, Vec<Attribute>, Option<TypeExpression>) = {
     "fn" <name: Ident> "(" <parameters: ParamList?> ")" <ret: ("->" <Attribute*> <TemplateElaboratedIdent>)?> => {
-        let (return_attributes, return_type) = ret.map(|(return_attributes, (name, template_args))| {
-            let return_type = TypeExpression {name, template_args };
+        let (return_attributes, return_type) = ret.map(|(return_attributes, TemplateElaboratedIdent {path , template_args})| {
+            let return_type = TypeExpression { path, template_args };
             (return_attributes, Some(return_type))
         }).unwrap_or_default();
         let parameters = parameters.unwrap_or_default();

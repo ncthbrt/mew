@@ -1,6 +1,6 @@
 use crate::syntax::*;
 use core::fmt;
-use std::fmt::{write, Display, Formatter};
+use std::fmt::{Display, Formatter};
 
 use itertools::Itertools;
 
@@ -220,6 +220,12 @@ impl Display for Expression {
     }
 }
 
+impl Display for IdentifierExpression {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.path.join("::"))
+    }
+}
+
 impl Display for LiteralExpression {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
@@ -314,7 +320,7 @@ impl Display for BinaryOperator {
 
 impl Display for FunctionCallExpression {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let name = &self.name;
+        let name = &self.path.join("::");
         let tplt = fmt_template(&self.template_args);
         let args = self.arguments.iter().format(", ");
         write!(f, "{name}{tplt}({args})")
@@ -329,7 +335,7 @@ impl Display for FunctionCallExpression {
 
 impl Display for TypeExpression {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let name = &self.name;
+        let name = &self.path.join("::");
         let tplt = fmt_template(&self.template_args);
         write!(f, "{name}{tplt}")
     }

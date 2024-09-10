@@ -38,7 +38,7 @@ fn wesl_samples() {
                 .inspect_err(|err| eprintln!("{err}"))
                 .expect("parse error");
 
-            println!("{:?}", source_module);
+            // println!("{:?}", source_module);
             assert_eq!(source_module, disp_module);
         }
     }

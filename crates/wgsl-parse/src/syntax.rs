@@ -76,8 +76,13 @@ pub enum GlobalDeclaration {
 
 pub struct Module {
     pub attributes: Vec<Attribute>,
-    pub name: IdentifierExpression,
+    pub name: String,
     pub members: Vec<ModuleMemberDeclaration>,
+}
+
+pub struct TemplateElaboratedIdent {
+    pub path: Vec<String>,
+    pub template_args: Option<Vec<TemplateArg>>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -96,7 +101,7 @@ pub enum ModuleMemberDeclaration {
 pub struct Load {
     pub attributes: Vec<Attribute>,
     pub load_relative: Option<LoadRelative>,
-    pub load_path: Vec<IdentifierExpression>,
+    pub load_path: Vec<String>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -261,16 +266,19 @@ pub enum BinaryOperator {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct FunctionCallExpression {
-    pub name: String,
+    pub path: Vec<String>,
     pub template_args: Option<Vec<TemplateArg>>,
     pub arguments: Vec<Expression>,
 }
 
-pub type IdentifierExpression = String;
+#[derive(Clone, Debug, PartialEq)]
+pub struct IdentifierExpression {
+    pub path: Vec<String>,
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct TypeExpression {
-    pub name: String,
+    pub path: Vec<String>,
     pub template_args: Option<Vec<TemplateArg>>,
 }
 
