@@ -9,5 +9,5 @@ license.workspace = true
 [dependencies]
 wesl-parse = { path = '../wesl-parse' }
 wesl-bundle = { path = '../wesl-bundle' }
-wesl-resolver = { path = '../wesl-resolver' }
+wesl-resolve = { path = '../wesl-resolve' }
 tokio = { version="1.40.0", features=["macros", "rt"] }

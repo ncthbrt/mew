@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/wesl-parse", "crates/wesl-test", "crates/wesl-bundle", "crates/wesl-resolver"]
+members = ["crates/wesl-parse", "crates/wesl-test", "crates/wesl-bundle", "crates/wesl-resolve"]
 
 [workspace.package]
 version = "0.0.2"
@@ -25,5 +25,5 @@ license.workspace = true
 clap = { version = "4.5.11", features = ["derive"] }
 wesl-parse = { path = "crates/wesl-parse", version = "0.0.2" }
 wesl-bundle  = { path = "crates/wesl-bundle", version = "0.0.2" }
-wesl-resolver  = { path = "crates/wesl-resolver", version = "0.0.2" }
+wesl-resolve  = { path = "crates/wesl-resolve", version = "0.0.2" }
 tokio = { version="1.40.0", features=["macros", "rt-multi-thread"] }

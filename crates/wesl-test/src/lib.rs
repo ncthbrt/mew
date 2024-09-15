@@ -4,7 +4,6 @@ use std::path::PathBuf;
 
 use wesl_bundle::{file_system::PhysicalFilesystem, BundleContext, Bundler, BundlerError};
 
-pub mod resolve;
 
 #[test]
 fn webgpu_samples() {
@@ -129,7 +128,7 @@ fn resolve_wesl_samples() -> Result<(), BundlerError<std::io::Error>> {
         if path.extension().unwrap() == "wgsl" || path.extension().unwrap() == "wesl" {
             println!("testing sample `{}`", path.display());
 
-            let resolver = wesl_resolver::Resolver {
+            let resolver = wesl_resolve::Resolver {
                 ..Default::default()
             };
 

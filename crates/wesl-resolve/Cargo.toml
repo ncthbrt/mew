@@ -1,5 +1,5 @@
 [package]
-name = "wesl-resolver"
+name = "wesl-resolve"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
