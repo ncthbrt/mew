@@ -90,7 +90,7 @@ extern {
         "var" => Token::KwVar,
         "while" => Token::KwWhile,
         // BEGIN WESL ADDITIONS
-        "load" => Token::KwLoad,
+        "use" => Token::KwUse,
         "mod" => Token::KwMod,        
         "include" => Token::KwInclude,
         "sig" => Token::KwSig,

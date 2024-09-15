@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{collections::VecDeque, str::FromStr};
 
 use super::{error::ParseError, syntax::*};
 
@@ -40,6 +40,61 @@ impl From<ModuleMemberDeclaration> for GlobalDeclaration {
             ModuleMemberDeclaration::Function(func) => GlobalDeclaration::Function(func),
             ModuleMemberDeclaration::ConstAssert(ass) => GlobalDeclaration::ConstAssert(ass),
             ModuleMemberDeclaration::Module(module) => GlobalDeclaration::Module(module),
+        }
+    }
+}
+
+impl DeclarationStatement {
+    pub fn construct_scope_tree(&mut self, queue: &mut VecDeque<Statement>) {
+        while let Some(statement) = queue.pop_front() {
+            match statement {
+                Statement::Declaration(mut decl) => {
+                    decl.construct_scope_tree(queue);
+                    self.statements.push(Statement::Declaration(decl));
+                }
+                other => self.statements.push(other),
+            }
+        }
+    }
+}
+
+impl CompoundStatement {
+    pub fn construct_scope_tree(&mut self) {
+        let mut queue: VecDeque<Statement> = self.statements.drain(0..).collect();
+        while let Some(statement) = queue.pop_front() {
+            match statement {
+                Statement::Declaration(mut decl) => {
+                    decl.construct_scope_tree(&mut queue);
+                    self.statements.push(Statement::Declaration(decl));
+                }
+                other => self.statements.push(other),
+            }
+        }
+    }
+}
+
+impl ModuleMemberDeclaration {
+    pub fn name(&self) -> Option<String> {
+        match self {
+            ModuleMemberDeclaration::Declaration(d) => Some(d.name.clone()),
+            ModuleMemberDeclaration::Alias(a) => Some(a.name.clone()),
+            ModuleMemberDeclaration::Struct(s) => Some(s.name.clone()),
+            ModuleMemberDeclaration::Function(f) => Some(f.name.clone()),
+            ModuleMemberDeclaration::Module(m) => Some(m.name.clone()),
+            _ => None,
+        }
+    }
+}
+
+impl GlobalDeclaration {
+    pub fn name(&self) -> Option<String> {
+        match self {
+            GlobalDeclaration::Declaration(d) => Some(d.name.clone()),
+            GlobalDeclaration::Alias(a) => Some(a.name.clone()),
+            GlobalDeclaration::Struct(s) => Some(s.name.clone()),
+            GlobalDeclaration::Function(f) => Some(f.name.clone()),
+            GlobalDeclaration::Module(m) => Some(m.name.clone()),
+            _ => None,
         }
     }
 }

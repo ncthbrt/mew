@@ -37,7 +37,6 @@ impl Display for GlobalDirective {
             GlobalDirective::Diagnostic(print) => write!(f, "{}", print),
             GlobalDirective::Enable(print) => write!(f, "{}", print),
             GlobalDirective::Requires(print) => write!(f, "{}", print),
-            GlobalDirective::Load(print) => write!(f, "{}", print),
         }
     }
 }
@@ -426,6 +425,14 @@ impl Display for AssignmentOperator {
     }
 }
 
+impl Display for DeclarationStatement {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.declaration)?;
+        let stmts = self.statements.iter().format("\n");
+        write!(f, "{stmts}")
+    }
+}
+
 // impl Display for IncrementStatement {
 //     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
 //         Ok(())
@@ -569,39 +576,6 @@ impl Display for WhileStatement {
 }
 
 // BEGIN WESL ADDITIONS
-
-impl Display for LoadDirective {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.write_str("load ")?;
-        if let Some(load_relative) = &self.load_relative {
-            write!(f, "{load_relative}/")?;
-        }
-        f.write_str(&self.load_path.join("/"))?;
-        f.write_str(";\n")
-    }
-}
-
-impl Display for LoadRelative {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match &self {
-            LoadRelative::Root => f.write_str("/"),
-            LoadRelative::Relative(parts) => {
-                let str = parts.iter().map(|x| x.to_string()).join("/");
-                f.write_str(&str)
-            }
-        }
-    }
-}
-
-impl Display for LoadRelativeAtom {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            LoadRelativeAtom::Super => f.write_str(".."),
-            LoadRelativeAtom::CurrentDirectory => f.write_str("."),
-        }
-    }
-}
-
 impl Display for ModuleMemberDeclaration {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
@@ -619,14 +593,14 @@ impl Display for ModuleMemberDeclaration {
 impl Display for Module {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let attrs = fmt_attrs(&self.attributes, false);
-        let members = self.members.iter().format("\n\n");
+        let members = Indent(self.members.iter().format("\n\n"));
         write!(
             f,
-            "{}{}mod {}{}\n}}",
+            "{}{}mod {} {{\n{}\n}}",
             attrs,
             if attrs.is_empty() { "" } else { " " },
             self.name,
-            format!(" {{\n{}", members).replace("\n", "\n    ")
+            members
         )
     }
 }

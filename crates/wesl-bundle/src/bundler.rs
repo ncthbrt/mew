@@ -27,9 +27,7 @@ impl<Fs: ReadonlyFilesystem> Bundler<Fs> {
     ) -> Result<TranslationUnit, BundlerError<Fs::Error>> {
         let mut result: TranslationUnit = TranslationUnit::default();
 
-        let mut stack = ctx.entry_points.clone();
-
-        while let Some(item) = stack.pop() {
+        for item in ctx.entry_points.iter() {
             let file = self
                 .file_system
                 .read(&item)
@@ -37,20 +35,6 @@ impl<Fs: ReadonlyFilesystem> Bundler<Fs> {
                 .map_err(|err| BundlerError::FileSystemError(err))?;
             let mut local_translation_unit = wesl_parse::Parser::parse_str(&file)
                 .map_err(|err| BundlerError::ParseError(format!("{}", err)))?;
-
-            for directive in local_translation_unit.global_directives {
-                match directive {
-                    wesl_parse::syntax::GlobalDirective::Load(load) => {
-                        let path_str = if let Some(relative) = load.load_relative {
-                            format!("{relative}/{}", load.load_path.join("/"))
-                        } else {
-                            format!("{}", load.load_path.join("/"))
-                        };
-                        stack.push(PathBuf::from(format!("{path_str}.wesl")));
-                    }
-                    other => result.global_directives.push(other),
-                };
-            }
 
             result
                 .global_declarations

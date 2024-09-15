@@ -34,7 +34,6 @@ pub enum GlobalDirective {
     Diagnostic(DiagnosticDirective),
     Enable(EnableDirective),
     Requires(RequiresDirective),
-    Load(LoadDirective),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -93,12 +92,6 @@ pub enum ModuleMemberDeclaration {
     Function(Function),
     ConstAssert(ConstAssert),
     Module(Module),
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct LoadDirective {
-    pub load_relative: Option<LoadRelative>,
-    pub load_path: Vec<String>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -368,7 +361,7 @@ pub struct LoopStatement {
     pub attributes: Vec<Attribute>,
     pub body: CompoundStatement,
     // a ContinuingStatement can only appear inside a LoopStatement body, therefore it is
-    // not part of the Statement enum. it appear shere instead, but consider it part of
+    // not part of the Statement enum. it appears here instead, but consider it part of
     // body as the last statement of the CompoundStatement.
     pub continuing: Option<ContinuingStatement>,
 }
@@ -377,7 +370,7 @@ pub struct LoopStatement {
 pub struct ContinuingStatement {
     pub body: CompoundStatement,
     // a BreakIfStatement can only appear inside a ContinuingStatement body, therefore it
-    // not part of the Statement enum. it appear shere instead, but consider it part of
+    // not part of the Statement enum. it appears here instead, but consider it part of
     // body as the last statement of the CompoundStatement.
     pub break_if: Option<BreakIfStatement>,
 }
@@ -406,4 +399,8 @@ pub type FunctionCallStatement = FunctionCallExpression;
 
 pub type ConstAssertStatement = ConstAssert;
 
-pub type DeclarationStatement = Declaration;
+#[derive(Clone, Debug, PartialEq)]
+pub struct DeclarationStatement {
+    pub declaration: Declaration,
+    pub statements: Vec<Statement>,
+}

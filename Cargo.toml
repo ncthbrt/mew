@@ -1,12 +1,15 @@
 [workspace]
-members = ["crates/wesl-parse", "crates/wesl-test", "crates/wesl-bundle"]
+members = ["crates/wesl-parse", "crates/wesl-test", "crates/wesl-bundle", "crates/wesl-resolver"]
 
 [workspace.package]
 version = "0.0.2"
 edition = "2021"
-authors = ["Mathis Brossier <mathis.brossier@gmail.com>"]
+authors = ["Mathis Brossier <mathis.brossier@gmail.com>", "Natalie Cuthbert <natalie@cuthbert.co.za>"]
 repository = "https://github.com/k2d222/wgsl-tools"
 license = "MIT"
+
+[workspace.dependencies]
+im = "15.1.0" 
 
 [package]
 name = "wgsl-tools"
@@ -22,4 +25,5 @@ license.workspace = true
 clap = { version = "4.5.11", features = ["derive"] }
 wesl-parse = { path = "crates/wesl-parse", version = "0.0.2" }
 wesl-bundle  = { path = "crates/wesl-bundle", version = "0.0.2" }
+wesl-resolver  = { path = "crates/wesl-resolver", version = "0.0.2" }
 tokio = { version="1.40.0", features=["macros", "rt-multi-thread"] }

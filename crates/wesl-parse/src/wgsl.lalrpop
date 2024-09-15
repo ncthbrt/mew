@@ -95,7 +95,7 @@ extern {
         "var" => Token::KwVar,
         "while" => Token::KwWhile,
         // BEGIN WESL ADDITIONS
-        "load" => Token::KwLoad,
+        "use" => Token::KwUse,
         "mod" => Token::KwMod,        
         "include" => Token::KwInclude,
         "sig" => Token::KwSig,
@@ -163,37 +163,6 @@ ModuleMemberDecl: ModuleMemberDeclaration = {
     <FunctionDecl>             => ModuleMemberDeclaration::Function(<>),
     <ConstAssertStatement> ";" => ModuleMemberDeclaration::ConstAssert(<>),
     <ModuleDecl> => ModuleMemberDeclaration::Module(<>),
-};
-
-
-LoadDirective : LoadDirective = {
-    "load" <load_relative: LoadRelative?> <load_path: LoadPath> ";" => LoadDirective { load_relative, load_path }
-};
-
-LoadRelative: LoadRelative  = {
-    "/" => LoadRelative::Root,
-    <fst: LoadRelativeAtom> "/" <mut rst: (<LoadRelativeSuper> "/")*>  => {
-        let mut v = vec![fst];
-        v.append(&mut rst);
-        LoadRelative::Relative(v)
-    }
-};
-
-LoadRelativeAtom: LoadRelativeAtom = {
-    ".." => LoadRelativeAtom::Super,
-    "." => LoadRelativeAtom::CurrentDirectory
-};
-
-
-LoadRelativeSuper: LoadRelativeAtom = {
-    ".." => LoadRelativeAtom::Super,
-};
-
-LoadPath : Vec<String> = {
-    <mut v: (<Ident> "/")*> <e: Ident> => {
-        v.push(e);
-        v
-    }
 };
 
 // END WESL ROOT ADDITIONS
@@ -281,9 +250,6 @@ GlobalDirective: GlobalDirective = {
     DiagnosticDirective => GlobalDirective::Diagnostic(<>),
     EnableDirective     => GlobalDirective::Enable(<>),
     RequiresDirective   => GlobalDirective::Requires(<>),
-// BEGIN WESL
-    LoadDirective => GlobalDirective::Load(<>),
-// END WESL
 };
 
 EnableDirective: EnableDirective = {
@@ -680,10 +646,13 @@ Expression: Expression = {
 // 9. STATEMENTS
 // https://www.w3.org/TR/WGSL/#statements
 
-
 CompoundStatement: CompoundStatement = {
-    <attributes: Attribute*> "{" <statements: Statement*> "}" => CompoundStatement {
-        attributes, statements
+    <attributes: Attribute*> "{" <statements: Statement*> "}" => {
+        let mut statement = CompoundStatement {
+            attributes, statements
+        };
+        statement.construct_scope_tree();
+        statement
     },
 };
 
@@ -795,7 +764,7 @@ ForHeader: (Option<Statement>, Option<Expression>, Option<Statement>) = {
 };
 
 ForInit: Statement = {
-    VariableOrValueStatement  => Statement::Declaration(<>),
+    VariableOrValueStatement  => Statement::Declaration(DeclarationStatement { declaration: <>, statements: vec![] }),
     VariableUpdatingStatement => <>,
     FuncCallStatement         => Statement::FunctionCall(<>),
 };
@@ -851,13 +820,13 @@ Statement: Statement = {
     <ForStatement> => Statement::For(<>),
     <WhileStatement> => Statement::While(<>),
     <FuncCallStatement> ";" => Statement::FunctionCall(<>),
-    <VariableOrValueStatement> ";" => Statement::Declaration(<>),
     BreakStatement ";" => Statement::Break,
     ContinueStatement ";" => Statement::Continue,
     "discard" ";" => Statement::Discard,
     <VariableUpdatingStatement> ";" => <>,
     <CompoundStatement> => Statement::Compound(<>),
     <ConstAssertStatement> ";" => Statement::ConstAssert(<>),
+    <declaration: VariableOrValueStatement> ";" => Statement::Declaration(DeclarationStatement { declaration, statements: vec![] })
 };
 
 VariableUpdatingStatement: Statement = {

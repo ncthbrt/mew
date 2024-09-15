@@ -4,11 +4,7 @@
 
 use clap::{Args, Parser, Subcommand};
 use std::{fs, path::PathBuf};
-use wesl_bundle::{
-    bundler,
-    file_system::{self, PhysicalFilesystem},
-    BundleContext, Bundler as WeslBundler,
-};
+use wesl_bundle::{file_system::PhysicalFilesystem, BundleContext, Bundler as WeslBundler};
 use wesl_parse::Parser as WeslParser;
 
 #[derive(Parser)]
@@ -99,7 +95,6 @@ async fn main() {
                 Ok(ast) => println!("\n{ast}"),
                 Err(err) => eprintln!("{err:?}"),
             };
-            println!()
         }
     }
 }

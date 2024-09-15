@@ -312,8 +312,8 @@ pub enum Token {
     KwWhile,
 
     // BEGIN WESL KEYWORDS
-    #[token("load")]
-    KwLoad,
+    #[token("use")]
+    KwUse,
     #[token("mod")]
     KwMod,
     #[token("include")]
@@ -443,7 +443,7 @@ impl Token {
                 | Token::KwTrue
                 | Token::KwVar
                 | Token::KwWhile
-                | Token::KwLoad
+                | Token::KwUse
                 | Token::KwMod
                 | Token::KwInclude
                 | Token::KwSig
@@ -539,7 +539,7 @@ impl Display for Token {
             Token::KwTrue => f.write_str("true"),
             Token::KwVar => f.write_str("var"),
             Token::KwWhile => f.write_str("while"),
-            Token::KwLoad => f.write_str("load"),
+            Token::KwUse => f.write_str("use"),
             Token::KwMod => f.write_str("mod"),
             Token::KwInclude => f.write_str("include"),
             Token::KwSig => f.write_str("sig"),

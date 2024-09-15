@@ -1,5 +1,5 @@
 [package]
-name = "wesl-test"
+name = "wesl-resolver"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
@@ -8,6 +8,5 @@ license.workspace = true
 
 [dependencies]
 wesl-parse = { path = '../wesl-parse' }
-wesl-bundle = { path = '../wesl-bundle' }
-wesl-resolver = { path = '../wesl-resolver' }
-tokio = { version="1.40.0", features=["macros", "rt"] }
+async-trait = "0.1.82"
+im = { workspace = true }
