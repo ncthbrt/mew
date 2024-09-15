@@ -6,7 +6,7 @@ mod Types {
         viewProjectionMatrix : mat4x4f,
     }
 
-    const x: f32 = 10f;
+    const x: Camera = Camera();
 }
 
 @binding(0) @group(0) var<uniform> uniforms : Types::Uniforms;

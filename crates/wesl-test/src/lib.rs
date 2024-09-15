@@ -142,12 +142,12 @@ fn resolve_wesl_samples() -> Result<(), BundlerError<std::io::Error>> {
 
             let expected_output_location: PathBuf = std::env::current_dir()
                 .unwrap()
-                .join("expected-mangle-outputs")
+                .join("expected-resolver-outputs")
                 .join(path.file_name().unwrap());
 
             // Uncomment to output results to expected outputs folder
             // let disp: String = format!("{result}");
-            // let _ = std::fs::write(expected_output_location, disp).expect("Written");
+            // let _ = std::fs::write(expected_output_location.clone(), disp).expect("Written");
 
             let expected_output_module = wesl_parse::Parser::parse_str(
                 &std::fs::read_to_string(expected_output_location.clone()).expect("READ"),

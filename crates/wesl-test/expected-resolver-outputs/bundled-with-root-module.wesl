@@ -2,10 +2,10 @@
 
 mod MyLib {
     @binding(0) @group(0)
-    var<uniform> uniforms: Uniforms;
+    var<uniform> uniforms: MyLib::Uniforms;
     
     @binding(1) @group(0)
-    var<uniform> camera: Camera;
+    var<uniform> camera: MyLib::Camera;
     
     struct VertexOutput {
         @builtin(position)
@@ -15,7 +15,7 @@ mod MyLib {
     }
     
     @vertex
-    fn main(@builtin(instance_index) instanceIdx: u32, @location(0) position: vec4f, @location(1) color: vec4f) -> VertexOutput {
+    fn main(@builtin(instance_index) instanceIdx: u32, @location(0) position: vec4f, @location(1) color: vec4f) -> MyLib::VertexOutput {
         var output: VertexOutput;output.Position = camera.viewProjectionMatrix * uniforms.modelMatrix[instanceIdx] * position;
         output.fragColor = color;
         return output;
@@ -38,14 +38,14 @@ mod MyLib {
             viewProjectionMatrix: mat4x4f
         }
         
-        const x: Camera = Camera();
+        const x: MyLib::Types::Camera = MyLib::Types::Camera();
     }
     
     @binding(0) @group(0)
-    var<uniform> uniforms: Types::Uniforms;
+    var<uniform> uniforms: MyLib::Types::Uniforms;
     
     @binding(1) @group(0)
-    var<uniform> camera: Types::Camera;
+    var<uniform> camera: MyLib::Types::Camera;
     
     struct VertexOutput {
         @builtin(position)
@@ -55,7 +55,7 @@ mod MyLib {
     }
     
     @vertex
-    fn main(@builtin(instance_index) instanceIdx: u32, @location(0) position: vec4f, @location(1) color: vec4f) -> VertexOutput {
+    fn main(@builtin(instance_index) instanceIdx: u32, @location(0) position: vec4f, @location(1) color: vec4f) -> MyLib::VertexOutput {
         var output: VertexOutput;output.Position = camera.viewProjectionMatrix * uniforms.modelMatrix[instanceIdx] * position;
         output.fragColor = color / vec4<f32>(Types::x);
         return output;

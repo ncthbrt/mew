@@ -37,7 +37,7 @@ mod Types {
         viewProjectionMatrix: mat4x4f
     }
     
-    const x: Camera = Camera();
+    const x: Types::Camera = Types::Camera();
 }
 
 @binding(0) @group(0)
