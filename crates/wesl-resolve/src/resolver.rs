@@ -1,8 +1,5 @@
-use std::collections::VecDeque;
-
 use wesl_parse::syntax::{
-    Alias, CompoundStatement, ConstAssert, ContinuingStatement, Declaration, DeclarationStatement,
-    Expression, ForStatement, FormalParameter, Function, GlobalDeclaration, LoopStatement, Module,
+    Alias, ConstAssert, Declaration, Expression, Function, GlobalDeclaration, Module,
     ModuleMemberDeclaration, Statement, Struct, TranslationUnit, TypeExpression,
 };
 
@@ -29,7 +26,7 @@ enum ScopeMember {
 impl Resolver {
     fn statement_to_absolute_paths(
         statement: &mut Statement,
-        mut module_path: ModulePath,
+        module_path: ModulePath,
         mut scope: im::HashMap<String, ScopeMember>,
     ) -> Result<(), ResolverError> {
         match statement {
@@ -207,8 +204,8 @@ impl Resolver {
 
     fn expression_to_absolute_paths(
         expression: &mut Expression,
-        mut module_path: ModulePath,
-        mut scope: im::HashMap<String, ScopeMember>,
+        module_path: ModulePath,
+        scope: im::HashMap<String, ScopeMember>,
     ) -> Result<(), ResolverError> {
         match expression {
             Expression::Literal(_) => {}
@@ -458,7 +455,7 @@ impl Resolver {
     ) -> Result<TranslationUnit, ResolverError> {
         let mut result = translation_unit.clone();
         self.resolve_mut(&mut result)?;
-        return Ok(result);
+        Ok(result)
     }
 
     pub fn resolve_mut(&self, translation_unit: &mut TranslationUnit) -> Result<(), ResolverError> {

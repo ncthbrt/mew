@@ -905,6 +905,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "wesl-mangle"
+version = "0.0.2"
+dependencies = [
+ "wesl-parse",
+]
+
+[[package]]
 name = "wesl-parse"
 version = "0.0.2"
 dependencies = [
@@ -943,6 +950,7 @@ dependencies = [
  "clap",
  "tokio",
  "wesl-bundle",
+ "wesl-mangle",
  "wesl-parse",
  "wesl-resolve",
 ]

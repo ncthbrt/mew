@@ -1,4 +1,4 @@
-use std::{fmt::Error, path::PathBuf, string::ParseError};
+use std::path::PathBuf;
 
 use wesl_parse::syntax::{self, Module, TranslationUnit};
 
@@ -30,9 +30,9 @@ impl<Fs: ReadonlyFilesystem> Bundler<Fs> {
         for item in ctx.entry_points.iter() {
             let file = self
                 .file_system
-                .read(&item)
+                .read(item)
                 .await
-                .map_err(|err| BundlerError::FileSystemError(err))?;
+                .map_err(BundlerError::FileSystemError)?;
             let mut local_translation_unit = wesl_parse::Parser::parse_str(&file)
                 .map_err(|err| BundlerError::ParseError(format!("{}", err)))?;
 
