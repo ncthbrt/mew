@@ -105,11 +105,19 @@ impl Resolver {
             Statement::Loop(l) => {
                 for c in l.body.statements.iter_mut() {
                     Self::statement_to_absolute_paths(c, module_path.clone(), scope.clone())?;
+                    if let Statement::Declaration(decl) = c {
+                        scope.insert(decl.declaration.name.clone(), ScopeMember::LocalDeclaration);
+                    }
                 }
-                // TODO: This should be able to access the body scope I think?
                 if let Some(cont) = l.continuing.as_mut() {
                     for c in cont.body.statements.iter_mut() {
                         Self::statement_to_absolute_paths(c, module_path.clone(), scope.clone())?;
+                        if let Statement::Declaration(decl) = c {
+                            scope.insert(
+                                decl.declaration.name.clone(),
+                                ScopeMember::LocalDeclaration,
+                            );
+                        }
                     }
                     if let Some(expr) = cont.break_if.as_mut() {
                         Self::expression_to_absolute_paths(expr, module_path, scope)?;
@@ -316,7 +324,7 @@ impl Resolver {
             }
         } else {
             // TODO: Have to return Ok unless we can enumerate all the built in symbols.
-            // That should be possible as they're defined by the spec
+            // That should in theory be possible as they're defined by the spec
             // return Err(ResolverError::SymbolNotFound(path.clone().to_owned()));
             return Ok(());
         };
