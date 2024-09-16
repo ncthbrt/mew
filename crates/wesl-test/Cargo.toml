@@ -6,6 +6,10 @@ authors.workspace = true
 repository.workspace = true
 license.workspace = true
 
+
+[features]
+update_expected_output = []
+
 [dependencies]
 wesl-parse = { path = '../wesl-parse' }
 wesl-bundle = { path = '../wesl-bundle' }

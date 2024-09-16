@@ -90,13 +90,15 @@ async fn bundle_wesl_samples() -> Result<(), BundlerError<std::io::Error>> {
         .join("expected-bundle-outputs")
         .join("bundled-without-root-module.wesl");
 
-    //// Uncomment to output results to expected outputs folder
-    // let disp: String = format!("{result_with_root_module}");
-    // let _ =
-    //     std::fs::write(expected_output_with_root_module_location.clone(), disp).expect("Written");
-    // let disp: String = format!("{result_without_root_module}");
-    // let _ = std::fs::write(expected_output_without_root_module_location.clone(), disp)
-    //     .expect("Written");
+    #[cfg(feature = "update_expected_output")]
+    {
+        let disp: String = format!("{result_with_root_module}");
+        let _ = std::fs::write(expected_output_with_root_module_location.clone(), disp)
+            .expect("Written");
+        let disp: String = format!("{result_without_root_module}");
+        let _ = std::fs::write(expected_output_without_root_module_location.clone(), disp)
+            .expect("Written");
+    }
 
     let expected_output_module = wesl_parse::Parser::parse_str(
         &std::fs::read_to_string(expected_output_with_root_module_location.clone()).expect("READ"),
@@ -143,9 +145,11 @@ fn resolve_wesl_samples() -> Result<(), BundlerError<std::io::Error>> {
                 .join("expected-resolver-outputs")
                 .join(path.file_name().unwrap());
 
-            // Uncomment to output results to expected outputs folder
-            // let disp: String = format!("{result}");
-            // let _ = std::fs::write(expected_output_location.clone(), disp).expect("Written");
+            #[cfg(feature = "update_expected_output")]
+            {
+                let disp: String = format!("{result}");
+                let _ = std::fs::write(expected_output_location.clone(), disp).expect("Written");
+            }
 
             let expected_output_module = wesl_parse::Parser::parse_str(
                 &std::fs::read_to_string(expected_output_location.clone()).expect("READ"),
@@ -185,9 +189,11 @@ fn mangle_wesl_samples() -> Result<(), CompilerPassError> {
                 .join("expected-mangler-outputs")
                 .join(path.file_name().unwrap());
 
-            // Uncomment to output results to expected outputs folder
-            // let disp: String = format!("{result}");
-            // let _ = std::fs::write(expected_output_location.clone(), disp).expect("Written");
+            #[cfg(feature = "update_expected_output")]
+            {
+                let disp: String = format!("{result}");
+                let _ = std::fs::write(expected_output_location.clone(), disp).expect("Written");
+            }
 
             let expected_output_module = wesl_parse::Parser::parse_str(
                 &std::fs::read_to_string(expected_output_location.clone()).expect("READ"),
@@ -228,9 +234,11 @@ fn flatten_wesl_samples() -> Result<(), CompilerPassError> {
                 .join("expected-flattener-outputs")
                 .join(format!("{}.wgsl", stem));
 
-            // Uncomment to output results to expected outputs folder
-            // let disp: String = format!("{result}");
-            // let _ = std::fs::write(expected_output_location.clone(), disp).expect("Written");
+            #[cfg(feature = "update_expected_output")]
+            {
+                let disp: String = format!("{result}");
+                let _ = std::fs::write(expected_output_location.clone(), disp).expect("Written");
+            }
 
             let expected_output_module = wesl_parse::Parser::parse_str(
                 &std::fs::read_to_string(expected_output_location.clone()).expect("READ"),
