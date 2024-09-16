@@ -1,5 +1,5 @@
 [package]
-name = "wesl-mangle"
+name = "wesl-types"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
@@ -8,5 +8,3 @@ license.workspace = true
 
 [dependencies]
 wesl-parse = { path = '../wesl-parse' }
-wesl-types = { path = '../wesl-types' }
-im = { workspace = true }

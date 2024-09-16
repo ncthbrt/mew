@@ -1,8 +1,8 @@
 #![cfg_attr(not(test), allow(dead_code, unused_imports))]
 
 use std::path::PathBuf;
-
 use wesl_bundle::{file_system::PhysicalFilesystem, BundleContext, Bundler, BundlerError};
+use wesl_types::{CompilerPass, CompilerPassError};
 
 #[test]
 fn webgpu_samples() {
@@ -127,7 +127,7 @@ fn resolve_wesl_samples() -> Result<(), BundlerError<std::io::Error>> {
         if path.extension().unwrap() == "wgsl" || path.extension().unwrap() == "wesl" {
             println!("testing sample `{}`", path.display());
 
-            let resolver = wesl_resolve::Resolver {
+            let mut resolver = wesl_resolve::Resolver {
                 ..Default::default()
             };
 
@@ -136,7 +136,7 @@ fn resolve_wesl_samples() -> Result<(), BundlerError<std::io::Error>> {
                 .inspect_err(|err| eprintln!("{err}"))
                 .expect("parse error");
 
-            let result = resolver.resolve(&source_module).unwrap();
+            let result = resolver.apply(&source_module).unwrap();
 
             let expected_output_location: PathBuf = std::env::current_dir()
                 .unwrap()
@@ -159,7 +159,7 @@ fn resolve_wesl_samples() -> Result<(), BundlerError<std::io::Error>> {
 }
 
 #[test]
-fn mangle_wesl_samples() -> Result<(), BundlerError<std::io::Error>> {
+fn mangle_wesl_samples() -> Result<(), CompilerPassError> {
     let dir =
         std::fs::read_dir("expected-resolver-outputs").expect("missing expected-resolver-outputs");
 
@@ -169,7 +169,7 @@ fn mangle_wesl_samples() -> Result<(), BundlerError<std::io::Error>> {
         if path.extension().unwrap() == "wgsl" || path.extension().unwrap() == "wesl" {
             println!("testing sample `{}`", path.display());
 
-            let mangler = wesl_mangle::Mangler {
+            let mut mangler = wesl_mangle::Mangler {
                 ..Default::default()
             };
 
@@ -178,7 +178,7 @@ fn mangle_wesl_samples() -> Result<(), BundlerError<std::io::Error>> {
                 .inspect_err(|err| eprintln!("{err}"))
                 .expect("parse error");
 
-            let result = mangler.mangle(&source_module);
+            let result = mangler.apply(&source_module)?;
 
             let expected_output_location: PathBuf = std::env::current_dir()
                 .unwrap()
@@ -201,7 +201,7 @@ fn mangle_wesl_samples() -> Result<(), BundlerError<std::io::Error>> {
 }
 
 #[test]
-fn flatten_wesl_samples() -> Result<(), BundlerError<std::io::Error>> {
+fn flatten_wesl_samples() -> Result<(), CompilerPassError> {
     let dir =
         std::fs::read_dir("expected-mangler-outputs").expect("missing expected-mangler-outputs");
 
@@ -211,7 +211,7 @@ fn flatten_wesl_samples() -> Result<(), BundlerError<std::io::Error>> {
         if path.extension().unwrap() == "wgsl" || path.extension().unwrap() == "wesl" {
             println!("testing sample `{}`", path.display());
 
-            let flattener = wesl_flatten::Flattener {
+            let mut flattener = wesl_flatten::Flattener {
                 ..Default::default()
             };
 
@@ -220,7 +220,7 @@ fn flatten_wesl_samples() -> Result<(), BundlerError<std::io::Error>> {
                 .inspect_err(|err| eprintln!("{err}"))
                 .expect("parse error");
 
-            let result = flattener.flatten(&source_module);
+            let result = flattener.apply(&source_module)?;
 
             let stem = path.file_stem().unwrap().to_str().unwrap().to_string();
             let expected_output_location: PathBuf = std::env::current_dir()

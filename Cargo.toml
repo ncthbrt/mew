@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/wesl-parse", "crates/wesl-test", "crates/wesl-bundle", "crates/wesl-resolve", "crates/wesl-mangle", "crates/wesl-flatten"]
+members = ["crates/wesl-parse", "crates/wesl-test", "crates/wesl-bundle", "crates/wesl-resolve", "crates/wesl-mangle", "crates/wesl-flatten", "crates/wesl-types"]
 
 [workspace.package]
 version = "0.0.2"
@@ -28,4 +28,5 @@ wesl-bundle  = { path = "crates/wesl-bundle", version = "0.0.2" }
 wesl-resolve  = { path = "crates/wesl-resolve", version = "0.0.2" }
 wesl-mangle  = { path = "crates/wesl-mangle", version = "0.0.2" }
 wesl-flatten  = { path = "crates/wesl-flatten", version = "0.0.2" }
+wesl-types  = { path = "crates/wesl-types", version = "0.0.2" }
 tokio = { version="1.40.0", features=["macros", "rt-multi-thread"] }

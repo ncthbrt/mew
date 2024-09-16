@@ -8,4 +8,5 @@ license.workspace = true
 
 [dependencies]
 wesl-parse = { path = '../wesl-parse' }
+wesl-types = { path = '../wesl-types' }
 im = { workspace = true }

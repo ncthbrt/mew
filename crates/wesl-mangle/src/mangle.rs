@@ -2,6 +2,7 @@ use wesl_parse::syntax::{
     Alias, ConstAssert, Declaration, Expression, Function, GlobalDeclaration, Module,
     ModuleMemberDeclaration, Statement, Struct, TranslationUnit, TypeExpression,
 };
+use wesl_types::CompilerPass;
 
 #[derive(Debug, Default, Clone, Copy)]
 pub struct Mangler;
@@ -308,14 +309,18 @@ impl Mangler {
         }
     }
 
-    pub fn mangle(&self, translation_unit: &TranslationUnit) -> TranslationUnit {
-        let mut unit = translation_unit.clone();
-        self.mangle_mut(&mut unit);
-        unit
-    }
-
     pub fn mangle_mut(&self, translation_unit: &mut TranslationUnit) {
         let path = ModulePath(im::Vector::new());
         Self::mangle_translation_unit(translation_unit, path);
+    }
+}
+
+impl CompilerPass for Mangler {
+    fn apply_mut(
+        &mut self,
+        translation_unit: &mut TranslationUnit,
+    ) -> Result<(), wesl_types::CompilerPassError> {
+        self.mangle_mut(translation_unit);
+        Ok(())
     }
 }

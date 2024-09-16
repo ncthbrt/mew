@@ -909,6 +909,7 @@ name = "wesl-flatten"
 version = "0.0.2"
 dependencies = [
  "wesl-parse",
+ "wesl-types",
 ]
 
 [[package]]
@@ -917,6 +918,7 @@ version = "0.0.2"
 dependencies = [
  "im",
  "wesl-parse",
+ "wesl-types",
 ]
 
 [[package]]
@@ -938,6 +940,7 @@ version = "0.0.2"
 dependencies = [
  "im",
  "wesl-parse",
+ "wesl-types",
 ]
 
 [[package]]
@@ -950,6 +953,14 @@ dependencies = [
  "wesl-mangle",
  "wesl-parse",
  "wesl-resolve",
+ "wesl-types",
+]
+
+[[package]]
+name = "wesl-types"
+version = "0.0.2"
+dependencies = [
+ "wesl-parse",
 ]
 
 [[package]]
@@ -963,6 +974,7 @@ dependencies = [
  "wesl-mangle",
  "wesl-parse",
  "wesl-resolve",
+ "wesl-types",
 ]
 
 [[package]]

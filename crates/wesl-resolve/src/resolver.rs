@@ -2,15 +2,10 @@ use wesl_parse::syntax::{
     Alias, ConstAssert, Declaration, Expression, Function, GlobalDeclaration, Module,
     ModuleMemberDeclaration, Statement, Struct, TranslationUnit, TypeExpression,
 };
+use wesl_types::{CompilerPass, CompilerPassError};
 
 #[derive(Debug, Default, Clone, Copy)]
 pub struct Resolver;
-
-#[derive(Debug)]
-pub enum ResolverError {
-    SymbolNotFound(Vec<String>),
-    AmbiguousScope(String),
-}
 
 #[derive(Debug, PartialEq, Clone)]
 struct ModulePath(im::Vector<String>);
@@ -28,7 +23,7 @@ impl Resolver {
         statement: &mut Statement,
         module_path: ModulePath,
         mut scope: im::HashMap<String, ScopeMember>,
-    ) -> Result<(), ResolverError> {
+    ) -> Result<(), CompilerPassError> {
         match statement {
             Statement::Void => {
                 // No action required
@@ -209,7 +204,7 @@ impl Resolver {
         expression: &mut Expression,
         module_path: ModulePath,
         scope: im::HashMap<String, ScopeMember>,
-    ) -> Result<(), ResolverError> {
+    ) -> Result<(), CompilerPassError> {
         match expression {
             Expression::Literal(_) => {}
             Expression::Parenthesized(p) => {
@@ -257,7 +252,7 @@ impl Resolver {
         module: &mut Module,
         mut module_path: ModulePath,
         mut scope: im::HashMap<String, ScopeMember>,
-    ) -> Result<(), ResolverError> {
+    ) -> Result<(), CompilerPassError> {
         module_path.0.push_back(module.name.clone());
 
         for decl in module.members.iter() {
@@ -300,7 +295,7 @@ impl Resolver {
     fn relative_path_to_absolute_path(
         mut scope: im::HashMap<String, ScopeMember>,
         path: &mut Vec<String>,
-    ) -> Result<(), ResolverError> {
+    ) -> Result<(), CompilerPassError> {
         if let Some(symbol) = scope.remove(path.first().unwrap().as_str()) {
             match symbol {
                 ScopeMember::LocalDeclaration => {
@@ -325,7 +320,7 @@ impl Resolver {
         } else {
             // TODO: Have to return Ok unless we can enumerate all the built in symbols.
             // That should in theory be possible as they're defined by the spec
-            // return Err(ResolverError::SymbolNotFound(path.clone().to_owned()));
+            // return Err(CompilerPassError::SymbolNotFound(path.clone().to_owned()));
             return Ok(());
         };
 
@@ -336,7 +331,7 @@ impl Resolver {
         typ: &mut TypeExpression,
         module_path: ModulePath,
         scope: im::HashMap<String, ScopeMember>,
-    ) -> Result<(), ResolverError> {
+    ) -> Result<(), CompilerPassError> {
         Self::relative_path_to_absolute_path(scope.clone(), &mut typ.path)?;
         if let Some(args) = typ.template_args.as_mut() {
             for arg in args {
@@ -350,7 +345,7 @@ impl Resolver {
         strct: &mut Struct,
         module_path: ModulePath,
         scope: im::HashMap<String, ScopeMember>,
-    ) -> Result<(), ResolverError> {
+    ) -> Result<(), CompilerPassError> {
         for m in strct.members.iter_mut() {
             Self::type_to_absolute_path(&mut m.typ, module_path.clone(), scope.clone())?;
         }
@@ -361,7 +356,7 @@ impl Resolver {
         declaration: &mut Declaration,
         module_path: ModulePath,
         scope: im::HashMap<String, ScopeMember>,
-    ) -> Result<(), ResolverError> {
+    ) -> Result<(), CompilerPassError> {
         if let Some(init) = declaration.initializer.as_mut() {
             Self::expression_to_absolute_paths(init, module_path.clone(), scope.clone())?;
         };
@@ -375,7 +370,7 @@ impl Resolver {
         func: &mut Function,
         module_path: ModulePath,
         mut scope: im::HashMap<String, ScopeMember>,
-    ) -> Result<(), ResolverError> {
+    ) -> Result<(), CompilerPassError> {
         if let Some(r) = func.return_type.as_mut() {
             Self::relative_path_to_absolute_path(scope.clone(), &mut r.path)?;
             if let Some(args) = r.template_args.as_mut() {
@@ -400,7 +395,7 @@ impl Resolver {
         assrt: &mut ConstAssert,
         module_path: ModulePath,
         scope: im::HashMap<String, ScopeMember>,
-    ) -> Result<(), ResolverError> {
+    ) -> Result<(), CompilerPassError> {
         Self::expression_to_absolute_paths(&mut assrt.expression, module_path, scope)?;
         Ok(())
     }
@@ -409,14 +404,14 @@ impl Resolver {
         alias: &mut Alias,
         module_path: ModulePath,
         scope: im::HashMap<String, ScopeMember>,
-    ) -> Result<(), ResolverError> {
+    ) -> Result<(), CompilerPassError> {
         Self::type_to_absolute_path(&mut alias.typ, module_path, scope)?;
         Ok(())
     }
 
     fn translation_unit_to_absolute_path(
         translation_unit: &mut TranslationUnit,
-    ) -> Result<(), ResolverError> {
+    ) -> Result<(), CompilerPassError> {
         let module_path = ModulePath(im::Vector::new());
         let mut scope = im::HashMap::new();
         for decl in translation_unit.global_declarations.iter() {
@@ -452,17 +447,21 @@ impl Resolver {
 
         Ok(())
     }
-    pub fn resolve(
-        &self,
-        translation_unit: &TranslationUnit,
-    ) -> Result<TranslationUnit, ResolverError> {
-        let mut result = translation_unit.clone();
-        self.resolve_mut(&mut result)?;
-        Ok(result)
-    }
 
-    pub fn resolve_mut(&self, translation_unit: &mut TranslationUnit) -> Result<(), ResolverError> {
+    pub fn resolve_mut(
+        &self,
+        translation_unit: &mut TranslationUnit,
+    ) -> Result<(), CompilerPassError> {
         Self::translation_unit_to_absolute_path(translation_unit)?;
         Ok(())
+    }
+}
+
+impl CompilerPass for Resolver {
+    fn apply_mut(
+        &mut self,
+        translation_unit: &mut TranslationUnit,
+    ) -> Result<(), CompilerPassError> {
+        self.resolve_mut(translation_unit)
     }
 }

@@ -1,5 +1,6 @@
 use std::convert::Into;
 use wesl_parse::syntax::{GlobalDeclaration, Module, ModuleMemberDeclaration, TranslationUnit};
+use wesl_types::CompilerPass;
 
 #[derive(Debug, Default, Clone, Copy)]
 pub struct Flattener;
@@ -16,12 +17,6 @@ impl Flattener {
         }
     }
 
-    pub fn flatten(&self, translation_unit: &TranslationUnit) -> TranslationUnit {
-        let mut unit = translation_unit.clone();
-        self.flatten_mut(&mut unit);
-        unit
-    }
-
     pub fn flatten_mut(&self, translation_unit: &mut TranslationUnit) {
         let mut modules = vec![];
         let mut others = vec![];
@@ -36,5 +31,15 @@ impl Flattener {
         for m in modules {
             Self::flatten_module(translation_unit, m);
         }
+    }
+}
+
+impl CompilerPass for Flattener {
+    fn apply_mut(
+        &mut self,
+        translation_unit: &mut TranslationUnit,
+    ) -> Result<(), wesl_types::CompilerPassError> {
+        self.flatten_mut(translation_unit);
+        Ok(())
     }
 }
