@@ -1,6 +1,6 @@
 use crate::syntax::*;
 use core::fmt;
-use std::fmt::{Display, Formatter};
+use std::fmt::{Display, Formatter, Write};
 
 use itertools::Itertools;
 
@@ -428,8 +428,12 @@ impl Display for AssignmentOperator {
 impl Display for DeclarationStatement {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.declaration)?;
-        let stmts = self.statements.iter().format("\n");
-        write!(f, "{stmts}")
+        if !self.statements.is_empty() {
+            f.write_char('\n')?;
+            let stmts = self.statements.iter().format("\n");
+            write!(f, "{stmts}")?;
+        };
+        Ok(())
     }
 }
 

@@ -1,5 +1,5 @@
 [package]
-name = "wesl-resolve"
+name = "wesl-flatten"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
@@ -8,4 +8,3 @@ license.workspace = true
 
 [dependencies]
 wesl-parse = { path = '../wesl-parse' }
-im = { workspace = true }

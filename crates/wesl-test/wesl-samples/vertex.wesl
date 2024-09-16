@@ -1,6 +1,3 @@
-@binding(0) @group(0) var<uniform> uniforms : Uniforms;
-@binding(1) @group(0) var<uniform> camera : Camera;
-
 struct VertexOutput {
   @builtin(position) Position : vec4f,
   @location(0) fragColor : vec4f,

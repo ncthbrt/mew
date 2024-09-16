@@ -1,4 +1,4 @@
-mod Types {
+mod Types2 {
     struct Uniforms {
         modelMatrix : array<mat4x4f, 5>,
     }
@@ -9,22 +9,17 @@ mod Types {
     const x: Camera = Camera();
 }
 
-@binding(0) @group(0) var<uniform> uniforms : Types::Uniforms;
-@binding(1) @group(0) var<uniform> camera : Types::Camera;
-
-struct VertexOutput {
-  @builtin(position) Position : vec4f,
-  @location(0) fragColor : vec4f,
-}
+@binding(0) @group(0) var<uniform> uniforms : Types2::Uniforms;
+@binding(1) @group(0) var<uniform> camera : Camera;
 
 @vertex
-fn main(
+fn main2(
   @builtin(instance_index) instanceIdx : u32,
   @location(0) position : vec4f,
   @location(1) color : vec4f
 ) -> VertexOutput {
   var output : VertexOutput;
   output.Position = camera.viewProjectionMatrix * uniforms.modelMatrix[instanceIdx] * position;
-  output.fragColor = color / vec4<f32>(Types::x);
+  output.fragColor = color / vec4<f32>(Types2::x);
   return output;
 }

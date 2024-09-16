@@ -905,9 +905,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "wesl-flatten"
+version = "0.0.2"
+dependencies = [
+ "wesl-parse",
+]
+
+[[package]]
 name = "wesl-mangle"
 version = "0.0.2"
 dependencies = [
+ "im",
  "wesl-parse",
 ]
 
@@ -928,7 +936,6 @@ dependencies = [
 name = "wesl-resolve"
 version = "0.0.2"
 dependencies = [
- "async-trait",
  "im",
  "wesl-parse",
 ]
@@ -939,6 +946,8 @@ version = "0.0.2"
 dependencies = [
  "tokio",
  "wesl-bundle",
+ "wesl-flatten",
+ "wesl-mangle",
  "wesl-parse",
  "wesl-resolve",
 ]
@@ -950,6 +959,7 @@ dependencies = [
  "clap",
  "tokio",
  "wesl-bundle",
+ "wesl-flatten",
  "wesl-mangle",
  "wesl-parse",
  "wesl-resolve",

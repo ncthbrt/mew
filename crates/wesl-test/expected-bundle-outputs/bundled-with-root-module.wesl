@@ -1,12 +1,6 @@
 
 
 mod MyLib {
-    @binding(0) @group(0)
-    var<uniform> uniforms: Uniforms;
-    
-    @binding(1) @group(0)
-    var<uniform> camera: Camera;
-    
     struct VertexOutput {
         @builtin(position)
         Position: vec4f,
@@ -16,7 +10,8 @@ mod MyLib {
     
     @vertex
     fn main(@builtin(instance_index) instanceIdx: u32, @location(0) position: vec4f, @location(1) color: vec4f) -> VertexOutput {
-        var output: VertexOutput;output.Position = camera.viewProjectionMatrix * uniforms.modelMatrix[instanceIdx] * position;
+        var output: VertexOutput;
+        output.Position = camera.viewProjectionMatrix * uniforms.modelMatrix[instanceIdx] * position;
         output.fragColor = color;
         return output;
     }
@@ -29,7 +24,7 @@ mod MyLib {
         viewProjectionMatrix: mat4x4f
     }
     
-    mod Types {
+    mod Types2 {
         struct Uniforms {
             modelMatrix: array<mat4x4f, 5>
         }
@@ -42,22 +37,16 @@ mod MyLib {
     }
     
     @binding(0) @group(0)
-    var<uniform> uniforms: Types::Uniforms;
+    var<uniform> uniforms: Types2::Uniforms;
     
     @binding(1) @group(0)
-    var<uniform> camera: Types::Camera;
-    
-    struct VertexOutput {
-        @builtin(position)
-        Position: vec4f,
-        @location(0)
-        fragColor: vec4f
-    }
+    var<uniform> camera: Camera;
     
     @vertex
-    fn main(@builtin(instance_index) instanceIdx: u32, @location(0) position: vec4f, @location(1) color: vec4f) -> VertexOutput {
-        var output: VertexOutput;output.Position = camera.viewProjectionMatrix * uniforms.modelMatrix[instanceIdx] * position;
-        output.fragColor = color / vec4<f32>(Types::x);
+    fn main2(@builtin(instance_index) instanceIdx: u32, @location(0) position: vec4f, @location(1) color: vec4f) -> VertexOutput {
+        var output: VertexOutput;
+        output.Position = camera.viewProjectionMatrix * uniforms.modelMatrix[instanceIdx] * position;
+        output.fragColor = color / vec4<f32>(Types2::x);
         return output;
     }
 }

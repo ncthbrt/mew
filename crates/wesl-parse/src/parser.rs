@@ -19,6 +19,7 @@ use lalrpop_util::lalrpop_mod;
 
 use crate::{error::SpannedError, lexer::Lexer, syntax, syntax_spanned};
 
+#[derive(Debug, Default, Clone, Copy)]
 pub struct Parser;
 
 impl Parser {

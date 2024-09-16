@@ -8,3 +8,4 @@ license.workspace = true
 
 [dependencies]
 wesl-parse = { path = '../wesl-parse' }
+im = { workspace = true }

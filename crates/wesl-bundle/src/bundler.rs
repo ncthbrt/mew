@@ -4,6 +4,7 @@ use wesl_parse::syntax::{self, Module, TranslationUnit};
 
 use crate::file_system::ReadonlyFilesystem;
 
+#[derive(Debug, Default, Clone, Copy)]
 pub struct Bundler<Fs: ReadonlyFilesystem> {
     pub file_system: Fs,
 }

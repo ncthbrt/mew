@@ -3,7 +3,7 @@ use wesl_parse::syntax::{
     ModuleMemberDeclaration, Statement, Struct, TranslationUnit, TypeExpression,
 };
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct Resolver;
 
 #[derive(Debug)]
@@ -192,6 +192,9 @@ impl Resolver {
                 if let Some(init) = d.declaration.initializer.as_mut() {
                     Self::expression_to_absolute_paths(init, module_path.clone(), scope.clone())?;
                 }
+                if let Some(typ) = d.declaration.typ.as_mut() {
+                    Self::type_to_absolute_path(typ, module_path.clone(), scope.clone())?;
+                };
                 let name = d.declaration.name.clone();
                 scope.insert(name, ScopeMember::LocalDeclaration);
                 for s in d.statements.iter_mut() {
@@ -231,8 +234,8 @@ impl Resolver {
             }
             Expression::FunctionCall(f) => {
                 Self::relative_path_to_absolute_path(scope.clone(), &mut f.path)?;
-                for a in f.arguments.iter_mut() {
-                    Self::expression_to_absolute_paths(a, module_path.clone(), scope.clone())?;
+                for arg in f.arguments.iter_mut() {
+                    Self::expression_to_absolute_paths(arg, module_path.clone(), scope.clone())?;
                 }
                 if let Some(args) = f.template_args.as_mut() {
                     for a in args.iter_mut() {
@@ -241,7 +244,7 @@ impl Resolver {
                 }
             }
             Expression::Identifier(ident) => {
-                Self::relative_path_to_absolute_path(scope, &mut ident.path.clone())?;
+                Self::relative_path_to_absolute_path(scope, &mut ident.path)?;
             }
             Expression::Type(typ) => {
                 Self::type_to_absolute_path(typ, module_path.clone(), scope)?;

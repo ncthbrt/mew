@@ -10,4 +10,6 @@ license.workspace = true
 wesl-parse = { path = '../wesl-parse' }
 wesl-bundle = { path = '../wesl-bundle' }
 wesl-resolve = { path = '../wesl-resolve' }
+wesl-mangle = { path = '../wesl-mangle' }
+wesl-flatten = { path = '../wesl-flatten' }
 tokio = { version="1.40.0", features=["macros", "rt"] }
