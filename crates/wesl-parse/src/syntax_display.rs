@@ -1,6 +1,9 @@
 use crate::syntax::*;
 use core::fmt;
-use std::fmt::{Display, Formatter, Write};
+use std::{
+    fmt::{Display, Formatter, Write},
+    ops::Deref,
+};
 
 use itertools::Itertools;
 
@@ -37,6 +40,10 @@ impl Display for GlobalDirective {
             GlobalDirective::Diagnostic(print) => write!(f, "{}", print),
             GlobalDirective::Enable(print) => write!(f, "{}", print),
             GlobalDirective::Requires(print) => write!(f, "{}", print),
+            GlobalDirective::Use(print) if matches!(print.content, UseContent::Item(_)) => {
+                write!(f, "use {};", print)
+            }
+            GlobalDirective::Use(print) => write!(f, "use {}", print),
         }
     }
 }
@@ -385,16 +392,45 @@ impl Display for Statement {
     }
 }
 
+impl Display for CompoundDirective {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CompoundDirective::Use(usage) if matches!(usage.content, UseContent::Item(_)) => {
+                write!(f, "use {usage};\n")?;
+            }
+            CompoundDirective::Use(usage) => {
+                write!(f, "use {usage}\n")?;
+            }
+        }
+        Ok(())
+    }
+}
+
+impl Display for ModuleDirective {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ModuleDirective::Use(usage) if matches!(usage.content, UseContent::Item(_)) => {
+                write!(f, "use {usage};\n")?;
+            }
+            ModuleDirective::Use(usage) => {
+                write!(f, "use {usage}\n")?;
+            }
+        }
+        Ok(())
+    }
+}
+
 impl Display for CompoundStatement {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let attrs = fmt_attrs(&self.attributes, true);
+        let directives = Indent(self.directives.iter().format("\n"));
         let stmts = Indent(
             self.statements
                 .iter()
                 // .filter(|stmt| !matches!(stmt, Statement::Void))
                 .format("\n"),
         );
-        write!(f, "{attrs}{{\n{stmts}\n}}")
+        write!(f, "{attrs}{{\n{directives}{stmts}\n}}")
     }
 }
 
@@ -598,13 +634,45 @@ impl Display for Module {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let attrs = fmt_attrs(&self.attributes, false);
         let members = Indent(self.members.iter().format("\n\n"));
+        let directives = Indent(self.directives.iter().format("\n"));
+
         write!(
             f,
-            "{}{}mod {} {{\n{}\n}}",
+            "{}{}mod {} {{\n{directives}{}\n}}",
             attrs,
             if attrs.is_empty() { "" } else { " " },
             self.name,
             members
         )
+    }
+}
+
+impl Display for UseContent {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            UseContent::Item(UseItem { name, rename }) => {
+                if let Some(rename) = rename {
+                    write!(f, "{name} as {rename}")
+                } else {
+                    write!(f, "{name}")
+                }
+            }
+            UseContent::Collection(c) => {
+                write!(f, "{{ {} }}", c.iter().map(|x| format!("{x}")).join(", "))
+            }
+        }
+    }
+}
+
+impl Display for Use {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let mut attrs = fmt_attrs(&self.attributes, false);
+        let path = self.path.join("::");
+        if !path.is_empty() {
+            write!(f, "{attrs}{path}::{}", self.content)?;
+        } else {
+            write!(f, "{attrs}{}", self.content)?;
+        };
+        Ok(())
     }
 }

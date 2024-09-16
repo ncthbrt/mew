@@ -25,6 +25,7 @@
 //!             template_args: None
 //!         }),
 //!         body: CompoundStatement {
+//!             directives: vec![],
 //!             attributes: vec![],
 //!             statements: vec![Statement::Return(Some(Expression::FunctionCall(
 //!                 FunctionCallExpression {

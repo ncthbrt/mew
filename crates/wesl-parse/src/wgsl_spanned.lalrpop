@@ -92,7 +92,7 @@ extern {
         // BEGIN WESL ADDITIONS
         "use" => Token::KwUse,
         "mod" => Token::KwMod,        
-        "include" => Token::KwInclude,
+        "extend" => Token::KwExtend,
         "sig" => Token::KwSig,
         // END WESL ADDITIONS
         IdentPatternToken => Token::Ident(<String>),

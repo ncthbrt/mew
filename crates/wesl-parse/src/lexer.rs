@@ -316,10 +316,12 @@ pub enum Token {
     KwUse,
     #[token("mod")]
     KwMod,
-    #[token("include")]
-    KwInclude,
+    #[token("extend")]
+    KwExtend,
     #[token("sig")]
     KwSig,
+    #[token("as")]
+    KwAs,
     // END WESL KEYWORDS
 
     // XXX: should we also register reserved words as tokens?
@@ -445,8 +447,9 @@ impl Token {
                 | Token::KwWhile
                 | Token::KwUse
                 | Token::KwMod
-                | Token::KwInclude
+                | Token::KwExtend
                 | Token::KwSig
+                | Token::KwAs
         )
     }
 
@@ -540,8 +543,9 @@ impl Display for Token {
             Token::KwVar => f.write_str("var"),
             Token::KwWhile => f.write_str("while"),
             Token::KwUse => f.write_str("use"),
+            Token::KwAs => f.write_str("as"),
             Token::KwMod => f.write_str("mod"),
-            Token::KwInclude => f.write_str("include"),
+            Token::KwExtend => f.write_str("extend"),
             Token::KwSig => f.write_str("sig"),
             Token::Ident(s) => write!(f, "identifier `{s}`"),
             Token::AbstractInt(n) => write!(f, "{n}"),

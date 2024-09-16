@@ -34,7 +34,15 @@ pub enum GlobalDirective {
     Diagnostic(DiagnosticDirective),
     Enable(EnableDirective),
     Requires(RequiresDirective),
+    Use(UseDirective),
 }
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum ModuleDirective {
+    Use(UseDirective),
+}
+
+type UseDirective = Use;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct DiagnosticDirective {
@@ -75,6 +83,7 @@ pub enum GlobalDeclaration {
 pub struct Module {
     pub attributes: Vec<Attribute>,
     pub name: String,
+    pub directives: Vec<ModuleDirective>,
     pub members: Vec<ModuleMemberDeclaration>,
 }
 
@@ -141,6 +150,11 @@ pub struct StructMember {
     pub attributes: Vec<Attribute>,
     pub name: String,
     pub typ: TypeExpression,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum CompoundDirective {
+    Use(UseDirective),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -299,6 +313,7 @@ pub enum Statement {
 #[derive(Clone, Debug, PartialEq)]
 pub struct CompoundStatement {
     pub attributes: Vec<Attribute>,
+    pub directives: Vec<CompoundDirective>,
     pub statements: Vec<Statement>,
 }
 
@@ -403,4 +418,23 @@ pub type ConstAssertStatement = ConstAssert;
 pub struct DeclarationStatement {
     pub declaration: Declaration,
     pub statements: Vec<Statement>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Use {
+    pub attributes: Vec<Attribute>,
+    pub path: Vec<String>,
+    pub content: UseContent,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum UseContent {
+    Item(UseItem),
+    Collection(Vec<Use>),
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct UseItem {
+    pub name: String,
+    pub rename: Option<String>,
 }

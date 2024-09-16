@@ -97,8 +97,9 @@ extern {
         // BEGIN WESL ADDITIONS
         "use" => Token::KwUse,
         "mod" => Token::KwMod,        
-        "include" => Token::KwInclude,
+        "extend" => Token::KwExtend,
         "sig" => Token::KwSig,
+        "as" => Token::KwAs,
         // END WESL ADDITIONS
         IdentPatternToken => Token::Ident(<String>),
         TokAbstractInt => Token::AbstractInt(<i64>),
@@ -147,11 +148,20 @@ GlobalDecl: GlobalDeclaration = {
 
 // BEGIN WESL ROOT ADDITIONS
 ModuleDecl : Module = {
-    <attributes: Attribute*> "mod" <name: Ident>  "{" <members: ModuleMemberDecl*> "}"  => Module {
+    <attributes: Attribute*> "mod" <name: Ident>  "{" <directives: ModuleDirective*> <members: ModuleMemberDecl*> "}"  => Module {
         name, 
         members,
         attributes,
+        directives
     }
+};
+
+ModuleDirective: ModuleDirective = {
+    Use => ModuleDirective::Use(<>)
+};
+
+CompoundDirective: CompoundDirective = {
+    Use => CompoundDirective::Use(<>)
 };
 
 ModuleMemberDecl: ModuleMemberDeclaration = {
@@ -250,6 +260,9 @@ GlobalDirective: GlobalDirective = {
     DiagnosticDirective => GlobalDirective::Diagnostic(<>),
     EnableDirective     => GlobalDirective::Enable(<>),
     RequiresDirective   => GlobalDirective::Requires(<>),
+    // BEGIN WESL
+    Use => GlobalDirective::Use(<>)
+    // END WESL
 };
 
 EnableDirective: EnableDirective = {
@@ -267,6 +280,56 @@ RequiresDirective: RequiresDirective = {
         extensions
     },
 };
+
+// BEGIN WESL
+Use: Use = {
+    "use" <usage: RootUsePath> => usage
+};
+
+RootUsePath: Use = {
+    <path: (<Ident> "::")*>  <item: ItemUse> ";" => Use {
+        attributes: Vec::new(),
+        path: path, 
+        content: UseContent::Item(item)
+    },
+    <path: (<Ident> "::")*> <collection: UseCollection> => {
+        Use {
+            attributes: Vec::new(),
+            path: path, 
+            content: UseContent::Collection(collection)
+        }
+    }
+};
+
+UsePath: Use = {
+    <path: (<Ident> "::")+> <content: UseContent> => Use {
+        attributes: Vec::new(),
+        path: path, 
+        content
+    },
+    ItemUse => Use {
+        attributes: Vec::new(),
+        path: Default::default(), 
+        content: UseContent::Item(<>)
+    },
+};
+
+UseContent: UseContent = {
+    UseCollection => UseContent::Collection(<>),
+    ItemUse => UseContent::Item(<>),
+};
+
+ItemUse: UseItem = {
+    <name: Ident> <rename: ("as" <Ident>)?> => UseItem {
+        name, rename
+    }
+};
+
+UseCollection: Vec<Use> = {
+    "{" <Comma1<UsePath>> "}"
+};
+
+// END WESL
 
 SoftwareExtensionList: Vec<String> = {
     Comma1<SoftwareExtensionName>,
@@ -647,9 +710,11 @@ Expression: Expression = {
 // https://www.w3.org/TR/WGSL/#statements
 
 CompoundStatement: CompoundStatement = {
-    <attributes: Attribute*> "{" <statements: Statement*> "}" => {
+    <attributes: Attribute*> "{" <directives: CompoundDirective*> <statements: Statement*> "}" => {
         let mut statement = CompoundStatement {
-            attributes, statements
+            directives,
+            attributes, 
+            statements
         };
         statement.construct_scope_tree();
         statement
@@ -742,8 +807,8 @@ CaseSelector: CaseSelector = {
 };
 
 LoopStatement: LoopStatement = {
-    <attributes: Attribute*> "loop" <body_attributes: Attribute*> "{" <statements: Statement*> <continuing: ContinuingStatement?> "}" => {
-        let body = CompoundStatement { attributes: body_attributes, statements };
+    <attributes: Attribute*> "loop" <body_attributes: Attribute*> "{" <directives: CompoundDirective*> <statements: Statement*> <continuing: ContinuingStatement?> "}" => {
+        let body = CompoundStatement { attributes: body_attributes, statements, directives };
         LoopStatement {
             attributes, body, continuing
         }
@@ -795,8 +860,8 @@ ContinueStatement: () = {
 ContinuingStatement = "continuing" <ContinuingCompoundStatement>;
 
 ContinuingCompoundStatement: ContinuingStatement = {
-    <attributes: Attribute*> "{" <statements: Statement*> <break_if: BreakIfStatement?> "}" => {
-        let body = CompoundStatement { attributes, statements };
+    <attributes: Attribute*> "{" <directives: CompoundDirective*> <statements: Statement*> <break_if: BreakIfStatement?> "}" => {
+        let body = CompoundStatement { attributes, statements, directives };
         ContinuingStatement { body, break_if }
     },
 };

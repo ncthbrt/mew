@@ -1,6 +1,6 @@
 use wesl_parse::syntax::{
-    Alias, ConstAssert, Declaration, Expression, Function, GlobalDeclaration, Module,
-    ModuleMemberDeclaration, Statement, Struct, TranslationUnit, TypeExpression,
+    Alias, CompoundStatement, ConstAssert, Declaration, Expression, Function, GlobalDeclaration,
+    Module, ModuleMemberDeclaration, Statement, Struct, TranslationUnit, TypeExpression,
 };
 use wesl_types::CompilerPass;
 
@@ -30,16 +30,18 @@ impl Mangler {
         *name = result;
     }
 
+    fn mangle_compound(compound: &mut CompoundStatement, path: ModulePath) {
+        for c in compound.statements.iter_mut() {
+            Self::mangle_statement(c, path.clone());
+        }
+    }
+
     fn mangle_statement(statement: &mut Statement, path: ModulePath) {
         match statement {
             Statement::Void => {
                 // DO NOTHING
             }
-            Statement::Compound(c) => {
-                for c in c.statements.iter_mut() {
-                    Self::mangle_statement(c, path.clone());
-                }
-            }
+            Statement::Compound(c) => Self::mangle_compound(c, path),
             Statement::Assignment(a) => {
                 Self::mangle_expression(&mut a.lhs, path.clone());
                 Self::mangle_expression(&mut a.rhs, path);

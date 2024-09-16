@@ -156,15 +156,6 @@ pub struct Declaration {
     pub initializer: Option<S<Expression>>,
 }
 
-// #[derive(Clone, Debug, PartialEq)]
-// #[allow(unused)]
-// pub enum DeclarationKind {
-//     Const,
-//     Override,
-//     Let,
-//     Var,
-// }
-
 #[derive(Clone, Debug, PartialEq)]
 #[allow(unused)]
 pub struct Alias {
@@ -233,19 +224,6 @@ pub enum Expression {
     Type(TypeExpression),
 }
 
-// #[derive(Clone, Debug, PartialEq)]
-// #[allow(unused)]
-// pub enum LiteralExpression {
-//     True,
-//     False,
-//     AbstractInt(i64),
-//     AbstractFloat(f64),
-//     I32(i32),
-//     U32(u32),
-//     F32(f32),
-//     F16(f32),
-// }
-
 pub type ParenthesizedExpression = Box<Expression>;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -286,29 +264,6 @@ pub struct BinaryExpression {
     pub left: S<Box<Expression>>, // TODO: rename lhs rhs
     pub right: S<Box<Expression>>,
 }
-
-// #[derive(Clone, Debug, PartialEq)]
-// #[allow(unused)]
-// pub enum BinaryOperator {
-//     ShortCircuitOr,
-//     ShortCircuitAnd,
-//     Addition,
-//     Subtraction,
-//     Multiplication,
-//     Division,
-//     Remainder,
-//     Equality,
-//     Inequality,
-//     LessThan,
-//     LessThanEqual,
-//     GreaterThan,
-//     GreaterThanEqual,
-//     BitwiseOr,
-//     BitwiseAnd,
-//     BitwiseXor,
-//     ShiftLeft,
-//     ShiftRight,
-// }
 
 #[derive(Clone, Debug, PartialEq)]
 #[allow(unused)]
