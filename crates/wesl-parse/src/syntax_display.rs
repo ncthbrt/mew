@@ -1,7 +1,7 @@
 use crate::syntax::*;
 use core::fmt;
 use std::{
-    fmt::{Display, Formatter, Write},
+    fmt::{format, Display, Formatter, Write},
     ops::Deref,
 };
 
@@ -396,10 +396,10 @@ impl Display for CompoundDirective {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             CompoundDirective::Use(usage) if matches!(usage.content, UseContent::Item(_)) => {
-                write!(f, "use {usage};\n")?;
+                writeln!(f, "use {usage};")?;
             }
             CompoundDirective::Use(usage) => {
-                write!(f, "use {usage}\n")?;
+                writeln!(f, "use {usage}")?;
             }
         }
         Ok(())
@@ -410,10 +410,10 @@ impl Display for ModuleDirective {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             ModuleDirective::Use(usage) if matches!(usage.content, UseContent::Item(_)) => {
-                write!(f, "use {usage};\n")?;
+                writeln!(f, "use {usage};\n")?;
             }
             ModuleDirective::Use(usage) => {
-                write!(f, "use {usage}\n")?;
+                writeln!(f, "use {usage}\n")?;
             }
         }
         Ok(())
@@ -423,13 +423,11 @@ impl Display for ModuleDirective {
 impl Display for CompoundStatement {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let attrs = fmt_attrs(&self.attributes, true);
-        let directives = Indent(self.directives.iter().format("\n"));
-        let stmts = Indent(
-            self.statements
-                .iter()
-                // .filter(|stmt| !matches!(stmt, Statement::Void))
-                .format("\n"),
-        );
+        let mut directives = format!("{}", Indent(self.directives.iter().format("\n")));
+        if !directives.is_empty() {
+            directives.push('\n');
+        }
+        let stmts = Indent(self.statements.iter().format("\n"));
         write!(f, "{attrs}{{\n{directives}{stmts}\n}}")
     }
 }
