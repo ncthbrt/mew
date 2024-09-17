@@ -1,16 +1,8 @@
-# WESL Tools
+# WESL for Rust
 
 **A work in progress!**
 
-This project will implement the necessary tools to build complex shaders, like [naga_oil](https://github.com/bevyengine/naga_oil) does for [bevy](https://bevyengine.org/), but in a framework-agnostic way. At [wgsl-tooling-wg](https://github.com/wgsl-tooling-wg), we aim at standardizing a few language extensions to facilitate the work of engine developers and shader wizards.
-
-This will be the home of a few wgsl source manipulation tools:
-
-* A *syntax tree*, allows representing wgsl source.
-* A *parser*, converts source to the syntax tree and provides human-readable error messages.
-* (TODO) A *bundler* that produces a single WESL file from a set of input files and their local dependencies.
-* (TODO) A *checker*, verify that a wgsl code is correct.
-* (TODO) Various implementations of wgsl language extensions, the first ones will be imports and generics.
+This project will implement the necessary tools to build complex shaders, like [naga_oil](https://github.com/bevyengine/naga_oil) does for [bevy](https://bevyengine.org/), but in a framework-agnostic way. At [wgsl-tooling-wg](https://github.com/wgsl-tooling-wg), we aim at standardizing a few language extensions to facilitate the work of engine developers and shader witches.
 
 ## Goals
 
