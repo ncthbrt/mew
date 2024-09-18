@@ -130,7 +130,7 @@ extern {
 // https://www.w3.org/TR/WGSL/#wgsl-module
 
 pub TranslationUnit: TranslationUnit = {
-    <global_directives: GlobalDirective*> <global_declarations: GlobalDecl*> => TranslationUnit {<>},
+    <global_directives: GlobalDirective*> <global_declarations: GlobalDecl*> => TranslationUnit {<>, ..Default::default()},
 };
 
 GlobalDecl: GlobalDeclaration = {
@@ -152,12 +152,14 @@ ModuleDecl : Module = {
         name, 
         members,
         attributes,
-        directives
+        directives,
+        ..Default::default()
     }
 };
 
 ModuleDirective: ModuleDirective = {
-    Use => ModuleDirective::Use(<>)
+    Use => ModuleDirective::Use(<>),
+    Extend => ModuleDirective::Extend(<>)
 };
 
 CompoundDirective: CompoundDirective = {
@@ -261,7 +263,8 @@ GlobalDirective: GlobalDirective = {
     EnableDirective     => GlobalDirective::Enable(<>),
     RequiresDirective   => GlobalDirective::Requires(<>),
     // BEGIN WESL
-    Use => GlobalDirective::Use(<>)
+    Use => GlobalDirective::Use(<>),
+    Extend => GlobalDirective::Extend(<>)
     // END WESL
 };
 
@@ -282,6 +285,16 @@ RequiresDirective: RequiresDirective = {
 };
 
 // BEGIN WESL
+Extend: ExtendDirective = {
+    <attributes: Attribute*> "extend" <mut path: (<Ident> "::")*> <target: Ident> ";" => {
+        path.push(target);
+        ExtendDirective {
+            path,
+            attributes
+        }
+    }
+};
+
 Use: Use = {
     "use" <usage: RootUsePath> => usage
 };

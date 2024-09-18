@@ -250,3 +250,46 @@ fn flatten_wesl_samples() -> Result<(), CompilerPassError> {
     }
     Ok(())
 }
+
+#[test]
+fn extend_wesl_samples() -> Result<(), CompilerPassError> {
+    let dir = std::fs::read_dir("extend-inputs").expect("missing expected-test-inputs");
+
+    for entry in dir {
+        let entry = entry.expect("error reading entry");
+        let path: std::path::PathBuf = entry.path();
+        if path.extension().unwrap() == "wgsl" || path.extension().unwrap() == "wesl" {
+            println!("testing sample `{}`", path.display());
+
+            let mut resolver = wesl_resolve::Resolver {
+                ..Default::default()
+            };
+
+            let source = std::fs::read_to_string(path.clone()).expect("failed to read file");
+            let source_module = wesl_parse::Parser::parse_str(&source)
+                .inspect_err(|err| eprintln!("{err}"))
+                .expect("parse error");
+
+            let result = resolver.apply(&source_module)?;
+
+            let expected_output_location: PathBuf = std::env::current_dir()
+                .unwrap()
+                .join("expected-extend-outputs")
+                .join(path.file_name().unwrap());
+
+            #[cfg(feature = "update_expected_output")]
+            {
+                let disp: String = format!("{result}");
+                let _ = std::fs::write(expected_output_location.clone(), disp).expect("Written");
+            }
+
+            let expected_output_module = wesl_parse::Parser::parse_str(
+                &std::fs::read_to_string(expected_output_location.clone()).expect("READ"),
+            )
+            .inspect_err(|err| eprintln!("{err}"))
+            .expect("parse error");
+            assert_eq!(result, expected_output_module);
+        }
+    }
+    Ok(())
+}

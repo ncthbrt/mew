@@ -35,11 +35,19 @@ pub enum GlobalDirective {
     Enable(EnableDirective),
     Requires(RequiresDirective),
     Use(UseDirective),
+    Extend(ExtendDirective),
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum ModuleDirective {
     Use(UseDirective),
+    Extend(ExtendDirective),
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct ExtendDirective {
+    pub attributes: Vec<Attribute>,
+    pub path: Vec<String>,
 }
 
 type UseDirective = Use;

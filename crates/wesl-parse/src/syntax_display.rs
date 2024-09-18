@@ -1,9 +1,6 @@
 use crate::syntax::*;
 use core::fmt;
-use std::{
-    fmt::{format, Display, Formatter, Write},
-    ops::Deref,
-};
+use std::fmt::{Display, Formatter, Write};
 
 use itertools::Itertools;
 
@@ -44,6 +41,7 @@ impl Display for GlobalDirective {
                 write!(f, "use {};", print)
             }
             GlobalDirective::Use(print) => write!(f, "use {}", print),
+            GlobalDirective::Extend(print) => write!(f, "{}", print),
         }
     }
 }
@@ -415,8 +413,19 @@ impl Display for ModuleDirective {
             ModuleDirective::Use(usage) => {
                 writeln!(f, "use {usage}\n")?;
             }
+            ModuleDirective::Extend(extend) => {
+                writeln!(f, "{extend}")?;
+            }
         }
         Ok(())
+    }
+}
+
+impl Display for ExtendDirective {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let attrs = fmt_attrs(&self.attributes, true);
+
+        writeln!(f, "{attrs} extend {};", self.path.join("::"))
     }
 }
 
@@ -664,7 +673,7 @@ impl Display for UseContent {
 
 impl Display for Use {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let mut attrs = fmt_attrs(&self.attributes, false);
+        let attrs = fmt_attrs(&self.attributes, false);
         let path = self.path.join("::");
         if !path.is_empty() {
             write!(f, "{attrs}{path}::{}", self.content)?;

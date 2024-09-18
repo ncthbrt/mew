@@ -44,7 +44,7 @@ mod MyLib {
     
     @vertex
     fn main2(@builtin(instance_index) instanceIdx: u32, @location(0) position: vec4f, @location(1) color: vec4f) -> MyLib::VertexOutput {
-        let uni = MyLib::Uniforms();
+        let uni = MyLib::Types2::Uniforms();
         var output: MyLib::VertexOutput;
         output.Position = MyLib::camera.viewProjectionMatrix * MyLib::uniforms.modelMatrix[instanceIdx] * position;
         output.fragColor = color / vec4<f32>(MyLib::Types2::x);

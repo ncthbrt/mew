@@ -1,9 +1,12 @@
-use wesl_parse::syntax::TranslationUnit;
+use wesl_parse::syntax::{CompoundDirective, GlobalDirective, ModuleDirective, TranslationUnit};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum CompilerPassError {
     SymbolNotFound(Vec<String>),
     AmbiguousScope(String),
+    UnexpectedGlobalDirective(GlobalDirective),
+    UnexpectedModuleDirective(ModuleDirective),
+    UnexpectedCompoundDirective(CompoundDirective),
 }
 
 pub trait CompilerPass {
