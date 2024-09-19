@@ -130,7 +130,7 @@ extern {
 // https://www.w3.org/TR/WGSL/#wgsl-module
 
 pub TranslationUnit: TranslationUnit = {
-    <global_directives: GlobalDirective*> <global_declarations: GlobalDecl*> => TranslationUnit {<>, ..Default::default()},
+    <global_directives: GlobalDirective*> <global_declarations: GlobalDecl*> => TranslationUnit {<>},
 };
 
 GlobalDecl: GlobalDeclaration = {
@@ -152,8 +152,7 @@ ModuleDecl : Module = {
         name, 
         members,
         attributes,
-        directives,
-        ..Default::default()
+        directives
     }
 };
 
@@ -302,13 +301,13 @@ Use: Use = {
 RootUsePath: Use = {
     <path: (<Ident> "::")*>  <item: ItemUse> ";" => Use {
         attributes: Vec::new(),
-        path: path, 
+        path, 
         content: UseContent::Item(item)
     },
     <path: (<Ident> "::")*> <collection: UseCollection> => {
         Use {
             attributes: Vec::new(),
-            path: path, 
+            path, 
             content: UseContent::Collection(collection)
         }
     }
@@ -317,7 +316,7 @@ RootUsePath: Use = {
 UsePath: Use = {
     <path: (<Ident> "::")+> <content: UseContent> => Use {
         attributes: Vec::new(),
-        path: path, 
+        path, 
         content
     },
     ItemUse => Use {
@@ -463,7 +462,7 @@ GlobalVariableDecl: Declaration = {
 ModuleValueDecl: Declaration = {
     "const" <ident: OptionallyTypedIdent> "=" <initializer: Expression> => {
         let (name, typ) = ident;
-        return Declaration {
+        Declaration {
             attributes: Vec::new(),
             kind: DeclarationKind::Const,
             template_args: None,
@@ -477,7 +476,7 @@ ModuleValueDecl: Declaration = {
 GlobalValueDecl: Declaration = {
     "const" <ident: OptionallyTypedIdent> "=" <initializer: Expression> => {
         let (name, typ) = ident;
-        return Declaration {
+        Declaration {
             attributes: Vec::new(),
             kind: DeclarationKind::Const,
             template_args: None,

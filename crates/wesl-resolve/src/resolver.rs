@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use wesl_parse::syntax::{
     Alias, CompoundDirective, CompoundStatement, ConstAssert, Declaration, DeclarationStatement,
     Expression, ExtendDirective, Function, GlobalDeclaration, GlobalDirective, Module,
@@ -505,11 +503,11 @@ impl Resolver {
 
     fn find_module_and_scope(
         mut scope: im::HashMap<String, ScopeMember>,
-        path: &Vec<String>,
+        path: &[String],
     ) -> Result<(Module, im::HashMap<String, ScopeMember>), CompilerPassError> {
-        assert!(path.len() > 0);
+        assert!(!path.is_empty());
         let mut module_path = ModulePath(im::Vector::new());
-        let mut remaining_path: im::Vector<String> = path.clone().into();
+        let mut remaining_path: im::Vector<String> = path.into();
         let fst = remaining_path.pop_front().unwrap();
         if let Some(scope_member) = scope.remove(&fst) {
             let (m, mut scope) = match scope_member {
@@ -541,11 +539,11 @@ impl Resolver {
                         }
                     }
                 }
-                return Err(CompilerPassError::SymbolNotFound(path.clone()));
+                return Err(CompilerPassError::SymbolNotFound(path.into()));
             }
-            return Ok((module.clone(), scope));
+            Ok((module.clone(), scope))
         } else {
-            return Err(CompilerPassError::SymbolNotFound(path.clone()));
+            Err(CompilerPassError::SymbolNotFound(path.into()))
         }
     }
 
@@ -708,7 +706,7 @@ impl Resolver {
         }
 
         for extend in extend_directives.iter() {
-            Self::extend_translation_unit(translation_unit, &extend, &mut scope)?;
+            Self::extend_translation_unit(translation_unit, extend, &mut scope)?;
         }
 
         for decl in translation_unit.global_declarations.iter_mut() {
