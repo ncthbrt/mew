@@ -31,15 +31,20 @@ impl<Fs: ReadonlyFilesystem> Bundler<Fs> {
     ) -> Result<TranslationUnit, BundlerError<Fs::Error>> {
         let mut result: TranslationUnit = TranslationUnit::default();
 
+        let mut ws: String = String::new();
+
         for item in ctx.entry_points.iter() {
-            let file = self
+            let mut file = self
                 .file_system
                 .read(item)
                 .await
                 .map_err(BundlerError::FileSystemError)?;
-            let mut local_translation_unit = wesl_parse::Parser::parse_str(&file)
+            let file_len = file.len();
+            let mut file_with_starting_ws = ws.clone();
+            file_with_starting_ws.push_str(&mut file);
+            ws.extend((0..file_len).into_iter().map(|_| ' '));
+            let mut local_translation_unit = wesl_parse::Parser::parse_str(&file_with_starting_ws)
                 .map_err(|err| BundlerError::ParseError(format!("{}", err)))?;
-
             result
                 .global_declarations
                 .append(&mut local_translation_unit.global_declarations);
@@ -54,15 +59,18 @@ impl<Fs: ReadonlyFilesystem> Bundler<Fs> {
                 name: Spanned::new(module_name.to_owned(), 0..0),
                 ..Module::default()
             };
+            let mut module_span = 0..0;
             for declaration in result.global_declarations {
                 let span = declaration.span();
+                module_span.start = usize::min(span.start, module_span.start);
+                module_span.end = usize::max(span.end, module_span.end);
                 module
                     .members
                     .push(Spanned::new(declaration.value.into(), span));
             }
             encapsulated_result.global_declarations.push(Spanned::new(
                 syntax::GlobalDeclaration::Module(module),
-                0..0,
+                module_span,
             ));
             Ok(encapsulated_result)
         } else {
