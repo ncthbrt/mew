@@ -1,6 +1,9 @@
 use std::path::PathBuf;
 
-use wesl_parse::syntax::{self, Module, TranslationUnit};
+use wesl_parse::{
+    span::Spanned,
+    syntax::{self, Module, TranslationUnit},
+};
 
 use crate::file_system::ReadonlyFilesystem;
 
@@ -48,15 +51,19 @@ impl<Fs: ReadonlyFilesystem> Bundler<Fs> {
                 .global_directives
                 .append(&mut result.global_directives);
             let mut module = Module {
-                name: module_name.to_owned(),
+                name: Spanned::new(module_name.to_owned(), 0..0),
                 ..Module::default()
             };
             for declaration in result.global_declarations {
-                module.members.push(declaration.into());
+                let span = declaration.span();
+                module
+                    .members
+                    .push(Spanned::new(declaration.value.into(), span));
             }
-            encapsulated_result
-                .global_declarations
-                .push(syntax::GlobalDeclaration::Module(module));
+            encapsulated_result.global_declarations.push(Spanned::new(
+                syntax::GlobalDeclaration::Module(module),
+                0..0,
+            ));
             Ok(encapsulated_result)
         } else {
             Ok(result)

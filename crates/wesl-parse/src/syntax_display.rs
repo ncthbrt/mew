@@ -1,4 +1,4 @@
-use crate::syntax::*;
+use crate::{span::S, syntax::*};
 use core::fmt;
 use std::fmt::{Display, Formatter, Write};
 
@@ -37,7 +37,7 @@ impl Display for GlobalDirective {
             GlobalDirective::Diagnostic(print) => write!(f, "{}", print),
             GlobalDirective::Enable(print) => write!(f, "{}", print),
             GlobalDirective::Requires(print) => write!(f, "{}", print),
-            GlobalDirective::Use(print) if matches!(print.content, UseContent::Item(_)) => {
+            GlobalDirective::Use(print) if matches!(print.content.value, UseContent::Item(_)) => {
                 write!(f, "use {};", print)
             }
             GlobalDirective::Use(print) => write!(f, "use {}", print),
@@ -193,7 +193,7 @@ impl Display for Attribute {
     }
 }
 
-fn fmt_attrs(attrs: &[Attribute], inline: bool) -> String {
+fn fmt_attrs(attrs: &[S<Attribute>], inline: bool) -> String {
     let print = attrs.iter().format(" ");
     let suffix = if attrs.is_empty() {
         ""
@@ -203,6 +203,12 @@ fn fmt_attrs(attrs: &[Attribute], inline: bool) -> String {
         "\n"
     };
     format!("{print}{suffix}")
+}
+
+impl<T: Display> Display for S<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.value)
+    }
 }
 
 impl Display for Expression {
@@ -350,7 +356,7 @@ impl Display for TypeExpression {
 //     }
 // }
 
-fn fmt_template(tplt: &Option<Vec<TemplateArg>>) -> String {
+fn fmt_template(tplt: &Option<Vec<S<TemplateArg>>>) -> String {
     match tplt {
         Some(tplt) => {
             let print = tplt.iter().format(", ");
@@ -393,7 +399,7 @@ impl Display for Statement {
 impl Display for CompoundDirective {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            CompoundDirective::Use(usage) if matches!(usage.content, UseContent::Item(_)) => {
+            CompoundDirective::Use(usage) if matches!(usage.content.value, UseContent::Item(_)) => {
                 writeln!(f, "use {usage};")?;
             }
             CompoundDirective::Use(usage) => {
@@ -407,7 +413,7 @@ impl Display for CompoundDirective {
 impl Display for ModuleDirective {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            ModuleDirective::Use(usage) if matches!(usage.content, UseContent::Item(_)) => {
+            ModuleDirective::Use(usage) if matches!(usage.content.value, UseContent::Item(_)) => {
                 writeln!(f, "use {usage};\n")?;
             }
             ModuleDirective::Use(usage) => {
@@ -676,9 +682,9 @@ impl Display for Use {
         let attrs = fmt_attrs(&self.attributes, false);
         let path = self.path.join("::");
         if !path.is_empty() {
-            write!(f, "{attrs}{path}::{}", self.content)?;
+            write!(f, "{attrs}{path}::{}", self.content.value)?;
         } else {
-            write!(f, "{attrs}{}", self.content)?;
+            write!(f, "{attrs}{}", self.content.value)?;
         };
         Ok(())
     }

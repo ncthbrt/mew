@@ -1,6 +1,6 @@
-use std::{collections::VecDeque, str::FromStr};
-
 use super::{error::ParseError, syntax::*};
+use crate::span::*;
+use std::{collections::VecDeque, str::FromStr};
 
 impl FromStr for DiagnosticSeverity {
     type Err = ParseError;
@@ -45,14 +45,16 @@ impl From<ModuleMemberDeclaration> for GlobalDeclaration {
 }
 
 impl DeclarationStatement {
-    pub fn construct_scope_tree(&mut self, queue: &mut VecDeque<Statement>) {
+    pub fn construct_scope_tree(&mut self, queue: &mut VecDeque<S<Statement>>) {
         while let Some(statement) = queue.pop_front() {
-            match statement {
+            let span = statement.span();
+            match statement.value {
                 Statement::Declaration(mut decl) => {
                     decl.construct_scope_tree(queue);
-                    self.statements.push(Statement::Declaration(decl));
+                    self.statements
+                        .push(S::new(Statement::Declaration(decl), span));
                 }
-                other => self.statements.push(other),
+                other => self.statements.push(S::new(other, span)),
             }
         }
     }
@@ -60,21 +62,23 @@ impl DeclarationStatement {
 
 impl CompoundStatement {
     pub fn construct_scope_tree(&mut self) {
-        let mut queue: VecDeque<Statement> = self.statements.drain(0..).collect();
+        let mut queue: VecDeque<S<Statement>> = self.statements.drain(0..).collect();
         while let Some(statement) = queue.pop_front() {
-            match statement {
+            let span = statement.span();
+            match statement.value {
                 Statement::Declaration(mut decl) => {
                     decl.construct_scope_tree(&mut queue);
-                    self.statements.push(Statement::Declaration(decl));
+                    self.statements
+                        .push(S::new(Statement::Declaration(decl), span));
                 }
-                other => self.statements.push(other),
+                other => self.statements.push(S::new(other, span)),
             }
         }
     }
 }
 
 impl ModuleMemberDeclaration {
-    pub fn name(&self) -> Option<String> {
+    pub fn name(&self) -> Option<S<String>> {
         match self {
             ModuleMemberDeclaration::Declaration(d) => Some(d.name.clone()),
             ModuleMemberDeclaration::Alias(a) => Some(a.name.clone()),
@@ -87,7 +91,7 @@ impl ModuleMemberDeclaration {
 }
 
 impl GlobalDeclaration {
-    pub fn name(&self) -> Option<String> {
+    pub fn name(&self) -> Option<S<String>> {
         match self {
             GlobalDeclaration::Declaration(d) => Some(d.name.clone()),
             GlobalDeclaration::Alias(a) => Some(a.name.clone()),

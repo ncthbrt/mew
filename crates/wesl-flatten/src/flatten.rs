@@ -1,5 +1,8 @@
 use std::convert::Into;
-use wesl_parse::syntax::{GlobalDeclaration, Module, ModuleMemberDeclaration, TranslationUnit};
+use wesl_parse::{
+    span::Spanned,
+    syntax::{GlobalDeclaration, Module, ModuleMemberDeclaration, TranslationUnit},
+};
 use wesl_types::CompilerPass;
 
 #[derive(Debug, Default, Clone, Copy)]
@@ -8,11 +11,14 @@ pub struct Flattener;
 impl Flattener {
     fn flatten_module(translation_unit: &mut TranslationUnit, mut module: Module) {
         for decl in module.members.drain(0..) {
-            match decl {
+            let span = decl.span();
+            match decl.value {
                 ModuleMemberDeclaration::Module(m) => {
                     Self::flatten_module(translation_unit, m);
                 }
-                other => translation_unit.global_declarations.push(other.into()),
+                other => translation_unit
+                    .global_declarations
+                    .push(Spanned::new(other.into(), span)),
             }
         }
     }
@@ -21,7 +27,7 @@ impl Flattener {
         let mut modules = vec![];
         let mut others = vec![];
         for decl in translation_unit.global_declarations.drain(0..) {
-            if let GlobalDeclaration::Module(m) = decl {
+            if let GlobalDeclaration::Module(m) = decl.value {
                 modules.push(m);
             } else {
                 others.push(decl);

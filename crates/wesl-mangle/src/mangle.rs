@@ -73,7 +73,7 @@ impl Mangler {
                 Self::mangle_expression(&mut s.expression, path.clone());
                 for c in s.clauses.iter_mut() {
                     for select in c.case_selectors.iter_mut() {
-                        match select {
+                        match select.as_mut() {
                             wesl_parse::syntax::CaseSelector::Default => {
                                 // DO NOTHING
                             }
@@ -259,9 +259,9 @@ impl Mangler {
     }
 
     fn mangle_module(m: &mut Module, mut path: ModulePath) {
-        path.0.push_back(m.name.clone());
+        path.0.push_back(m.name.value.clone());
         for decl in m.members.iter_mut() {
-            match decl {
+            match decl.as_mut() {
                 ModuleMemberDeclaration::Void => {}
                 ModuleMemberDeclaration::Declaration(decl) => {
                     Self::mangle_decl(decl, path.clone());
@@ -287,7 +287,7 @@ impl Mangler {
 
     fn mangle_translation_unit(translation_unit: &mut TranslationUnit, path: ModulePath) {
         for decl in translation_unit.global_declarations.iter_mut() {
-            match decl {
+            match decl.as_mut() {
                 GlobalDeclaration::Void => {}
                 GlobalDeclaration::Declaration(decl) => {
                     Self::mangle_decl(decl, path.clone());

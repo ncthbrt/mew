@@ -60,8 +60,8 @@ async fn main() {
     match &cli.command {
         Command::Check(_) => {
             print!("{} -- ", args.input.display());
-            match WeslParser::recognize_str(&source) {
-                Ok(()) => println!("OK"),
+            match WeslParser::parse_str(&source) {
+                Ok(_) => println!("OK"),
                 Err(err) => eprintln!("{err}"),
             };
         }
