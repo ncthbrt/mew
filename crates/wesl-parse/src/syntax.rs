@@ -199,6 +199,7 @@ pub enum ModuleMemberDeclaration {
 pub struct Declaration {
     pub attributes: Vec<S<Attribute>>,
     pub kind: S<DeclarationKind>,
+    pub template_args: Option<Vec<S<TemplateArg>>>,
     pub name: S<String>,
     pub typ: Option<S<TypeExpression>>,
     pub initializer: Option<S<Expression>>,

@@ -463,6 +463,7 @@ VariableOrValueStatement: Declaration = {
         Declaration {
             attributes: Vec::new(),
             kind: S::new(DeclarationKind::Let, l..r),
+            template_args: None,
             name,
             typ,
             initializer: Some(initializer),
@@ -473,6 +474,7 @@ VariableOrValueStatement: Declaration = {
         Declaration {
             attributes: Vec::new(),
             kind: S::new(DeclarationKind::Const, l..r),
+            template_args: None,
             name,
             typ,
             initializer: Some(initializer),
@@ -481,11 +483,12 @@ VariableOrValueStatement: Declaration = {
 };
 
 VariableDecl: Declaration = {
-    <l:@L>"var"<r:@R> /* DisambiguateTemplate */  <ident: OptionallyTypedIdent> => {
+    <l:@L>"var"<r:@R> /* DisambiguateTemplate */ <template_args: TemplateList?> <ident: OptionallyTypedIdent> => {
         let (name, typ) = ident;
         Declaration {
             attributes: Vec::new(),
             kind: S::new(DeclarationKind::Var, l..r),
+            template_args,
             name,
             typ,
             initializer: None,
@@ -511,7 +514,8 @@ ModuleValueDecl: Declaration = {
         let (name, typ) = ident;
         Declaration {
             attributes: Vec::new(),
-            kind: S::new(DeclarationKind::Const, l..r),            
+            kind: S::new(DeclarationKind::Const, l..r),
+            template_args: None,
             name,
             typ,
             initializer: Some(initializer)
@@ -525,6 +529,7 @@ GlobalValueDecl: Declaration = {
         Declaration {
             attributes: Vec::new(),
             kind: S::new(DeclarationKind::Const, l..r),
+            template_args: None,
             name,
             typ,
             initializer: Some(initializer),
@@ -535,6 +540,7 @@ GlobalValueDecl: Declaration = {
         Declaration {
             attributes,
             kind: S::new(DeclarationKind::Override, l..r),
+            template_args: None,
             name,
             typ,
             initializer,

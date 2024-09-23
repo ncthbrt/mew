@@ -156,7 +156,7 @@ fn resolve_wesl_samples() -> Result<(), BundlerError<std::io::Error>> {
             )
             .inspect_err(|err| eprintln!("{err}"))
             .expect("parse error");
-            assert_eq!(result, expected_output_module);
+            assert_eq!(format!("{}", result), format!("{}", expected_output_module));
         }
     }
     Ok(())
@@ -200,7 +200,7 @@ fn mangle_wesl_samples() -> Result<(), CompilerPassError> {
             )
             .inspect_err(|err| eprintln!("{err}"))
             .expect("parse error");
-            assert_eq!(result, expected_output_module);
+            assert_eq!(format!("{}", result), format!("{}", expected_output_module));
         }
     }
     Ok(())
@@ -245,7 +245,7 @@ fn flatten_wesl_samples() -> Result<(), CompilerPassError> {
             )
             .inspect_err(|err| eprintln!("{err}"))
             .expect("parse error");
-            assert_eq!(result, expected_output_module);
+            assert_eq!(format!("{}", result), format!("{}", expected_output_module));
         }
     }
     Ok(())
@@ -288,7 +288,7 @@ fn extend_wesl_samples() -> Result<(), CompilerPassError> {
             )
             .inspect_err(|err| eprintln!("{err}"))
             .expect("parse error");
-            assert_eq!(result, expected_output_module);
+            assert_eq!(format!("{}", result), format!("{}", expected_output_module));
         }
     }
     Ok(())

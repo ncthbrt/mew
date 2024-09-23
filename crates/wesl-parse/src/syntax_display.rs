@@ -97,7 +97,7 @@ impl Display for Declaration {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let attrs = fmt_attrs(&self.attributes, false);
         let kind = &self.kind;
-
+        let tplt = fmt_template(&self.template_args);
         let name = &self.name;
         let typ = self
             .typ
@@ -109,7 +109,7 @@ impl Display for Declaration {
             .as_ref()
             .map(|typ| format!(" = {}", typ))
             .unwrap_or_default();
-        write!(f, "{attrs}{kind} {name}{typ}{init};")
+        write!(f, "{attrs}{kind}{tplt} {name}{typ}{init};")
     }
 }
 
@@ -243,12 +243,12 @@ impl Display for LiteralExpression {
         match self {
             LiteralExpression::True => write!(f, "true"),
             LiteralExpression::False => write!(f, "false"),
-            LiteralExpression::AbstractInt(num) => write!(f, "{num}"),
-            LiteralExpression::AbstractFloat(num) => write!(f, "{num:?}"), // using the Debug formatter to print the trailing .0 in floats representing integers. because format!("{}", 3.0f32) == "3"
+            LiteralExpression::AbstractInt(num) => write!(f, "{}", num.parse::<i64>().unwrap()),
+            LiteralExpression::AbstractFloat(num) => write!(f, "{:?}", num.parse::<f64>().unwrap()), // using the Debug formatter to print the trailing .0 in floats representing integers. because format!("{}", 3.0f32) == "3"
             LiteralExpression::I32(num) => write!(f, "{num}i"),
             LiteralExpression::U32(num) => write!(f, "{num}u"),
-            LiteralExpression::F32(num) => write!(f, "{num}f"),
-            LiteralExpression::F16(num) => write!(f, "{num}h"),
+            LiteralExpression::F32(num) => write!(f, "{}f", num.parse::<f32>().unwrap()),
+            LiteralExpression::F16(num) => write!(f, "{}h", num.parse::<f32>().unwrap()),
         }
     }
 }
@@ -358,11 +358,11 @@ impl Display for IdentifierExpression {
 
 fn fmt_template(tplt: &Option<Vec<S<TemplateArg>>>) -> String {
     match tplt {
-        Some(tplt) => {
+        Some(tplt) if !tplt.is_empty() => {
             let print = tplt.iter().format(", ");
             format!("<{print}>")
         }
-        None => "".to_string(),
+        _ => "".to_string(),
     }
 }
 
@@ -648,11 +648,11 @@ impl Display for Module {
         let attrs = fmt_attrs(&self.attributes, false);
         let members = Indent(self.members.iter().format("\n\n"));
         let directives = Indent(self.directives.iter().format("\n"));
-        let mut generic_params = String::new();
+        let mut template_params = String::new();
         if !self.template_parameters.is_empty() {
-            generic_params.push('<');
-            generic_params.push_str(&self.template_parameters.iter().format(", ").to_string());
-            generic_params.push('>');
+            template_params.push('<');
+            template_params.push_str(&self.template_parameters.iter().format(", ").to_string());
+            template_params.push('>');
         }
         write!(
             f,
@@ -660,7 +660,7 @@ impl Display for Module {
             attrs,
             if attrs.is_empty() { "" } else { " " },
             self.name,
-            generic_params,
+            template_params,
             members
         )
     }

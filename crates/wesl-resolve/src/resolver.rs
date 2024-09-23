@@ -29,7 +29,7 @@ enum ScopeMember {
         im::HashMap<String, ScopeMember>,
     ),
     UseDeclaration(ModulePath, String),
-    GlobalDeclaration(GlobalDeclaration, im::HashMap<String, ScopeMember>),
+    GlobalDeclaration(GlobalDeclaration),
     FormalFunctionParameter,
     TemplateParam,
 }
@@ -398,7 +398,7 @@ impl Resolver {
                     new_path.extend(path.iter().cloned());
                     path.value = new_path;
                 }
-                ScopeMember::GlobalDeclaration(_tum, _scope) => {
+                ScopeMember::GlobalDeclaration(_) => {
                     // No action required
                 }
                 ScopeMember::FormalFunctionParameter => {
@@ -418,8 +418,6 @@ impl Resolver {
                 }
             }
         } else {
-            // TODO: Have to return Ok unless we can enumerate all the built in symbols.
-            // That should in theory be possible as they're defined by the spec
             return Err(CompilerPassError::SymbolNotFound(
                 path.value.clone().to_owned(),
                 path.span(),
@@ -589,14 +587,14 @@ impl Resolver {
         let mut module_path = ModulePath(im::Vector::new());
         let mut remaining_path: im::Vector<PathPart> = path.value.clone().into();
         let fst: PathPart = remaining_path.pop_front().unwrap();
-        if let Some(scope_member) = scope.remove(fst.name.as_ref()) {
+        if let Some(scope_member) = scope.get(fst.name.as_ref()).cloned() {
             let (m, mut scope) = match scope_member {
                 ScopeMember::ModuleMemberDeclaration(
                     _,
                     ModuleMemberDeclaration::Module(m),
                     scope,
                 ) => (m, scope),
-                ScopeMember::GlobalDeclaration(GlobalDeclaration::Module(m), scope) => (m, scope),
+                ScopeMember::GlobalDeclaration(GlobalDeclaration::Module(m)) => (m, scope),
                 _ => {
                     panic!(
                         "INVARIANT FAILURE: UNEXPECTED SCOPE MEMBER IN THIS STAGE OF PROCESSING"
@@ -679,7 +677,6 @@ impl Resolver {
         scope: &mut im::HashMap<String, ScopeMember>,
     ) -> Result<(), CompilerPassError> {
         let (mut module, module_scope) = Self::find_module_and_scope(scope.clone(), &extend.path)?;
-        let parent_scope = module_scope.clone();
 
         // OK. So we need to add the symbols to the translation unit
         // Clear the module name because we don't want to affect the module path
@@ -689,10 +686,7 @@ impl Resolver {
             if let Some(name) = member.name() {
                 scope.insert(
                     name.into_inner(),
-                    ScopeMember::GlobalDeclaration(
-                        member.value.clone().into(),
-                        parent_scope.clone(),
-                    ),
+                    ScopeMember::GlobalDeclaration(member.value.clone().into()),
                 );
             }
             let span = member.span();
@@ -796,12 +790,7 @@ impl Resolver {
                 GlobalDirective::Use(usage) => {
                     Self::add_usage_to_scope(usage, module_path.clone(), &mut scope)?;
                 }
-                GlobalDirective::Extend(mut extend) => {
-                    Self::relative_path_to_absolute_path(
-                        scope.clone(),
-                        module_path.clone(),
-                        &mut extend.path,
-                    )?;
+                GlobalDirective::Extend(extend) => {
                     extend_directives.push(extend);
                 }
                 other => other_directives.push(Spanned::new(other, span)),
@@ -816,12 +805,17 @@ impl Resolver {
             if let Some(name) = decl.name().as_ref() {
                 scope.insert(
                     name.value.clone(),
-                    ScopeMember::GlobalDeclaration(decl.as_ref().clone(), scope.clone()),
+                    ScopeMember::GlobalDeclaration(decl.as_ref().clone()),
                 );
             }
         }
 
-        for extend in extend_directives.iter() {
+        for extend in extend_directives.iter_mut() {
+            Self::relative_path_to_absolute_path(
+                scope.clone(),
+                module_path.clone(),
+                &mut extend.path,
+            )?;
             Self::extend_translation_unit(translation_unit, extend, &mut scope)?;
         }
 
