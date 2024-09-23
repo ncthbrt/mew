@@ -102,3 +102,36 @@ impl GlobalDeclaration {
         }
     }
 }
+
+impl From<TemplateElaboratedIdent> for TypeExpression {
+    fn from(
+        TemplateElaboratedIdent {
+            path: S { value, span },
+        }: TemplateElaboratedIdent,
+    ) -> Self {
+        TypeExpression {
+            path: S::new(value.into_iter().map(|x| x.into()).collect(), span),
+        }
+    }
+}
+
+impl From<TemplateElaboratedIdent> for IdentifierExpression {
+    fn from(
+        TemplateElaboratedIdent {
+            path: S { value, span },
+        }: TemplateElaboratedIdent,
+    ) -> Self {
+        IdentifierExpression {
+            path: S::new(value.into_iter().map(|x| x.into()).collect(), span),
+        }
+    }
+}
+
+impl From<TemplateElaboratedIdentPart> for PathPart {
+    fn from(value: TemplateElaboratedIdentPart) -> Self {
+        PathPart {
+            name: value.name,
+            template_args: value.template_args,
+        }
+    }
+}

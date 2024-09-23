@@ -97,7 +97,7 @@ impl Display for Declaration {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let attrs = fmt_attrs(&self.attributes, false);
         let kind = &self.kind;
-        let tplt = fmt_template(&self.template_args);
+
         let name = &self.name;
         let typ = self
             .typ
@@ -109,7 +109,7 @@ impl Display for Declaration {
             .as_ref()
             .map(|typ| format!(" = {}", typ))
             .unwrap_or_default();
-        write!(f, "{attrs}{kind}{tplt} {name}{typ}{init};")
+        write!(f, "{attrs}{kind} {name}{typ}{init};")
     }
 }
 
@@ -160,8 +160,17 @@ impl Display for Function {
             .as_ref()
             .map(|typ| format!("-> {ret_attrs}{} ", typ))
             .unwrap_or_default();
+        let mut generic_params = String::new();
+        if !self.template_parameters.is_empty() {
+            generic_params.push('<');
+            generic_params.push_str(&self.template_parameters.iter().format(", ").to_string());
+            generic_params.push('>');
+        }
         let body = &self.body;
-        write!(f, "{attrs}fn {name}({params}) {ret_typ}{body}")
+        write!(
+            f,
+            "{attrs}fn {name}{generic_params}({params}) {ret_typ}{body}"
+        )
     }
 }
 
@@ -226,12 +235,6 @@ impl Display for Expression {
             Expression::Identifier(print) => write!(f, "{}", print),
             Expression::Type(print) => write!(f, "{}", print),
         }
-    }
-}
-
-impl Display for IdentifierExpression {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.path.join("::"))
     }
 }
 
@@ -329,32 +332,29 @@ impl Display for BinaryOperator {
 
 impl Display for FunctionCallExpression {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let name = &self.path.join("::");
-        let tplt = fmt_template(&self.template_args);
+        let path = self.path.iter().format("::");
         let args = self.arguments.iter().format(", ");
-        write!(f, "{name}{tplt}({args})")
+        write!(f, "{path}({args})")
     }
 }
 
-// impl Display for IdentifierExpression {
-//     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-//         write!(f, "{self}")
-//     }
-// }
+impl Display for PathPart {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}{}", self.name, fmt_template(&self.template_args))
+    }
+}
 
 impl Display for TypeExpression {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let name = &self.path.join("::");
-        let tplt = fmt_template(&self.template_args);
-        write!(f, "{name}{tplt}")
+        write!(f, "{}", &self.path.iter().format("::"))
     }
 }
 
-// impl Display for TemplateArg {
-//     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-//         Ok(())
-//     }
-// }
+impl Display for IdentifierExpression {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", &self.path.iter().format("::"))
+    }
+}
 
 fn fmt_template(tplt: &Option<Vec<S<TemplateArg>>>) -> String {
     match tplt {
@@ -431,7 +431,7 @@ impl Display for ExtendDirective {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let attrs = fmt_attrs(&self.attributes, true);
 
-        writeln!(f, "{attrs} extend {};", self.path.join("::"))
+        writeln!(f, "{attrs} extend {};", self.path.iter().format("::"))
     }
 }
 
@@ -648,13 +648,19 @@ impl Display for Module {
         let attrs = fmt_attrs(&self.attributes, false);
         let members = Indent(self.members.iter().format("\n\n"));
         let directives = Indent(self.directives.iter().format("\n"));
-
+        let mut generic_params = String::new();
+        if !self.template_parameters.is_empty() {
+            generic_params.push('<');
+            generic_params.push_str(&self.template_parameters.iter().format(", ").to_string());
+            generic_params.push('>');
+        }
         write!(
             f,
-            "{}{}mod {} {{\n{directives}{}\n}}",
+            "{}{}mod {}{} {{\n{directives}{}\n}}",
             attrs,
             if attrs.is_empty() { "" } else { " " },
             self.name,
+            generic_params,
             members
         )
     }
@@ -663,11 +669,21 @@ impl Display for Module {
 impl Display for UseContent {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            UseContent::Item(UseItem { name, rename }) => {
+            UseContent::Item(UseItem {
+                name,
+                rename,
+                template_args,
+            }) => {
+                let mut args = String::new();
+                if let Some(template_args) = template_args.as_ref() {
+                    args.push('<');
+                    args.push_str(&template_args.iter().format(", ").to_string());
+                    args.push('>');
+                };
                 if let Some(rename) = rename {
-                    write!(f, "{name} as {rename}")
+                    write!(f, "{name}{args} as {rename}")
                 } else {
-                    write!(f, "{name}")
+                    write!(f, "{name}{args}")
                 }
             }
             UseContent::Collection(c) => {
@@ -680,12 +696,32 @@ impl Display for UseContent {
 impl Display for Use {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let attrs = fmt_attrs(&self.attributes, false);
-        let path = self.path.join("::");
+        let path = self.path.iter().format("::").to_string();
         if !path.is_empty() {
             write!(f, "{attrs}{path}::{}", self.content.value)?;
         } else {
             write!(f, "{attrs}{}", self.content.value)?;
         };
         Ok(())
+    }
+}
+
+impl Display for TemplateArg {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        if let Some(arg_name) = self.arg_name.as_ref() {
+            write!(f, "{arg_name} = {}", self.expression)
+        } else {
+            write!(f, "{}", self.expression)
+        }
+    }
+}
+
+impl Display for FormalTemplateParameter {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        if let Some(default_value) = self.default_value.as_ref() {
+            write!(f, "{} = {default_value}", self.name)
+        } else {
+            write!(f, "{}", self.name)
+        }
     }
 }

@@ -1,11 +1,13 @@
 use wesl_parse::{
     span::Span,
-    syntax::{CompoundDirective, GlobalDirective, ModuleDirective, TranslationUnit},
+    syntax::{CompoundDirective, GlobalDirective, ModuleDirective, PathPart, TranslationUnit},
 };
+
+pub mod builtins;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum CompilerPassError {
-    SymbolNotFound(Vec<String>, Span),
+    SymbolNotFound(Vec<PathPart>, Span),
     InternalError(InternalCompilerError),
 }
 

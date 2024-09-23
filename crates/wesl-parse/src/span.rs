@@ -3,10 +3,16 @@ pub type Span = std::ops::Range<usize>;
 
 pub(crate) type S<T> = Spanned<T>;
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Eq)]
 pub struct Spanned<T> {
     pub value: T,
     pub span: Span,
+}
+
+impl<T: std::hash::Hash> std::hash::Hash for Spanned<T> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.value.hash(state);
+    }
 }
 
 impl<T: PartialEq> PartialEq for Spanned<T> {

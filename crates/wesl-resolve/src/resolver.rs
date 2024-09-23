@@ -2,22 +2,27 @@ use wesl_parse::{
     span::Spanned,
     syntax::{
         Alias, CompoundDirective, CompoundStatement, ConstAssert, Declaration,
-        DeclarationStatement, Expression, ExtendDirective, Function, GlobalDeclaration,
-        GlobalDirective, Module, ModuleDirective, ModuleMemberDeclaration, Statement, Struct,
-        TranslationUnit, TypeExpression, Use,
+        DeclarationStatement, Expression, ExtendDirective, FormalTemplateParameter, Function,
+        GlobalDeclaration, GlobalDirective, IdentifierExpression, Module, ModuleDirective,
+        ModuleMemberDeclaration, PathPart, Statement, Struct, TemplateArg, TranslationUnit,
+        TypeExpression, Use,
     },
 };
-use wesl_types::{CompilerPass, CompilerPassError};
+use wesl_types::{
+    builtins::{get_builtin_functions, get_builtin_tokens},
+    CompilerPass, CompilerPassError,
+};
 
 #[derive(Debug, Default, Clone, Copy)]
 pub struct Resolver;
 
 #[derive(Debug, PartialEq, Clone, Hash)]
-struct ModulePath(im::Vector<String>);
+struct ModulePath(im::Vector<PathPart>);
 
 #[derive(Debug, PartialEq, Clone)]
 enum ScopeMember {
     LocalDeclaration,
+    BuiltIn,
     ModuleMemberDeclaration(
         ModulePath,
         ModuleMemberDeclaration,
@@ -26,6 +31,7 @@ enum ScopeMember {
     UseDeclaration(ModulePath, String),
     GlobalDeclaration(GlobalDeclaration, im::HashMap<String, ScopeMember>),
     FormalFunctionParameter,
+    TemplateParam,
 }
 
 impl Resolver {
@@ -35,7 +41,7 @@ impl Resolver {
         mut scope: im::HashMap<String, ScopeMember>,
     ) -> Result<(), CompilerPassError> {
         for CompoundDirective::Use(usage) in statement.directives.drain(0..).map(|x| x.value) {
-            Self::add_usage_to_scope(usage, &mut scope)?;
+            Self::add_usage_to_scope(usage, module_path.clone(), &mut scope)?;
         }
         for c in statement.statements.iter_mut() {
             Self::statement_to_absolute_paths(c, module_path.clone(), scope.clone())?;
@@ -123,7 +129,7 @@ impl Resolver {
             Statement::Loop(l) => {
                 for usage in l.body.directives.drain(0..) {
                     let CompoundDirective::Use(usage) = usage.value;
-                    Self::add_usage_to_scope(usage, &mut scope)?;
+                    Self::add_usage_to_scope(usage, module_path.clone(), &mut scope)?;
                 }
                 Self::compound_statement_to_absolute_paths(
                     &mut l.body,
@@ -144,7 +150,7 @@ impl Resolver {
                     // Unfortunate asymmetry (and redundant work) AGAIN as the break_if expr is in the same scope
                     for usage in cont.body.directives.drain(0..) {
                         let CompoundDirective::Use(usage) = usage.value;
-                        Self::add_usage_to_scope(usage, &mut scope)?;
+                        Self::add_usage_to_scope(usage, module_path.clone(), &mut scope)?;
                     }
                     Self::compound_statement_to_absolute_paths(
                         &mut l.body,
@@ -210,14 +216,13 @@ impl Resolver {
                 // No action required
             }
             Statement::FunctionCall(f) => {
-                Self::relative_path_to_absolute_path(scope.clone(), &mut f.path)?;
+                Self::relative_path_to_absolute_path(
+                    scope.clone(),
+                    module_path.clone(),
+                    &mut f.path,
+                )?;
                 for a in f.arguments.iter_mut() {
                     Self::expression_to_absolute_paths(a, module_path.clone(), scope.clone())?;
-                }
-                if let Some(args) = f.template_args.as_mut() {
-                    for a in args.iter_mut() {
-                        Self::expression_to_absolute_paths(a, module_path.clone(), scope.clone())?;
-                    }
                 }
             }
             Statement::ConstAssert(a) => {
@@ -272,18 +277,17 @@ impl Resolver {
                 Self::expression_to_absolute_paths(&mut b.right, module_path, scope)?;
             }
             Expression::FunctionCall(f) => {
-                Self::relative_path_to_absolute_path(scope.clone(), &mut f.path)?;
+                Self::relative_path_to_absolute_path(
+                    scope.clone(),
+                    module_path.clone(),
+                    &mut f.path,
+                )?;
                 for arg in f.arguments.iter_mut() {
                     Self::expression_to_absolute_paths(arg, module_path.clone(), scope.clone())?;
                 }
-                if let Some(args) = f.template_args.as_mut() {
-                    for a in args.iter_mut() {
-                        Self::expression_to_absolute_paths(a, module_path.clone(), scope.clone())?;
-                    }
-                }
             }
             Expression::Identifier(ident) => {
-                Self::relative_path_to_absolute_path(scope, &mut ident.path)?;
+                Self::relative_path_to_absolute_path(scope, module_path.clone(), &mut ident.path)?;
             }
             Expression::Type(typ) => {
                 Self::type_to_absolute_path(typ, module_path.clone(), scope)?;
@@ -297,9 +301,47 @@ impl Resolver {
         mut module_path: ModulePath,
         mut scope: im::HashMap<String, ScopeMember>,
     ) -> Result<(), CompilerPassError> {
+        Self::generic_parameters_to_absolute_path(
+            &mut module.template_parameters,
+            module_path.clone(),
+            &mut scope,
+        )?;
+
         if !module.name.is_empty() {
-            module_path.0.push_back(module.name.value.clone());
+            module_path.0.push_back(PathPart {
+                name: module.name.clone(),
+                template_args: module
+                    .template_parameters
+                    .iter()
+                    .map(|x| {
+                        Spanned::new(
+                            TemplateArg {
+                                expression: Spanned::new(
+                                    Expression::Identifier(IdentifierExpression {
+                                        path: Spanned::new(
+                                            vec![PathPart {
+                                                name: x.name.clone(),
+                                                template_args: None,
+                                            }],
+                                            x.span(),
+                                        ),
+                                    }),
+                                    x.span(),
+                                ),
+                                arg_name: if x.default_value.is_some() {
+                                    Some(x.name.clone())
+                                } else {
+                                    None
+                                },
+                            },
+                            x.span(),
+                        )
+                    })
+                    .collect::<Vec<Spanned<TemplateArg>>>()
+                    .into(),
+            });
         }
+
         Self::update_module_scope_and_apply_extensions(&mut module_path, module, &mut scope)?;
 
         for decl in module.members.iter_mut() {
@@ -332,19 +374,27 @@ impl Resolver {
 
     fn relative_path_to_absolute_path(
         mut scope: im::HashMap<String, ScopeMember>,
-        path: &mut Spanned<Vec<String>>,
+        module_path: ModulePath,
+        path: &mut Spanned<Vec<PathPart>>,
     ) -> Result<(), CompilerPassError> {
-        if let Some(symbol) = scope.remove(path.first().unwrap().as_str()) {
+        for p in path.iter_mut() {
+            if let Some(template_args) = p.template_args.as_mut() {
+                for arg in template_args.iter_mut() {
+                    Self::expression_to_absolute_paths(
+                        &mut arg.value.expression,
+                        module_path.clone(),
+                        scope.clone(),
+                    )?;
+                }
+            }
+        }
+        if let Some(symbol) = scope.remove(path.first().as_ref().unwrap().name.as_str()) {
             match symbol {
                 ScopeMember::LocalDeclaration => {
                     // No action required
                 }
                 ScopeMember::ModuleMemberDeclaration(module_path, _parent, _scope) => {
-                    let mut new_path = module_path
-                        .0
-                        .iter()
-                        .map(|x| x.to_string())
-                        .collect::<Vec<String>>();
+                    let mut new_path = module_path.0.iter().cloned().collect::<Vec<PathPart>>();
                     new_path.extend(path.iter().cloned());
                     path.value = new_path;
                 }
@@ -355,21 +405,25 @@ impl Resolver {
                     // No action required
                 }
                 ScopeMember::UseDeclaration(module_path, underlying_name) => {
-                    let mut new_path = module_path
-                        .0
-                        .iter()
-                        .map(|x| x.to_string())
-                        .collect::<Vec<String>>();
+                    let mut new_path = module_path.0.iter().cloned().collect::<Vec<PathPart>>();
                     new_path.extend(path.iter().cloned());
-                    *new_path.last_mut().unwrap() = underlying_name.to_string();
+                    *new_path.last_mut().unwrap().name = underlying_name.to_string();
                     path.value = new_path;
+                }
+                ScopeMember::BuiltIn => {
+                    // No action required
+                }
+                ScopeMember::TemplateParam => {
+                    // No action required
                 }
             }
         } else {
             // TODO: Have to return Ok unless we can enumerate all the built in symbols.
             // That should in theory be possible as they're defined by the spec
-            // return Err(CompilerPassError::SymbolNotFound(path.clone().to_owned()));
-            return Ok(());
+            return Err(CompilerPassError::SymbolNotFound(
+                path.value.clone().to_owned(),
+                path.span(),
+            ));
         };
 
         Ok(())
@@ -380,12 +434,7 @@ impl Resolver {
         module_path: ModulePath,
         scope: im::HashMap<String, ScopeMember>,
     ) -> Result<(), CompilerPassError> {
-        Self::relative_path_to_absolute_path(scope.clone(), &mut typ.path)?;
-        if let Some(args) = typ.template_args.as_mut() {
-            for arg in args {
-                Self::expression_to_absolute_paths(arg, module_path.clone(), scope.clone())?;
-            }
-        }
+        Self::relative_path_to_absolute_path(scope.clone(), module_path, &mut typ.path)?;
         Ok(())
     }
 
@@ -420,13 +469,13 @@ impl Resolver {
         mut scope: im::HashMap<String, ScopeMember>,
     ) -> Result<(), CompilerPassError> {
         if let Some(r) = func.return_type.as_mut() {
-            Self::relative_path_to_absolute_path(scope.clone(), &mut r.path)?;
-            if let Some(args) = r.template_args.as_mut() {
-                for arg in args.iter_mut() {
-                    Self::expression_to_absolute_paths(arg, module_path.clone(), scope.clone())?;
-                }
-            }
+            Self::relative_path_to_absolute_path(scope.clone(), module_path.clone(), &mut r.path)?;
         }
+        Self::generic_parameters_to_absolute_path(
+            &mut func.template_parameters,
+            module_path.clone(),
+            &mut scope,
+        )?;
 
         for p in func.parameters.iter_mut() {
             Self::type_to_absolute_path(&mut p.typ, module_path.clone(), scope.clone())?;
@@ -434,6 +483,25 @@ impl Resolver {
         }
 
         Self::compound_statement_to_absolute_paths(&mut func.body, module_path, scope)?;
+
+        Ok(())
+    }
+
+    fn generic_parameters_to_absolute_path(
+        template_params: &mut [Spanned<FormalTemplateParameter>],
+        module_path: ModulePath,
+        scope: &mut im::HashMap<String, ScopeMember>,
+    ) -> Result<(), CompilerPassError> {
+        for param in template_params.iter_mut() {
+            if let Some(default_value) = param.default_value.as_mut() {
+                Self::expression_to_absolute_paths(
+                    default_value.as_mut(),
+                    module_path.clone(),
+                    scope.clone(),
+                )?;
+            }
+            scope.insert(param.name.value.clone(), ScopeMember::TemplateParam);
+        }
         Ok(())
     }
 
@@ -457,9 +525,10 @@ impl Resolver {
 
     fn add_usage_to_scope(
         mut usage: Use,
+        module_path: ModulePath,
         scope: &mut im::HashMap<String, ScopeMember>,
     ) -> Result<(), CompilerPassError> {
-        Self::relative_path_to_absolute_path(scope.clone(), &mut usage.path)?;
+        Self::relative_path_to_absolute_path(scope.clone(), module_path.clone(), &mut usage.path)?;
         match usage.content.into_inner() {
             wesl_parse::syntax::UseContent::Item(item) => {
                 if let Some(rename) = item.rename.as_ref() {
@@ -483,7 +552,7 @@ impl Resolver {
             wesl_parse::syntax::UseContent::Collection(c) => {
                 for mut c in c.into_iter() {
                     c.value.path.value.extend(usage.path.iter().cloned());
-                    Self::add_usage_to_scope(c.value.clone(), scope)?;
+                    Self::add_usage_to_scope(c.value.clone(), module_path.clone(), scope)?;
                 }
             }
         }
@@ -514,13 +583,13 @@ impl Resolver {
 
     fn find_module_and_scope(
         mut scope: im::HashMap<String, ScopeMember>,
-        path: &Spanned<Vec<String>>,
+        path: &Spanned<Vec<PathPart>>,
     ) -> Result<(Module, im::HashMap<String, ScopeMember>), CompilerPassError> {
         assert!(!path.is_empty());
         let mut module_path = ModulePath(im::Vector::new());
-        let mut remaining_path: im::Vector<String> = path.value.clone().into();
-        let fst = remaining_path.pop_front().unwrap();
-        if let Some(scope_member) = scope.remove(&fst) {
+        let mut remaining_path: im::Vector<PathPart> = path.value.clone().into();
+        let fst: PathPart = remaining_path.pop_front().unwrap();
+        if let Some(scope_member) = scope.remove(fst.name.as_ref()) {
             let (m, mut scope) = match scope_member {
                 ScopeMember::ModuleMemberDeclaration(
                     _,
@@ -543,7 +612,7 @@ impl Resolver {
                 )?;
                 for decl in module.members.iter_mut() {
                     if let ModuleMemberDeclaration::Module(m) = decl.as_mut() {
-                        if &m.name.value == remaining_path.head().unwrap() {
+                        if m.name == remaining_path.head().as_ref().unwrap().name {
                             let _ = remaining_path.pop_front().unwrap();
                             module = m.clone();
                             continue 'outer;
@@ -588,7 +657,7 @@ impl Resolver {
         for dir in module.directives.drain(0..) {
             match dir.into_inner() {
                 ModuleDirective::Use(usage) => {
-                    Self::add_usage_to_scope(usage, scope)?;
+                    Self::add_usage_to_scope(usage, module_path.clone(), scope)?;
                 }
                 ModuleDirective::Extend(extend) => {
                     extend_dirs.push(extend);
@@ -653,7 +722,11 @@ impl Resolver {
         scope: &mut im::HashMap<String, ScopeMember>,
     ) -> Result<(), CompilerPassError> {
         let mut extension_path = extend.path.clone();
-        Self::relative_path_to_absolute_path(scope.clone(), &mut extension_path)?;
+        Self::relative_path_to_absolute_path(
+            scope.clone(),
+            module_path.clone(),
+            &mut extension_path,
+        )?;
 
         let (mut other_module, other_module_scope) =
             Self::find_module_and_scope(scope.clone(), &extension_path)?;
@@ -702,14 +775,33 @@ impl Resolver {
         let mut scope = im::HashMap::new();
         let mut other_directives: Vec<Spanned<GlobalDirective>> = vec![];
         let mut extend_directives = vec![];
+
+        let builtin_functions = get_builtin_functions();
+        let builtin_tokens = get_builtin_tokens();
+
+        scope = scope.union(
+            builtin_tokens
+                .builtin_values
+                .keys()
+                .chain(builtin_tokens.type_aliases.keys())
+                .chain(builtin_functions.functions.keys())
+                .chain(builtin_tokens.primitive_types.iter())
+                .map(|x| (x.clone(), ScopeMember::BuiltIn))
+                .collect(),
+        );
+
         for dir in translation_unit.global_directives.drain(0..) {
             let span = dir.span();
             match dir.value {
                 GlobalDirective::Use(usage) => {
-                    Self::add_usage_to_scope(usage, &mut scope)?;
+                    Self::add_usage_to_scope(usage, module_path.clone(), &mut scope)?;
                 }
                 GlobalDirective::Extend(mut extend) => {
-                    Self::relative_path_to_absolute_path(scope.clone(), &mut extend.path)?;
+                    Self::relative_path_to_absolute_path(
+                        scope.clone(),
+                        module_path.clone(),
+                        &mut extend.path,
+                    )?;
                     extend_directives.push(extend);
                 }
                 other => other_directives.push(Spanned::new(other, span)),
