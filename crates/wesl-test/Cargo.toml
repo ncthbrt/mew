@@ -17,4 +17,5 @@ wesl-resolve = { path = '../wesl-resolve' }
 wesl-types = { path = '../wesl-types' }
 wesl-mangle = { path = '../wesl-mangle' }
 wesl-flatten = { path = '../wesl-flatten' }
+wesl-dealias = { path = '../wesl-dealias' }
 tokio = { version="1.40.0", features=["macros", "rt"] }

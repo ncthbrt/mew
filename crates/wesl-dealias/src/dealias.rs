@@ -1,4 +1,7 @@
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    fmt::{self, Display, Formatter},
+};
 
 use wesl_parse::{
     span::Spanned,
@@ -9,15 +12,44 @@ use wesl_parse::{
     },
 };
 use wesl_types::CompilerPass;
-pub struct Dealias;
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 struct AliasPath(im::Vector<PathPart>);
 
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Default)]
+pub struct Dealiaser;
+
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 struct ModulePath(im::Vector<PathPart>);
 
-impl Dealias {
+impl AliasPath {
+    fn normalize(&mut self) {
+        for p in self.0.iter_mut() {
+            if let Some(t) = p.template_args.as_ref() {
+                if t.is_empty() {
+                    p.template_args = None;
+                }
+            }
+        }
+    }
+}
+
+impl Display for AliasPath {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            &self
+                .0
+                .iter()
+                .map(|x| format!("{}", x))
+                .collect::<Vec<String>>()
+                .join("::")
+        )
+    }
+}
+
+impl Dealiaser {
     fn add_alias_to_cache(
         mut module_path: ModulePath,
         alias: &Alias,
@@ -27,8 +59,10 @@ impl Dealias {
             name: alias.name.clone(),
             template_args: None,
         });
-        let alias_path = AliasPath(module_path.0.iter().cloned().collect());
-        let target = AliasPath(alias.typ.path.value.iter().cloned().collect());
+        let mut alias_path = AliasPath(module_path.0.iter().cloned().collect());
+        let mut target = AliasPath(alias.typ.path.value.iter().cloned().collect());
+        alias_path.normalize();
+        target.normalize();
         cache.insert(alias_path, target);
     }
 
@@ -312,11 +346,13 @@ impl Dealias {
         mutable_path: &mut Spanned<Vec<PathPart>>,
         cache: &HashMap<AliasPath, AliasPath>,
     ) -> Result<(), wesl_types::CompilerPassError> {
-        let path: im::Vector<PathPart> = mutable_path.value.clone().into();
-        if let Some(path) = cache.get(&AliasPath(path)) {
+        let mut path = AliasPath(mutable_path.value.clone().into());
+        path.normalize();
+        if let Some(new_path) = cache.get(&path) {
             mutable_path.value.clear();
-            mutable_path.value.extend(path.0.iter().cloned());
+            mutable_path.value.extend(new_path.0.iter().cloned());
         };
+
         Ok(())
     }
 
@@ -433,7 +469,7 @@ impl Dealias {
     }
 }
 
-impl CompilerPass for Dealias {
+impl CompilerPass for Dealiaser {
     fn apply_mut(
         &mut self,
         translation_unit: &mut wesl_parse::syntax::TranslationUnit,

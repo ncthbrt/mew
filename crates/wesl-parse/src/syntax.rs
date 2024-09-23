@@ -356,7 +356,6 @@ pub struct FunctionCallExpression {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-
 pub struct PathPart {
     pub name: S<String>,
     pub template_args: Option<Vec<S<TemplateArg>>>,

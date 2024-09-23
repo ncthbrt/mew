@@ -15,7 +15,7 @@ impl<T: std::hash::Hash> std::hash::Hash for Spanned<T> {
     }
 }
 
-impl<T: PartialEq> PartialEq for Spanned<T> {
+impl<T: Eq> PartialEq for Spanned<T> {
     fn eq(&self, other: &Self) -> bool {
         self.value == other.value
     }

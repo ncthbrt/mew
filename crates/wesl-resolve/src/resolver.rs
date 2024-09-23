@@ -580,7 +580,7 @@ impl Resolver {
     }
 
     fn find_module_and_scope(
-        mut scope: im::HashMap<String, ScopeMember>,
+        scope: im::HashMap<String, ScopeMember>,
         path: &Spanned<Vec<PathPart>>,
     ) -> Result<(Module, im::HashMap<String, ScopeMember>), CompilerPassError> {
         assert!(!path.is_empty());
