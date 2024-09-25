@@ -1,5 +1,8 @@
-use wesl_parse::{span::Spanned, syntax::*};
-use wesl_types::CompilerPass;
+use wesl_parse::{
+    span::Spanned,
+    syntax::{self, *},
+};
+use wesl_types::{CompilerPass, CompilerPassError};
 
 #[derive(Debug, Default, Clone, Copy)]
 struct Specializer;
@@ -43,9 +46,16 @@ impl GenericPath {
 }
 
 impl Specializer {
+    fn specialize_module(
+        module: &mut Module,
+        mut parent_path: SymbolPath,
+    ) -> Result<(), CompilerPassError> {
+        Ok(())
+    }
+
     fn specialize_translation_unit(
-        translation_unit: &mut wesl_parse::syntax::TranslationUnit,
-    ) -> Result<(), wesl_types::CompilerPassError> {
+        translation_unit: &mut TranslationUnit,
+    ) -> Result<(), CompilerPassError> {
         let mut generic_symbols: Vec<Spanned<GlobalDeclaration>> = vec![];
         let mut realised_symbols: Vec<Spanned<GlobalDeclaration>> = vec![];
         for declaration in translation_unit.global_declarations.drain(..) {}
@@ -53,6 +63,8 @@ impl Specializer {
         translation_unit
             .global_declarations
             .append(&mut realised_symbols);
+
+        let symbol_path = SymbolPath::new();
 
         for declaration in translation_unit.global_declarations.iter_mut() {}
 
@@ -63,8 +75,8 @@ impl Specializer {
 impl CompilerPass for Specializer {
     fn apply_mut(
         &mut self,
-        translation_unit: &mut wesl_parse::syntax::TranslationUnit,
-    ) -> Result<(), wesl_types::CompilerPassError> {
+        translation_unit: &mut TranslationUnit,
+    ) -> Result<(), CompilerPassError> {
         Self::specialize_translation_unit(translation_unit)?;
         Ok(())
     }
