@@ -5,7 +5,7 @@ mod My_Lib {
     const x: My_Lib::VertexShader::Types::Camera = My_Lib::VertexShader::Types::Camera();
     
     mod VertexShader {
-        extend Frog;
+        extend My_Lib::VertexShader::Frog;
         
         mod Types {
             struct VertexOutput {

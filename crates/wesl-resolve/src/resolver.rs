@@ -708,7 +708,7 @@ impl Resolver {
         module: &mut Module,
         scope: &mut im::HashMap<String, ScopeMember>,
     ) -> Result<(), CompilerPassError> {
-        let mut other_dirs = vec![];
+        let mut other_dirs: Vec<Spanned<ModuleDirective>> = vec![];
         let mut extend_dirs = vec![];
 
         for dir in module.directives.drain(0..) {
@@ -717,8 +717,13 @@ impl Resolver {
                 ModuleDirective::Use(usage) => {
                     Self::add_usage_to_scope(usage, module_path.clone(), scope)?;
                 }
-                ModuleDirective::Extend(extend) => {
+                ModuleDirective::Extend(mut extend) => {
                     extend_dirs.push(extend.clone());
+                    Self::relative_path_to_absolute_path(
+                        scope.clone(),
+                        module_path.clone(),
+                        &mut extend.path,
+                    )?;
                     other_dirs.push(Spanned::new(ModuleDirective::Extend(extend), span));
                 }
             }
@@ -797,24 +802,6 @@ impl Resolver {
                 .collect(),
         );
 
-        for dir in translation_unit.global_directives.drain(0..) {
-            let span = dir.span();
-            match dir.value {
-                GlobalDirective::Use(usage) => {
-                    Self::add_usage_to_scope(usage, module_path.clone(), &mut scope)?;
-                }
-                GlobalDirective::Extend(extend) => {
-                    extend_directives.push(extend.clone());
-                    other_directives.push(Spanned::new(GlobalDirective::Extend(extend), span));
-                }
-                other => other_directives.push(Spanned::new(other, span)),
-            }
-        }
-
-        translation_unit
-            .global_directives
-            .append(&mut other_directives);
-
         for decl in translation_unit.global_declarations.iter() {
             if let Some(name) = decl.name().as_ref() {
                 scope.insert(
@@ -823,6 +810,28 @@ impl Resolver {
                 );
             }
         }
+
+        for dir in translation_unit.global_directives.drain(0..) {
+            let span = dir.span();
+            match dir.value {
+                GlobalDirective::Use(usage) => {
+                    Self::add_usage_to_scope(usage, module_path.clone(), &mut scope)?;
+                }
+                GlobalDirective::Extend(mut extend) => {
+                    extend_directives.push(extend.clone());
+                    Self::relative_path_to_absolute_path(
+                        scope.clone(),
+                        module_path.clone(),
+                        &mut extend.path,
+                    )?;
+                    other_directives.push(Spanned::new(GlobalDirective::Extend(extend), span));
+                }
+                other => other_directives.push(Spanned::new(other, span)),
+            }
+        }
+        translation_unit
+            .global_directives
+            .append(&mut other_directives);
 
         for extend in extend_directives.iter() {
             Self::add_extension_to_scope(extend, module_path.clone(), &mut scope)?;
