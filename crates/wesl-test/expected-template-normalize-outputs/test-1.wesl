@@ -15,7 +15,7 @@ mod WhatsUp {
 mod My_Lib<My__Lib_A, My__Lib_B, My__Lib_C = Hi> {
     alias Camera = My_Lib<My__Lib_A, My__Lib_B, My__Lib_C = My__Lib_C>::VertexShader<My__Lib_C>::Types::Camera<mat4x4f>;
     
-    const x: My_Lib<My__Lib_A, My__Lib_B, My__Lib_C = My__Lib_C>::VertexShader<My__Lib_B>::E = My_Lib<My__Lib_A, My__Lib_B, My__Lib_C = My__Lib_C>::Camera();
+    const x: My_Lib<My__Lib_A, My__Lib_B, My__Lib_C = My__Lib_C>::VertexShader<My__Lib_B>::E = My_Lib<My__Lib_A, My__Lib_B, My__Lib_C = My__Lib_C>::VertexShader<My__Lib_B>::E();
     
     mod VertexShader<My__Lib_VertexShader_C> {
         mod Types {

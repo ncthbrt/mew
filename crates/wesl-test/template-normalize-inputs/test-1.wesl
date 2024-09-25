@@ -16,7 +16,7 @@ mod WhatsUp {
 
 mod My_Lib<A, B, C = Hi> {
     alias Camera = VertexShader<C>::Types::Camera<mat4x4f>;
-    const x: VertexShader<B>::E = Camera();
+    const x: VertexShader<B>::E = VertexShader<B>::E();
     
     mod VertexShader<C> {
         extend Frog;
