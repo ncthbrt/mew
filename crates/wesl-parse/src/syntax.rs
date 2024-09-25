@@ -223,6 +223,7 @@ pub struct Alias {
 pub struct Struct {
     pub name: S<String>,
     pub members: Vec<S<StructMember>>,
+    pub template_parameters: Vec<S<FormalTemplateParameter>>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]

@@ -136,7 +136,13 @@ impl Display for Struct {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let name = &self.name;
         let members = Indent(self.members.iter().format(",\n"));
-        write!(f, "struct {name} {{\n{members}\n}}")
+        let mut template_params = String::new();
+        if !self.template_parameters.is_empty() {
+            template_params.push('<');
+            template_params.push_str(&self.template_parameters.iter().format(", ").to_string());
+            template_params.push('>');
+        }
+        write!(f, "struct {name}{template_params} {{\n{members}\n}}")
     }
 }
 

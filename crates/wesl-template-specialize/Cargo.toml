@@ -1,0 +1,12 @@
+[package]
+name = "wesl-template-specialize"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+license.workspace = true
+
+[dependencies]
+wesl-parse = { path = '../wesl-parse' }
+wesl-types = { path = '../wesl-types' }
+im = { workspace = true }

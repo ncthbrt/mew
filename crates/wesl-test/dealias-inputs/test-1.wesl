@@ -1,11 +1,8 @@
-extend My_Lib::VertexShader;
-
 mod My_Lib {
     alias Camera = VertexShader::Types::Camera;
     const x: VertexShader::C = Camera();
     
     mod VertexShader {
-        extend Frog;
         
         mod Types {
             struct VertexOutput {
