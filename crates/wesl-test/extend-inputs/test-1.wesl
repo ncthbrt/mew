@@ -34,11 +34,11 @@ mod My_Lib {
         @location(1) color : vec4f
         ) -> Types::VertexOutput {
             use Types::{Uniforms}
-            use My_Lib::x as y;
+            use My_Lib::x as z;
             let uni = Uniforms();
             var output : Types::VertexOutput;
             output.Position = camera.viewProjectionMatrix * uniforms.modelMatrix[instanceIdx] * position;
-            output.fragColor = color / vec4<f32>(y);
+            output.fragColor = color / vec4<f32>(z * y);
             return output;
         }
     }

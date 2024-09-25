@@ -39,7 +39,7 @@ mod My_Lib {
             let uni = My_Lib::VertexShader::Types::Uniforms();
             var output: My_Lib::VertexShader::Types::VertexOutput;
             output.Position = My_Lib::VertexShader::camera.viewProjectionMatrix * My_Lib::VertexShader::uniforms.modelMatrix[instanceIdx] * position;
-            output.fragColor = color / vec4<f32>(My_Lib::x);
+            output.fragColor = color / vec4<f32>(My_Lib::x * My_Lib::VertexShader::y);
             return output;
         }
     }
