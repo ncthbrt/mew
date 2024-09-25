@@ -998,7 +998,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "wesl-template-normalize"
+name = "wesl-specialize"
 version = "0.0.2"
 dependencies = [
  "im",
@@ -1007,7 +1007,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "wesl-template-specialize"
+name = "wesl-template-normalize"
 version = "0.0.2"
 dependencies = [
  "im",
@@ -1026,8 +1026,8 @@ dependencies = [
  "wesl-mangle",
  "wesl-parse",
  "wesl-resolve",
+ "wesl-specialize",
  "wesl-template-normalize",
- "wesl-template-specialize",
  "wesl-types",
 ]
 
@@ -1061,8 +1061,8 @@ dependencies = [
  "wesl-mangle",
  "wesl-parse",
  "wesl-resolve",
+ "wesl-specialize",
  "wesl-template-normalize",
- "wesl-template-specialize",
  "wesl-types",
 ]
 

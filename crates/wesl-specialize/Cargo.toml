@@ -1,5 +1,5 @@
 [package]
-name = "wesl-template-specialize"
+name = "wesl-specialize"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true

@@ -18,6 +18,6 @@ wesl-types = { path = '../wesl-types' }
 wesl-mangle = { path = '../wesl-mangle' }
 wesl-flatten = { path = '../wesl-flatten' }
 wesl-dealias = { path = '../wesl-dealias' }
-wesl-template-specialize = { path = '../wesl-template-specialize' }
+wesl-specialize = { path = '../wesl-specialize' }
 wesl-template-normalize = { path = '../wesl-template-normalize' }
 tokio = { version="1.40.0", features=["macros", "rt"] }
