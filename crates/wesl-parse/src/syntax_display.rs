@@ -437,19 +437,20 @@ impl Display for ExtendDirective {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let attrs = fmt_attrs(&self.attributes, true);
 
-        writeln!(f, "{attrs} extend {};", self.path.iter().format("::"))
+        writeln!(f, "{attrs}extend {};", self.path.iter().format("::"))
     }
 }
 
 impl Display for CompoundStatement {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let attrs = fmt_attrs(&self.attributes, true);
-        let mut directives = format!("{}", Indent(self.directives.iter().format("\n")));
+        let mut directives = format!("{}", self.directives.iter().format("\n"));
         if !directives.is_empty() {
+            directives = format!("{}", Indent(directives));
             directives.push('\n');
         }
         let stmts = Indent(self.statements.iter().format("\n"));
-        write!(f, "{attrs}{{\n{directives}{stmts}\n}}")
+        write!(f, "{attrs}{{\n{}{stmts}\n}}", directives)
     }
 }
 
@@ -652,8 +653,8 @@ impl Display for ModuleMemberDeclaration {
 impl Display for Module {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let attrs = fmt_attrs(&self.attributes, false);
-        let members = Indent(self.members.iter().format("\n\n"));
-        let directives = Indent(self.directives.iter().format("\n"));
+        let members = self.members.iter().format("\n\n");
+        let directives = self.directives.iter().format("\n");
         let mut template_params = String::new();
         if !self.template_parameters.is_empty() {
             template_params.push('<');
@@ -662,12 +663,12 @@ impl Display for Module {
         }
         write!(
             f,
-            "{}{}mod {}{} {{\n{directives}{}\n}}",
+            "{}{}mod {}{} {{\n{}\n}}",
             attrs,
             if attrs.is_empty() { "" } else { " " },
             self.name,
             template_params,
-            members
+            Indent(format!("{}{}", directives, members))
         )
     }
 }

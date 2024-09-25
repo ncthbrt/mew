@@ -1,3 +1,4 @@
+extend My_Lib<Hey, WhatsUp>::VertexShader<Hi>;
 
 
 mod Hey {
@@ -18,6 +19,8 @@ mod My_Lib<My__Lib_A, My__Lib_B, My__Lib_C = Hi> {
     const x: My_Lib<My__Lib_A, My__Lib_B, My__Lib_C = My__Lib_C>::VertexShader<My__Lib_B>::E = My_Lib<My__Lib_A, My__Lib_B, My__Lib_C = My__Lib_C>::VertexShader<My__Lib_B>::E();
     
     mod VertexShader<My__Lib_VertexShader_C> {
+        extend Frog;
+        
         mod Types {
             struct VertexOutput {
                 @builtin(position)

@@ -111,7 +111,9 @@ impl Dealiaser {
                 ModuleMemberDeclaration::Alias(alias) => {
                     Self::add_alias_to_cache(module_path.clone(), &alias, cache);
                 }
-                ModuleMemberDeclaration::Module(mut module) => {
+                ModuleMemberDeclaration::Module(mut module)
+                    if module.template_parameters.is_empty() =>
+                {
                     Self::populate_aliases_from_module(&mut module, module_path.clone(), cache);
                     others.push(Spanned::new(ModuleMemberDeclaration::Module(module), span));
                 }
@@ -135,7 +137,7 @@ impl Dealiaser {
                 GlobalDeclaration::Alias(alias) => {
                     Self::add_alias_to_cache(module_path.clone(), &alias, cache);
                 }
-                GlobalDeclaration::Module(mut module) => {
+                GlobalDeclaration::Module(mut module) if module.template_parameters.is_empty() => {
                     Self::populate_aliases_from_module(&mut module, module_path.clone(), cache);
                     others.push(Spanned::new(GlobalDeclaration::Module(module), span));
                 }
