@@ -41,7 +41,7 @@ impl Resolver {
         module_path: ModulePath,
         mut scope: im::HashMap<String, ScopeMember>,
     ) -> Result<(), CompilerPassError> {
-        for CompoundDirective::Use(usage) in statement.directives.drain(0..).map(|x| x.value) {
+        for CompoundDirective::Use(usage) in statement.directives.drain(..).map(|x| x.value) {
             Self::add_usage_to_scope(usage, module_path.clone(), &mut scope)?;
         }
         for c in statement.statements.iter_mut() {
@@ -128,7 +128,7 @@ impl Resolver {
                 }
             }
             Statement::Loop(l) => {
-                for usage in l.body.directives.drain(0..) {
+                for usage in l.body.directives.drain(..) {
                     let CompoundDirective::Use(usage) = usage.value;
                     Self::add_usage_to_scope(usage, module_path.clone(), &mut scope)?;
                 }
@@ -149,7 +149,7 @@ impl Resolver {
                 }
                 if let Some(cont) = l.continuing.as_mut() {
                     // Unfortunate asymmetry (and redundant work) AGAIN as the break_if expr is in the same scope
-                    for usage in cont.body.directives.drain(0..) {
+                    for usage in cont.body.directives.drain(..) {
                         let CompoundDirective::Use(usage) = usage.value;
                         Self::add_usage_to_scope(usage, module_path.clone(), &mut scope)?;
                     }
@@ -711,7 +711,7 @@ impl Resolver {
         let mut other_dirs: Vec<Spanned<ModuleDirective>> = vec![];
         let mut extend_dirs = vec![];
 
-        for dir in module.directives.drain(0..) {
+        for dir in module.directives.drain(..) {
             let span = dir.span();
             match dir.into_inner() {
                 ModuleDirective::Use(usage) => {
@@ -751,7 +751,7 @@ impl Resolver {
         let parent_other_module_scope = module_scope.clone();
         Self::module_to_absolute_path(&mut module, ModulePath(im::Vector::new()), module_scope)?;
 
-        for member in module.members.drain(0..) {
+        for member in module.members.drain(..) {
             if let Some(name) = member.name() {
                 scope.insert(
                     name.value,
@@ -764,7 +764,7 @@ impl Resolver {
             }
         }
 
-        for directive in module.directives.drain(0..) {
+        for directive in module.directives.drain(..) {
             match directive.into_inner() {
                 ModuleDirective::Use(_) => {
                     // DO NOTHING
@@ -811,7 +811,7 @@ impl Resolver {
             }
         }
 
-        for dir in translation_unit.global_directives.drain(0..) {
+        for dir in translation_unit.global_directives.drain(..) {
             let span = dir.span();
             match dir.value {
                 GlobalDirective::Use(usage) => {

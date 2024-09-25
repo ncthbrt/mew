@@ -105,7 +105,7 @@ impl Dealiaser {
         });
 
         let mut others = vec![];
-        for decl in module.members.drain(0..) {
+        for decl in module.members.drain(..) {
             let span = decl.span();
             match decl.value {
                 ModuleMemberDeclaration::Alias(alias) => {
@@ -131,7 +131,7 @@ impl Dealiaser {
     ) -> Result<(), wesl_types::CompilerPassError> {
         let module_path = ModulePath(im::Vector::new());
         let mut others = vec![];
-        for decl in translation_unit.global_declarations.drain(0..) {
+        for decl in translation_unit.global_declarations.drain(..) {
             let span = decl.span();
             match decl.value {
                 GlobalDeclaration::Alias(alias) => {

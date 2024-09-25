@@ -62,7 +62,7 @@ impl DeclarationStatement {
 
 impl CompoundStatement {
     pub fn construct_scope_tree(&mut self) {
-        let mut queue: VecDeque<S<Statement>> = self.statements.drain(0..).collect();
+        let mut queue: VecDeque<S<Statement>> = self.statements.drain(..).collect();
         while let Some(statement) = queue.pop_front() {
             let span = statement.span();
             match statement.value {
@@ -88,6 +88,17 @@ impl ModuleMemberDeclaration {
             _ => None,
         }
     }
+    pub fn template_parameters(&self) -> Vec<S<FormalTemplateParameter>> {
+        match self {
+            ModuleMemberDeclaration::Struct(s) => s.template_parameters.clone(),
+            ModuleMemberDeclaration::Function(f) => f.template_parameters.clone(),
+            ModuleMemberDeclaration::Module(m) => m.template_parameters.clone(),
+            ModuleMemberDeclaration::Declaration(_) => vec![],
+            ModuleMemberDeclaration::Alias(_) => vec![],
+            ModuleMemberDeclaration::Void => vec![],
+            ModuleMemberDeclaration::ConstAssert(_) => vec![],
+        }
+    }
 }
 
 impl GlobalDeclaration {
@@ -99,6 +110,17 @@ impl GlobalDeclaration {
             GlobalDeclaration::Function(f) => Some(f.name.clone()),
             GlobalDeclaration::Module(m) => Some(m.name.clone()),
             _ => None,
+        }
+    }
+    pub fn template_parameters(&self) -> Vec<S<FormalTemplateParameter>> {
+        match self {
+            GlobalDeclaration::Struct(s) => s.template_parameters.clone(),
+            GlobalDeclaration::Function(f) => f.template_parameters.clone(),
+            GlobalDeclaration::Module(m) => m.template_parameters.clone(),
+            GlobalDeclaration::Declaration(_) => vec![],
+            GlobalDeclaration::Alias(_) => vec![],
+            GlobalDeclaration::Void => vec![],
+            GlobalDeclaration::ConstAssert(_) => vec![],
         }
     }
 }
