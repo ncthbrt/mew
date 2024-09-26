@@ -36,72 +36,108 @@ impl Usages {
     }
 }
 
-type SymbolDeclarations = HashMap<SymbolPath, Member>;
+type SymbolDeclarations = HashMap<SymbolPath, OwnedMember>;
 
 #[derive(Debug, Clone, PartialEq, Hash)]
-enum Member {
+enum OwnedMember {
     Global(Spanned<GlobalDeclaration>),
     Module(Spanned<ModuleMemberDeclaration>),
 }
 
-impl Into<Spanned<GlobalDeclaration>> for Member {
-    fn into(self) -> Spanned<GlobalDeclaration> {
-        match self {
-            Member::Global(spanned) => spanned,
-            Member::Module(Spanned { value, span }) => Spanned::new(value.into(), span),
-        }
-    }
+#[derive(Debug, PartialEq, Hash)]
+enum BorrowedMember<'a> {
+    Global(&'a mut Spanned<GlobalDeclaration>),
+    Module(&'a mut Spanned<ModuleMemberDeclaration>),
 }
 
-impl Into<Spanned<ModuleMemberDeclaration>> for Member {
-    fn into(self) -> Spanned<ModuleMemberDeclaration> {
-        match self {
-            Member::Module(spanned) => spanned,
-            Member::Global(Spanned { value, span }) => Spanned::new(value.into(), span),
-        }
-    }
-}
+type SymbolMap = HashMap<SymbolPath, OwnedMember>;
 
-enum Parent<'a> {
-    TranslationUnit(&'a mut TranslationUnit),
-    Module(&'a mut Module),
-}
-
-impl<'a> Parent<'a> {
-    fn add_member(&'a mut self, member: Member) {
+impl<'a> BorrowedMember<'a> {
+    fn collect_usages(&self, usages: &mut Usages) -> Result<(), CompilerPassError> {
         match self {
-            Parent::TranslationUnit(t) => {
-                t.global_declarations.push(member.into());
-            }
-            Parent::Module(m) => {
-                m.members.push(member.into());
+            BorrowedMember::Global(decl) => Self::collect_usages_from_global_decl(decl, usages)?,
+            BorrowedMember::Module(decl) => {
+                Self::collect_usages_from_module_member_decl(decl, usages)?
             }
         }
+        Ok(())
     }
 
-    fn find_child(&mut self, name: &str) -> Option<&'a mut Member> {
-        match self {
-            Parent::TranslationUnit(x) => None,
-            Parent::Module(x) => None,
+    fn collect_usages_from_global_decl(
+        decl: &GlobalDeclaration,
+        usages: &mut Usages,
+    ) -> Result<(), CompilerPassError> {
+        match decl {
+            GlobalDeclaration::Void => {}
+            GlobalDeclaration::Declaration(declaration) => {
+                Self::collect_usages_from_declaration(declaration, usages)?
+            }
+            GlobalDeclaration::Alias(alias) => Self::collect_usages_from_alias(alias, usages)?,
+            GlobalDeclaration::Struct(strct) => Self::collect_usages_from_struct(strct, usages)?,
+            GlobalDeclaration::Function(function) => {
+                Self::collect_usages_from_function(function, usages)?
+            }
+            GlobalDeclaration::ConstAssert(const_assert) => {
+                Self::collect_usages_from_const_assert(const_assert, usages)?
+            }
+            GlobalDeclaration::Module(module) => {
+                // We're not recursing here
+                for arg in module
+                    .attributes
+                    .iter()
+                    .map(|x| x.arguments.iter().flatten())
+                    .flatten()
+                {
+                    Self::collect_usages_from_expression(&arg, usages)?;
+                }
+            }
         }
+        Ok(())
     }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-struct SymbolPath {
-    parent: ConcreteSymbolPath,
-    name: Spanned<String>,
-}
 
-impl Specializer {
+    fn collect_usages_from_module_member_decl(
+        decl: &ModuleMemberDeclaration,
+        usages: &mut Usages,
+    ) -> Result<(), CompilerPassError> {
+        match decl {
+            ModuleMemberDeclaration::Void => {}
+            ModuleMemberDeclaration::Declaration(declaration) => {
+                Self::collect_usages_from_declaration(declaration, usages)?
+            }
+            ModuleMemberDeclaration::Alias(alias) => {
+                Self::collect_usages_from_alias(alias, usages)?
+            }
+            ModuleMemberDeclaration::Struct(strct) => {
+                Self::collect_usages_from_struct(strct, usages)?
+            }
+            ModuleMemberDeclaration::Function(function) => {
+                Self::collect_usages_from_function(function, usages)?
+            }
+            ModuleMemberDeclaration::ConstAssert(const_assert) => {
+                Self::collect_usages_from_const_assert(const_assert, usages)?
+            }
+            ModuleMemberDeclaration::Module(module) => {
+                for arg in module
+                    .attributes
+                    .iter()
+                    .map(|x| x.arguments.iter().flatten())
+                    .flatten()
+                {
+                    Self::collect_usages_from_expression(&arg, usages)?;
+                }
+                // We're not recursing here
+            }
+        }
+        Ok(())
+    }
+
     fn collect_usages_from_struct(
         strct: &Struct,
         usages: &mut Usages,
-        alias_cache: &mut AliasCache,
-        template_declarations: &mut SymbolDeclarations,
     ) -> Result<(), CompilerPassError> {
         assert!(strct.template_parameters.is_empty());
         for member in strct.members.iter() {
-            Self::collect_usages_from_typ(&member.typ, usages, alias_cache, template_declarations)?;
+            Self::collect_usages_from_typ(&member.typ, usages)?;
         }
         for arg in strct
             .members
@@ -111,7 +147,7 @@ impl Specializer {
             .map(|x| x.arguments.iter().flatten())
             .flatten()
         {
-            Self::collect_usages_from_expression(arg, usages, alias_cache, template_declarations)?;
+            Self::collect_usages_from_expression(arg, usages)?;
         }
         Ok(())
     }
@@ -119,8 +155,6 @@ impl Specializer {
     fn collect_usages_from_function(
         function: &Function,
         usages: &mut Usages,
-        alias_cache: &mut AliasCache,
-        template_declarations: &mut SymbolDeclarations,
     ) -> Result<(), CompilerPassError> {
         assert!(function.template_parameters.is_empty());
         for attr in function
@@ -136,51 +170,32 @@ impl Specializer {
             )
         {
             for arg in attr.arguments.iter().flatten() {
-                Self::collect_usages_from_expression(
-                    &arg.as_ref(),
-                    usages,
-                    alias_cache,
-                    template_declarations,
-                )?;
+                Self::collect_usages_from_expression(&arg.as_ref(), usages)?;
             }
         }
         for param in function.parameters.iter() {
-            Self::collect_usages_from_typ(&param.typ, usages, alias_cache, template_declarations)?;
+            Self::collect_usages_from_typ(&param.typ, usages)?;
         }
 
-        Self::collect_usages_from_compound_statement(
-            &function.body,
-            usages,
-            alias_cache,
-            template_declarations,
-        )?;
+        Self::collect_usages_from_compound_statement(&function.body, usages)?;
         Ok(())
     }
 
     fn collect_usages_from_typ(
         typ: &TypeExpression,
         usages: &mut Usages,
-        alias_cache: &mut AliasCache,
-        template_declarations: &mut SymbolDeclarations,
     ) -> Result<(), CompilerPassError> {
-        Self::collect_usages_from_path(&typ.path, usages, alias_cache, template_declarations)?;
+        Self::collect_usages_from_path(&typ.path, usages)?;
         Ok(())
     }
 
     fn collect_usages_from_path(
         path: &Vec<PathPart>,
         usages: &mut Usages,
-        alias_cache: &mut AliasCache,
-        template_declarations: &mut SymbolDeclarations,
     ) -> Result<(), CompilerPassError> {
         for part in path.iter() {
             for arg in part.template_args.iter().flatten() {
-                Self::collect_usages_from_expression(
-                    &arg.expression,
-                    usages,
-                    alias_cache,
-                    template_declarations,
-                )?;
+                Self::collect_usages_from_expression(&arg.expression, usages)?;
             }
         }
         usages.insert(path.clone().into());
@@ -190,32 +205,20 @@ impl Specializer {
     fn collect_usages_from_declaration(
         declaration: &Declaration,
         usages: &mut Usages,
-        alias_cache: &mut AliasCache,
-        template_declarations: &mut SymbolDeclarations,
     ) -> Result<(), CompilerPassError> {
         assert!(declaration.template_parameters.is_empty());
         for attribute in declaration.attributes.iter() {
             for arg in attribute.arguments.iter().flatten() {
-                Self::collect_usages_from_expression(
-                    arg,
-                    usages,
-                    alias_cache,
-                    template_declarations,
-                )?;
+                Self::collect_usages_from_expression(arg, usages)?;
             }
         }
 
         if let Some(typ) = declaration.typ.as_ref() {
-            Self::collect_usages_from_typ(typ, usages, alias_cache, template_declarations)?;
+            Self::collect_usages_from_typ(typ, usages)?;
         }
 
         if let Some(init) = declaration.initializer.as_ref() {
-            Self::collect_usages_from_expression(
-                init.as_ref(),
-                usages,
-                alias_cache,
-                template_declarations,
-            )?;
+            Self::collect_usages_from_expression(init.as_ref(), usages)?;
         }
         Ok(())
     }
@@ -223,165 +226,84 @@ impl Specializer {
     fn collect_usages_from_alias(
         alias: &Alias,
         usages: &mut Usages,
-        alias_cache: &mut AliasCache,
-        template_declarations: &mut SymbolDeclarations,
     ) -> Result<(), CompilerPassError> {
         assert!(alias.template_parameters.is_empty());
-        Self::collect_usages_from_typ(&alias.typ, usages, alias_cache, template_declarations)?;
+        Self::collect_usages_from_typ(&alias.typ, usages)?;
         Ok(())
     }
 
     fn collect_usages_from_const_assert(
         const_assert: &ConstAssert,
         usages: &mut Usages,
-        alias_cache: &mut AliasCache,
-        template_declarations: &mut SymbolDeclarations,
     ) -> Result<(), CompilerPassError> {
         assert!(const_assert.template_parameters.is_empty());
-        Self::collect_usages_from_expression(
-            &const_assert.expression,
-            usages,
-            alias_cache,
-            template_declarations,
-        )?;
+        Self::collect_usages_from_expression(&const_assert.expression, usages)?;
         Ok(())
     }
 
     fn collect_usages_from_expression(
         expression: &Expression,
         usages: &mut Usages,
-        alias_cache: &mut AliasCache,
-        template_declarations: &mut SymbolDeclarations,
     ) -> Result<(), CompilerPassError> {
         match expression {
             Expression::Literal(_) => Ok(()),
-            Expression::Parenthesized(spanned) => Self::collect_usages_from_expression(
-                &spanned,
-                usages,
-                alias_cache,
-                template_declarations,
-            ),
+            Expression::Parenthesized(spanned) => {
+                Self::collect_usages_from_expression(&spanned, usages)
+            }
             Expression::NamedComponent(named_component_expression) => {
-                Self::collect_usages_from_expression(
-                    &named_component_expression.base,
-                    usages,
-                    alias_cache,
-                    template_declarations,
-                )?;
+                Self::collect_usages_from_expression(&named_component_expression.base, usages)?;
                 Ok(())
             }
             Expression::Indexing(indexing_expression) => {
-                Self::collect_usages_from_expression(
-                    &indexing_expression.base,
-                    usages,
-                    alias_cache,
-                    template_declarations,
-                )?;
-                Self::collect_usages_from_expression(
-                    &indexing_expression.index,
-                    usages,
-                    alias_cache,
-                    template_declarations,
-                )?;
+                Self::collect_usages_from_expression(&indexing_expression.base, usages)?;
+                Self::collect_usages_from_expression(&indexing_expression.index, usages)?;
                 Ok(())
             }
-            Expression::Unary(unary_expression) => Self::collect_usages_from_expression(
-                &unary_expression.operand,
-                usages,
-                alias_cache,
-                template_declarations,
-            ),
+            Expression::Unary(unary_expression) => {
+                Self::collect_usages_from_expression(&unary_expression.operand, usages)
+            }
             Expression::Binary(binary_expression) => {
-                Self::collect_usages_from_expression(
-                    &binary_expression.left,
-                    usages,
-                    alias_cache,
-                    template_declarations,
-                )?;
+                Self::collect_usages_from_expression(&binary_expression.left, usages)?;
 
-                Self::collect_usages_from_expression(
-                    &binary_expression.right,
-                    usages,
-                    alias_cache,
-                    template_declarations,
-                )?;
+                Self::collect_usages_from_expression(&binary_expression.right, usages)?;
                 Ok(())
             }
             Expression::FunctionCall(function_call_expression) => {
-                Self::collect_usages_from_path(
-                    &function_call_expression.path,
-                    usages,
-                    alias_cache,
-                    template_declarations,
-                )?;
+                Self::collect_usages_from_path(&function_call_expression.path, usages)?;
                 for arg in function_call_expression.arguments.iter() {
-                    Self::collect_usages_from_expression(
-                        &arg,
-                        usages,
-                        alias_cache,
-                        template_declarations,
-                    )?;
+                    Self::collect_usages_from_expression(&arg, usages)?;
                 }
                 Ok(())
             }
-            Expression::Identifier(identifier_expression) => Self::collect_usages_from_path(
-                &identifier_expression.path,
-                usages,
-                alias_cache,
-                template_declarations,
-            ),
-            Expression::Type(type_expression) => Self::collect_usages_from_typ(
-                type_expression,
-                usages,
-                alias_cache,
-                template_declarations,
-            ),
+            Expression::Identifier(identifier_expression) => {
+                Self::collect_usages_from_path(&identifier_expression.path, usages)
+            }
+            Expression::Type(type_expression) => {
+                Self::collect_usages_from_typ(type_expression, usages)
+            }
         }
     }
 
     fn collect_usages_from_statement(
         statement: &Statement,
         usages: &mut Usages,
-        alias_cache: &mut AliasCache,
-        template_declarations: &mut SymbolDeclarations,
     ) -> Result<(), CompilerPassError> {
         match statement {
             Statement::Void => Ok(()),
             Statement::Compound(compound_statement) => {
-                Self::collect_usages_from_compound_statement(
-                    compound_statement,
-                    usages,
-                    alias_cache,
-                    template_declarations,
-                )
+                Self::collect_usages_from_compound_statement(compound_statement, usages)
             }
             Statement::Assignment(assignment_statement) => {
-                Self::collect_usages_from_expression(
-                    &assignment_statement.lhs,
-                    usages,
-                    alias_cache,
-                    template_declarations,
-                )?;
-                Self::collect_usages_from_expression(
-                    &assignment_statement.rhs,
-                    usages,
-                    alias_cache,
-                    template_declarations,
-                )?;
+                Self::collect_usages_from_expression(&assignment_statement.lhs, usages)?;
+                Self::collect_usages_from_expression(&assignment_statement.rhs, usages)?;
                 Ok(())
             }
-            Statement::Increment(expression) => Self::collect_usages_from_expression(
-                expression,
-                usages,
-                alias_cache,
-                template_declarations,
-            ),
-            Statement::Decrement(expression) => Self::collect_usages_from_expression(
-                expression,
-                usages,
-                alias_cache,
-                template_declarations,
-            ),
+            Statement::Increment(expression) => {
+                Self::collect_usages_from_expression(expression, usages)
+            }
+            Statement::Decrement(expression) => {
+                Self::collect_usages_from_expression(expression, usages)
+            }
             Statement::If(if_statement) => {
                 for expr in if_statement
                     .attributes
@@ -389,49 +311,19 @@ impl Specializer {
                     .map(|x| x.arguments.iter().flatten())
                     .flatten()
                 {
-                    Self::collect_usages_from_expression(
-                        expr.as_ref(),
-                        usages,
-                        alias_cache,
-                        template_declarations,
-                    )?;
+                    Self::collect_usages_from_expression(expr.as_ref(), usages)?;
                 }
 
-                Self::collect_usages_from_compound_statement(
-                    &if_statement.if_clause.1,
-                    usages,
-                    alias_cache,
-                    template_declarations,
-                )?;
-                Self::collect_usages_from_expression(
-                    &if_statement.if_clause.0,
-                    usages,
-                    alias_cache,
-                    template_declarations,
-                )?;
+                Self::collect_usages_from_compound_statement(&if_statement.if_clause.1, usages)?;
+                Self::collect_usages_from_expression(&if_statement.if_clause.0, usages)?;
 
                 for elif in if_statement.else_if_clauses.iter() {
-                    Self::collect_usages_from_compound_statement(
-                        &elif.1,
-                        usages,
-                        alias_cache,
-                        template_declarations,
-                    )?;
-                    Self::collect_usages_from_expression(
-                        &elif.0,
-                        usages,
-                        alias_cache,
-                        template_declarations,
-                    )?;
+                    Self::collect_usages_from_compound_statement(&elif.1, usages)?;
+                    Self::collect_usages_from_expression(&elif.0, usages)?;
                 }
 
                 if let Some(els) = if_statement.else_clause.as_ref() {
-                    Self::collect_usages_from_compound_statement(
-                        &els,
-                        usages,
-                        alias_cache,
-                        template_declarations,
-                    )?;
+                    Self::collect_usages_from_compound_statement(&els, usages)?;
                 }
 
                 Ok(())
@@ -444,34 +336,14 @@ impl Specializer {
                     .map(|x| x.arguments.iter().flatten())
                     .flatten()
                 {
-                    Self::collect_usages_from_expression(
-                        &arg,
-                        usages,
-                        alias_cache,
-                        template_declarations,
-                    )?;
+                    Self::collect_usages_from_expression(&arg, usages)?;
                 }
-                Self::collect_usages_from_expression(
-                    &switch_statement.expression,
-                    usages,
-                    alias_cache,
-                    template_declarations,
-                )?;
+                Self::collect_usages_from_expression(&switch_statement.expression, usages)?;
                 for clause in switch_statement.clauses.iter() {
-                    Self::collect_usages_from_compound_statement(
-                        &clause.body,
-                        usages,
-                        alias_cache,
-                        template_declarations,
-                    )?;
+                    Self::collect_usages_from_compound_statement(&clause.body, usages)?;
                     for case_seletor in clause.case_selectors.iter() {
                         if let CaseSelector::Expression(expr) = case_seletor.as_ref() {
-                            Self::collect_usages_from_expression(
-                                expr,
-                                usages,
-                                alias_cache,
-                                template_declarations,
-                            )?;
+                            Self::collect_usages_from_expression(expr, usages)?;
                         }
                     }
                 }
@@ -484,35 +356,15 @@ impl Specializer {
                     .map(|x| x.arguments.iter().flatten())
                     .flatten()
                 {
-                    Self::collect_usages_from_expression(
-                        &arg,
-                        usages,
-                        alias_cache,
-                        template_declarations,
-                    )?;
+                    Self::collect_usages_from_expression(&arg, usages)?;
                 }
 
-                Self::collect_usages_from_compound_statement(
-                    &loop_statement.body,
-                    usages,
-                    alias_cache,
-                    template_declarations,
-                )?;
+                Self::collect_usages_from_compound_statement(&loop_statement.body, usages)?;
 
                 if let Some(continuing) = loop_statement.continuing.as_ref() {
-                    Self::collect_usages_from_compound_statement(
-                        &continuing.body,
-                        usages,
-                        alias_cache,
-                        template_declarations,
-                    )?;
+                    Self::collect_usages_from_compound_statement(&continuing.body, usages)?;
                     if let Some(break_if) = continuing.break_if.as_ref() {
-                        Self::collect_usages_from_expression(
-                            &break_if,
-                            usages,
-                            alias_cache,
-                            template_declarations,
-                        )?;
+                        Self::collect_usages_from_expression(&break_if, usages)?;
                     }
                 }
                 Ok(())
@@ -524,46 +376,21 @@ impl Specializer {
                     .map(|x| x.arguments.iter().flatten())
                     .flatten()
                 {
-                    Self::collect_usages_from_expression(
-                        &arg,
-                        usages,
-                        alias_cache,
-                        template_declarations,
-                    )?;
+                    Self::collect_usages_from_expression(&arg, usages)?;
                 }
 
-                Self::collect_usages_from_compound_statement(
-                    &for_statement.body,
-                    usages,
-                    alias_cache,
-                    template_declarations,
-                )?;
+                Self::collect_usages_from_compound_statement(&for_statement.body, usages)?;
 
                 if let Some(cond) = for_statement.condition.as_ref() {
-                    Self::collect_usages_from_expression(
-                        cond,
-                        usages,
-                        alias_cache,
-                        template_declarations,
-                    )?;
+                    Self::collect_usages_from_expression(cond, usages)?;
                 }
 
                 if let Some(statement) = for_statement.initializer.as_ref() {
-                    Self::collect_usages_from_statement(
-                        statement,
-                        usages,
-                        alias_cache,
-                        template_declarations,
-                    )?;
+                    Self::collect_usages_from_statement(statement, usages)?;
                 }
 
                 if let Some(statement) = for_statement.update.as_ref() {
-                    Self::collect_usages_from_statement(
-                        statement,
-                        usages,
-                        alias_cache,
-                        template_declarations,
-                    )?;
+                    Self::collect_usages_from_statement(statement, usages)?;
                 }
 
                 Ok(())
@@ -575,80 +402,37 @@ impl Specializer {
                     .map(|x| x.arguments.iter().flatten())
                     .flatten()
                 {
-                    Self::collect_usages_from_expression(
-                        &arg,
-                        usages,
-                        alias_cache,
-                        template_declarations,
-                    )?;
+                    Self::collect_usages_from_expression(&arg, usages)?;
                 }
 
-                Self::collect_usages_from_compound_statement(
-                    &while_statement.body,
-                    usages,
-                    alias_cache,
-                    template_declarations,
-                )?;
-                Self::collect_usages_from_expression(
-                    &while_statement.condition,
-                    usages,
-                    alias_cache,
-                    template_declarations,
-                )?;
+                Self::collect_usages_from_compound_statement(&while_statement.body, usages)?;
+                Self::collect_usages_from_expression(&while_statement.condition, usages)?;
                 Ok(())
             }
             Statement::Break => Ok(()),
             Statement::Continue => Ok(()),
             Statement::Return(spanned) => {
                 if let Some(expr) = spanned.as_ref() {
-                    Self::collect_usages_from_expression(
-                        expr,
-                        usages,
-                        alias_cache,
-                        template_declarations,
-                    )
+                    Self::collect_usages_from_expression(expr, usages)
                 } else {
                     Ok(())
                 }
             }
             Statement::Discard => Ok(()),
             Statement::FunctionCall(function_call_expression) => {
-                Self::collect_usages_from_path(
-                    &function_call_expression.path,
-                    usages,
-                    alias_cache,
-                    template_declarations,
-                )?;
+                Self::collect_usages_from_path(&function_call_expression.path, usages)?;
                 for arg in function_call_expression.arguments.iter() {
-                    Self::collect_usages_from_expression(
-                        arg.as_ref(),
-                        usages,
-                        alias_cache,
-                        template_declarations,
-                    )?;
+                    Self::collect_usages_from_expression(arg.as_ref(), usages)?;
                 }
                 Ok(())
             }
-            Statement::ConstAssert(const_assert) => Self::collect_usages_from_const_assert(
-                const_assert,
-                usages,
-                alias_cache,
-                template_declarations,
-            ),
+            Statement::ConstAssert(const_assert) => {
+                Self::collect_usages_from_const_assert(const_assert, usages)
+            }
             Statement::Declaration(declaration_statement) => {
-                Self::collect_usages_from_declaration(
-                    &declaration_statement.declaration,
-                    usages,
-                    alias_cache,
-                    template_declarations,
-                )?;
+                Self::collect_usages_from_declaration(&declaration_statement.declaration, usages)?;
                 for statement in declaration_statement.statements.iter() {
-                    Self::collect_usages_from_statement(
-                        statement,
-                        usages,
-                        alias_cache,
-                        template_declarations,
-                    )?;
+                    Self::collect_usages_from_statement(statement, usages)?;
                 }
                 Ok(())
             }
@@ -658,63 +442,93 @@ impl Specializer {
     fn collect_usages_from_compound_statement(
         compound_statement: &CompoundStatement,
         usages: &mut Usages,
-        alias_cache: &mut AliasCache,
-        template_declarations: &mut SymbolDeclarations,
     ) -> Result<(), CompilerPassError> {
         assert!(compound_statement.directives.is_empty());
         for attribute in compound_statement.attributes.iter() {
             for arg in attribute.arguments.iter().flatten() {
-                Self::collect_usages_from_expression(
-                    arg,
-                    usages,
-                    alias_cache,
-                    template_declarations,
-                )?;
+                Self::collect_usages_from_expression(arg, usages)?;
             }
         }
         for statement in compound_statement.statements.iter() {
-            Self::collect_usages_from_statement(
-                statement.as_ref(),
-                usages,
-                alias_cache,
-                template_declarations,
-            )?;
+            Self::collect_usages_from_statement(statement.as_ref(), usages)?;
         }
         Ok(())
     }
+}
 
-    fn collect_usages_from_translation_unit(
-        translation_unit: &mut TranslationUnit,
-        usages: &mut Usages,
-        alias_cache: &mut AliasCache,
-        template_declarations: &mut SymbolDeclarations,
-    ) -> Result<(), CompilerPassError> {
-        for global_decl in translation_unit.global_declarations.iter() {
-            match global_decl.as_ref() {
-                GlobalDeclaration::Function(function) => {
-                    Self::collect_usages_from_function(
-                        function,
-                        usages,
-                        alias_cache,
-                        template_declarations,
-                    )?;
-                }
-                GlobalDeclaration::ConstAssert(const_assert) => {
-                    Self::collect_usages_from_const_assert(
-                        const_assert,
-                        usages,
-                        alias_cache,
-                        template_declarations,
-                    )?;
-                }
-                _ => {
-                    panic!("INVARIANT FAILURE NO OTHER ELEMENTS SHOULD BE PRESENT AT THIS POINT OF THE ALGORITHM");
-                }
+impl Into<Spanned<GlobalDeclaration>> for OwnedMember {
+    fn into(self) -> Spanned<GlobalDeclaration> {
+        match self {
+            OwnedMember::Global(spanned) => spanned,
+            OwnedMember::Module(Spanned { value, span }) => Spanned::new(value.into(), span),
+        }
+    }
+}
+
+impl Into<Spanned<ModuleMemberDeclaration>> for OwnedMember {
+    fn into(self) -> Spanned<ModuleMemberDeclaration> {
+        match self {
+            OwnedMember::Module(spanned) => spanned,
+            OwnedMember::Global(Spanned { value, span }) => Spanned::new(value.into(), span),
+        }
+    }
+}
+
+enum Parent<'a> {
+    TranslationUnit(&'a mut TranslationUnit),
+    Module(&'a mut Module),
+}
+
+impl<'a> BorrowedMember<'a> {
+    fn try_into_parent(self) -> Result<Parent<'a>, ()> {
+        match self {
+            BorrowedMember::Global(Spanned {
+                span: _,
+                value: GlobalDeclaration::Module(m),
+            }) => Ok(Parent::Module(m)),
+            BorrowedMember::Module(Spanned {
+                span: _,
+                value: ModuleMemberDeclaration::Module(m),
+            }) => Ok(Parent::Module(m)),
+            _ => Err(()),
+        }
+    }
+}
+
+impl<'a> From<&'a mut TranslationUnit> for Parent<'a> {
+    fn from(value: &'a mut TranslationUnit) -> Self {
+        Self::TranslationUnit(value)
+    }
+}
+
+impl<'a> Parent<'a> {
+    fn add_member<'b>(&'b mut self, member: OwnedMember) -> BorrowedMember<'b> {
+        match self {
+            Parent::TranslationUnit(t) => {
+                t.global_declarations.push(member.into());
+                BorrowedMember::Global(t.global_declarations.last_mut().unwrap())
+            }
+            Parent::Module(m) => {
+                m.members.push(member.into());
+                BorrowedMember::Module(m.members.last_mut().unwrap())
             }
         }
-        Ok(())
     }
 
+    fn find_child(&mut self, name: &str) -> Option<BorrowedMember<'a>> {
+        match self {
+            Parent::TranslationUnit(x) => None,
+            Parent::Module(x) => None,
+        }
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct SymbolPath {
+    parent: ConcreteSymbolPath,
+    name: Spanned<String>,
+}
+
+impl Specializer {
     fn is_entry_point(function: &Function) -> bool {
         function
             .attributes
@@ -725,10 +539,10 @@ impl Specializer {
             })
     }
 
-    fn specialize_translation_unit(
-        translation_unit: &mut TranslationUnit,
+    fn specialize_translation_unit<'a>(
+        translation_unit: &'a mut TranslationUnit,
     ) -> Result<(), CompilerPassError> {
-        let mut symbol_map = HashMap::new();
+        let mut symbol_map: SymbolMap = HashMap::new();
         let mut entrypoints: Vec<Spanned<GlobalDeclaration>> = vec![];
 
         let symbol_path = ConcreteSymbolPath::new();
@@ -742,13 +556,16 @@ impl Specializer {
             } else if let GlobalDeclaration::ConstAssert(_) = declaration.as_ref() {
                 entrypoints.push(declaration);
                 continue;
+            } else if let GlobalDeclaration::Alias(_) = declaration.as_ref() {
+                entrypoints.push(declaration);
+                continue;
             }
             symbol_map.insert(
                 SymbolPath {
                     parent: symbol_path.clone(),
                     name: declaration.name().unwrap(),
                 },
-                Member::Global(declaration),
+                OwnedMember::Global(declaration),
             );
         }
 
@@ -758,35 +575,60 @@ impl Specializer {
 
         let mut usages = Usages::new();
         let mut alias_cache = AliasCache::new();
-        Self::collect_usages_from_translation_unit(
-            translation_unit,
-            &mut usages,
-            &mut alias_cache,
-            &mut symbol_map,
-        )?;
-        while let Some(front) = usages.pop() {
-            assert!(front.len() > 0);
-            let mut parent = Parent::TranslationUnit(translation_unit);
-            let last = front.last().unwrap().clone();
-            let mut path = im::Vector::new();
-            'outer: for part in front.take(front.len() - 1) {
-                if let Some(m) = parent.find_child(&part.name) {
-                } else if let Some(mut m) = symbol_map.remove(&SymbolPath {
-                    parent: path.clone(),
-                    name: part.name.clone(),
-                }) {
-                } else {
-                    panic!("THIS CASE SHOULD NEVER BE REACHED. SYMBOLS SHOULD HAVE ALREADY BEEN CHECKED");
-                }
-                match parent {
-                    Parent::TranslationUnit(_) => panic!("THIS CASE SHOULD NEVER BE REACHED"),
-                    Parent::Module(_) => {}
-                }
-                path.push_back(part.clone());
-            }
+        for member in translation_unit.global_declarations.iter_mut() {
+            BorrowedMember::Global(member).collect_usages(&mut usages)?;
+        }
+
+        let mut parent: Parent<'a> = Parent::TranslationUnit(translation_unit);
+
+        while let Some(remaining_path) = usages.pop() {
+            assert!(remaining_path.len() > 0);
+            let current_path = im::Vector::new();
+            Self::specialize(
+                &mut parent,
+                &mut usages,
+                &mut symbol_map,
+                remaining_path,
+                current_path,
+            )?;
         }
 
         Ok(())
+    }
+
+    fn specialize<'a, 'b: 'a>(
+        parent: &'a mut Parent<'b>,
+        usages: &mut Usages,
+        symbol_map: &mut SymbolMap,
+        mut remaining_path: ConcreteSymbolPath,
+        mut current_path: ConcreteSymbolPath,
+    ) -> Result<(), CompilerPassError> {
+        assert!(!remaining_path.is_empty());
+        let part = remaining_path.pop_front().unwrap();
+        let current: BorrowedMember<'a>;
+        if let Some(m) = parent.find_child(&part.name) {
+            current = m;
+        } else if let Some(m) = symbol_map.remove(&SymbolPath {
+            parent: current_path.clone(),
+            name: part.name.clone(),
+        }) {
+            // TODO: Specialize
+            current = parent.add_member(m);
+        } else {
+            return Err(CompilerPassError::UnableToResolvePath(
+                current_path.iter().cloned().collect(),
+            ));
+        }
+        current_path.push_back(part.clone());
+        if remaining_path.is_empty() {
+            return current.collect_usages(usages);
+        } else if let Ok(mut p) = current.try_into_parent() {
+            return Self::specialize(&mut p, usages, symbol_map, current_path, remaining_path);
+        } else {
+            return Err(CompilerPassError::UnableToResolvePath(
+                current_path.iter().cloned().collect(),
+            ));
+        }
     }
 }
 

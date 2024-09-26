@@ -11,6 +11,7 @@ pub mod builtins;
 #[derive(Debug, Clone, PartialEq)]
 pub enum CompilerPassError {
     SymbolNotFound(Vec<PathPart>, Span),
+    UnableToResolvePath(Vec<PathPart>),
     MissingRequiredTemplateArgument(Spanned<FormalTemplateParameter>, Span),
     UnknownTemplateArgument(Span),
     InternalError(InternalCompilerError),
