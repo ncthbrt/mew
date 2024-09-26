@@ -79,8 +79,11 @@ impl<'a> Parent<'a> {
         }
     }
 
-    fn find_member(&'a mut self, name: &str) -> Option<&'a mut Member> {
-        None
+    fn find_child(&mut self, name: &str) -> Option<&'a mut Member> {
+        match self {
+            Parent::TranslationUnit(x) => None,
+            Parent::Module(x) => None,
+        }
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -764,11 +767,22 @@ impl Specializer {
         while let Some(front) = usages.pop() {
             assert!(front.len() > 0);
             let mut parent = Parent::TranslationUnit(translation_unit);
-            let mut path = im::Vector::new();
             let last = front.last().unwrap().clone();
-            let mut current: Option<Member> = None;
-            for part in front.take(path.len() - 1) {
-                path.push_back(part);
+            let mut path = im::Vector::new();
+            'outer: for part in front.take(front.len() - 1) {
+                if let Some(m) = parent.find_child(&part.name) {
+                } else if let Some(mut m) = symbol_map.remove(&SymbolPath {
+                    parent: path.clone(),
+                    name: part.name.clone(),
+                }) {
+                } else {
+                    panic!("THIS CASE SHOULD NEVER BE REACHED. SYMBOLS SHOULD HAVE ALREADY BEEN CHECKED");
+                }
+                match parent {
+                    Parent::TranslationUnit(_) => panic!("THIS CASE SHOULD NEVER BE REACHED"),
+                    Parent::Module(_) => {}
+                }
+                path.push_back(part.clone());
             }
         }
 
