@@ -421,8 +421,8 @@ StructMember: StructMember = {
 };
 
 AliasDecl: Alias = {
-    "alias" <name: S<Ident>> "=" <typ: S<TypeSpecifier>> => Alias {
-        name, typ
+    "alias" <name: S<Ident>> <templates: TemplateParameters?> "=" <typ: S<TypeSpecifier>> => Alias {
+        name, typ, template_parameters: templates.unwrap_or_default()
     },
 };
 
@@ -459,7 +459,7 @@ VariableOrValueStatement: Declaration = {
         decl
     },
     <l:@L>"let"<r:@R> <ident: OptionallyTypedIdent> "=" <initializer: S<Expression>> => {
-        let (name, typ) = ident;
+        let (name, _, typ) = ident;
         Declaration {
             attributes: Vec::new(),
             kind: S::new(DeclarationKind::Let, l..r),
@@ -467,10 +467,11 @@ VariableOrValueStatement: Declaration = {
             name,
             typ,
             initializer: Some(initializer),
+            template_parameters: vec![]
         }
     },
     <l:@L>"const"<r:@R> <ident: OptionallyTypedIdent> "=" <initializer: S<Expression>> => {
-        let (name, typ) = ident;
+        let (name, _, typ) = ident;
         Declaration {
             attributes: Vec::new(),
             kind: S::new(DeclarationKind::Const, l..r),
@@ -478,13 +479,14 @@ VariableOrValueStatement: Declaration = {
             name,
             typ,
             initializer: Some(initializer),
+            template_parameters: vec![]
         }
     },
 };
 
 VariableDecl: Declaration = {
     <l:@L>"var"<r:@R> /* DisambiguateTemplate */ <template_args: TemplateList?> <ident: OptionallyTypedIdent> => {
-        let (name, typ) = ident;
+        let (name, templates, typ) = ident;
         Declaration {
             attributes: Vec::new(),
             kind: S::new(DeclarationKind::Var, l..r),
@@ -492,12 +494,13 @@ VariableDecl: Declaration = {
             name,
             typ,
             initializer: None,
+            template_parameters: templates.unwrap_or_default()
         }
     },
 };
 
-OptionallyTypedIdent: (S<String>, Option<S<TypeExpression>>) = {
-    <S<Ident>> <(":" <S<TypeSpecifier>>)?>,
+OptionallyTypedIdent: (S<String>, Option<Vec<S<FormalTemplateParameter>>>, Option<S<TypeExpression>>, ) = {
+    <S<Ident>> <TemplateParameters?> <(":" <S<TypeSpecifier>>)?>,
 };
 
 GlobalVariableDecl: Declaration = {
@@ -511,21 +514,7 @@ GlobalVariableDecl: Declaration = {
 // BEGIN WESL MODIFICATIONS
 ModuleValueDecl: Declaration = {
     <l: @L>"const"<r: @R> <ident: OptionallyTypedIdent> "=" <initializer: S<Expression>> => {
-        let (name, typ) = ident;
-        Declaration {
-            attributes: Vec::new(),
-            kind: S::new(DeclarationKind::Const, l..r),
-            template_args: None,
-            name,
-            typ,
-            initializer: Some(initializer)
-        }
-    },
-};
-
-GlobalValueDecl: Declaration = {
-    <l: @L>"const"<r: @R>  <ident: OptionallyTypedIdent> "=" <initializer: S<Expression>> => {
-        let (name, typ) = ident;
+        let (name, template_parameters, typ) = ident;
         Declaration {
             attributes: Vec::new(),
             kind: S::new(DeclarationKind::Const, l..r),
@@ -533,10 +522,26 @@ GlobalValueDecl: Declaration = {
             name,
             typ,
             initializer: Some(initializer),
+            template_parameters: template_parameters.unwrap_or_default()
+        }
+    },
+};
+
+GlobalValueDecl: Declaration = {
+    <l: @L>"const"<r: @R>  <ident: OptionallyTypedIdent> "=" <initializer: S<Expression>> => {
+        let (name, template_parameters, typ) = ident;
+        Declaration {
+            attributes: Vec::new(),
+            kind: S::new(DeclarationKind::Const, l..r),
+            template_args: None,
+            name,
+            typ,
+            initializer: Some(initializer),
+            template_parameters: template_parameters.unwrap_or_default()
         }
     },
     <attributes: S<Attribute>*> <l: @L>"override"<r: @R> <ident: OptionallyTypedIdent> <initializer: ("=" <S<Expression>>)?> => {
-        let (name, typ) = ident;
+        let (name, template_parameters, typ) = ident;
         Declaration {
             attributes,
             kind: S::new(DeclarationKind::Override, l..r),
@@ -544,6 +549,7 @@ GlobalValueDecl: Declaration = {
             name,
             typ,
             initializer,
+            template_parameters: template_parameters.unwrap_or_default()
         }
     }
 };
@@ -933,7 +939,7 @@ ReturnStatement: Option<S<Expression>> = {
 FuncCallStatement = CallPhrase;
 
 ConstAssertStatement: ConstAssert = {
-    "const_assert" <S<Expression>> => ConstAssert { expression: <> },
+    "const_assert" <templates: TemplateParameters?> <expression: S<Expression>> => ConstAssert { expression, template_parameters: templates.unwrap_or_default() },
 };
 
 Statement: Statement = {

@@ -203,6 +203,7 @@ pub struct Declaration {
     pub name: S<String>,
     pub typ: Option<S<TypeExpression>>,
     pub initializer: Option<S<Expression>>,
+    pub template_parameters: Vec<S<FormalTemplateParameter>>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -217,6 +218,7 @@ pub enum DeclarationKind {
 pub struct Alias {
     pub name: S<String>,
     pub typ: S<TypeExpression>,
+    pub template_parameters: Vec<S<FormalTemplateParameter>>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -259,6 +261,7 @@ pub struct FormalParameter {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ConstAssert {
     pub expression: S<Expression>,
+    pub template_parameters: Vec<S<FormalTemplateParameter>>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]

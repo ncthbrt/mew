@@ -97,7 +97,8 @@ impl Display for Declaration {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let attrs = fmt_attrs(&self.attributes, false);
         let kind = &self.kind;
-        let tplt = fmt_template(&self.template_args);
+        let tplt_args = fmt_template_args(&self.template_args);
+        let tplt_params = fmt_template_params(&self.template_parameters);
         let name = &self.name;
         let typ = self
             .typ
@@ -109,7 +110,10 @@ impl Display for Declaration {
             .as_ref()
             .map(|typ| format!(" = {}", typ))
             .unwrap_or_default();
-        write!(f, "{attrs}{kind}{tplt} {name}{typ}{init};")
+        write!(
+            f,
+            "{attrs}{kind}{tplt_args} {name}{tplt_params}{typ}{init};"
+        )
     }
 }
 
@@ -128,20 +132,26 @@ impl Display for Alias {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let name = &self.name;
         let typ = &self.typ;
-        write!(f, "alias {name} = {typ};")
+        let template_params = fmt_template_params(&self.template_parameters);
+        write!(f, "alias {name}{template_params} = {typ};")
     }
+}
+
+fn fmt_template_params(params: &Vec<S<FormalTemplateParameter>>) -> String {
+    let mut result = String::new();
+    if !params.is_empty() {
+        result.push('<');
+        result.push_str(&params.iter().format(", ").to_string());
+        result.push('>');
+    }
+    result
 }
 
 impl Display for Struct {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let name = &self.name;
         let members = Indent(self.members.iter().format(",\n"));
-        let mut template_params = String::new();
-        if !self.template_parameters.is_empty() {
-            template_params.push('<');
-            template_params.push_str(&self.template_parameters.iter().format(", ").to_string());
-            template_params.push('>');
-        }
+        let template_params = fmt_template_params(&self.template_parameters);
         write!(f, "struct {name}{template_params} {{\n{members}\n}}")
     }
 }
@@ -166,16 +176,11 @@ impl Display for Function {
             .as_ref()
             .map(|typ| format!("-> {ret_attrs}{} ", typ))
             .unwrap_or_default();
-        let mut generic_params = String::new();
-        if !self.template_parameters.is_empty() {
-            generic_params.push('<');
-            generic_params.push_str(&self.template_parameters.iter().format(", ").to_string());
-            generic_params.push('>');
-        }
+        let template_params = fmt_template_params(&self.template_parameters);
         let body = &self.body;
         write!(
             f,
-            "{attrs}fn {name}{generic_params}({params}) {ret_typ}{body}"
+            "{attrs}fn {name}{template_params}({params}) {ret_typ}{body}"
         )
     }
 }
@@ -192,7 +197,8 @@ impl Display for FormalParameter {
 impl Display for ConstAssert {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let expr = &self.expression;
-        write!(f, "const_assert {expr};",)
+        let template_params = fmt_template_params(&self.template_parameters);
+        write!(f, "const_assert{template_params} {expr};",)
     }
 }
 
@@ -346,7 +352,7 @@ impl Display for FunctionCallExpression {
 
 impl Display for PathPart {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{}{}", self.name, fmt_template(&self.template_args))
+        write!(f, "{}{}", self.name, fmt_template_args(&self.template_args))
     }
 }
 
@@ -362,7 +368,7 @@ impl Display for IdentifierExpression {
     }
 }
 
-fn fmt_template(tplt: &Option<Vec<S<TemplateArg>>>) -> String {
+fn fmt_template_args(tplt: &Option<Vec<S<TemplateArg>>>) -> String {
     match tplt {
         Some(tplt) if !tplt.is_empty() => {
             let print = tplt.iter().format(", ");
