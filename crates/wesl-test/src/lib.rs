@@ -1,6 +1,6 @@
 #![cfg_attr(not(test), allow(dead_code, unused_imports))]
 
-use std::path::PathBuf;
+use std::{fs::DirEntry, path::PathBuf};
 use wesl_bundle::{file_system::PhysicalFilesystem, BundleContext, Bundler, BundlerError};
 use wesl_types::{CompilerPass, CompilerPassError};
 
@@ -51,7 +51,11 @@ fn wesl_samples() {
 async fn bundle_wesl_samples() -> Result<(), BundlerError<std::io::Error>> {
     let dir = std::fs::read_dir("wesl-samples").expect("missing wesl-samples");
     let mut entrypoints: Vec<PathBuf> = vec![];
-    for entry in dir {
+    let mut dir_contents = dir.into_iter().collect::<Vec<_>>();
+
+    dir_contents.sort_by_cached_key(|x| x.as_ref().unwrap().file_name());
+
+    for entry in dir_contents {
         let entry = entry.expect("error reading entry");
         let path: std::path::PathBuf = entry.path();
         if path.extension().unwrap() == "wgsl" || path.extension().unwrap() == "wesl" {
@@ -104,7 +108,10 @@ async fn bundle_wesl_samples() -> Result<(), BundlerError<std::io::Error>> {
     )
     .inspect_err(|err| eprintln!("{err}"))
     .expect("parse error");
-    assert_eq!(result_with_root_module, expected_output_module);
+    assert_eq!(
+        format!("{}", result_with_root_module),
+        format!("{}", expected_output_module)
+    );
 
     let expected_output_module = wesl_parse::Parser::parse_str(
         &std::fs::read_to_string(expected_output_without_root_module_location.clone())
@@ -112,7 +119,10 @@ async fn bundle_wesl_samples() -> Result<(), BundlerError<std::io::Error>> {
     )
     .inspect_err(|err| eprintln!("{err}"))
     .expect("parse error");
-    assert_eq!(result_without_root_module, expected_output_module);
+    assert_eq!(
+        format!("{}", result_without_root_module),
+        format!("{}", expected_output_module)
+    );
 
     Ok(())
 }
