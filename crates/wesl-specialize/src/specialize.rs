@@ -46,8 +46,14 @@ enum OwnedMember {
 
 #[derive(Debug, PartialEq, Hash)]
 enum BorrowedMember<'a> {
-    Global(&'a mut Spanned<GlobalDeclaration>),
-    Module(&'a mut Spanned<ModuleMemberDeclaration>),
+    Global {
+        global: &'a mut Spanned<GlobalDeclaration>,
+        is_initialized: bool,
+    },
+    Module {
+        module: &'a mut Spanned<ModuleMemberDeclaration>,
+        is_initialized: bool,
+    },
 }
 
 type SymbolMap = HashMap<SymbolPath, OwnedMember>;
@@ -55,10 +61,14 @@ type SymbolMap = HashMap<SymbolPath, OwnedMember>;
 impl<'a> BorrowedMember<'a> {
     fn collect_usages(&self, usages: &mut Usages) -> Result<(), CompilerPassError> {
         match self {
-            BorrowedMember::Global(decl) => Self::collect_usages_from_global_decl(decl, usages)?,
-            BorrowedMember::Module(decl) => {
-                Self::collect_usages_from_module_member_decl(decl, usages)?
-            }
+            BorrowedMember::Global {
+                global: decl,
+                is_initialized: _,
+            } => Self::collect_usages_from_global_decl(decl, usages)?,
+            BorrowedMember::Module {
+                module: decl,
+                is_initialized: _,
+            } => Self::collect_usages_from_module_member_decl(decl, usages)?,
         }
         Ok(())
     }
@@ -476,20 +486,68 @@ impl Into<Spanned<ModuleMemberDeclaration>> for OwnedMember {
 
 enum Parent<'a> {
     TranslationUnit(&'a mut TranslationUnit),
-    Module(&'a mut Module),
+    Module {
+        module: &'a mut Module,
+        is_initialized: bool,
+    },
+}
+
+fn mangle_expression(expr: &Expression) -> String {
+    let data = format!("{expr}").replace(' ', "").replace('\n', "");
+    let mut result = String::new();
+    for c in data.chars() {
+        if c.is_alphanumeric() {
+            result.push(c);
+        } else {
+            let mut buf = Vec::new();
+            buf.resize(c.len_utf8(), 0b0);
+            let _ = c.encode_utf8(&mut buf);
+            result.push_str("__");
+            for item in buf {
+                let str = item.to_string();
+                result.push_str(&str.len().to_string());
+                result.push_str(&str);
+            }
+        }
+    }
+    result
+}
+
+fn mangle_path_part(path_part: &PathPart) -> String {
+    let name = path_part.name.replace('_', "__");
+    let mut template_args = String::new();
+    for template_arg in path_part.template_args.iter().flatten() {
+        template_args.push('_');
+        mangle_expression(&template_arg.expression);
+    }
+    format!("{name}{template_args}")
 }
 
 impl<'a> BorrowedMember<'a> {
     fn try_into_parent(self) -> Result<Parent<'a>, ()> {
         match self {
-            BorrowedMember::Global(Spanned {
-                span: _,
-                value: GlobalDeclaration::Module(m),
-            }) => Ok(Parent::Module(m)),
-            BorrowedMember::Module(Spanned {
-                span: _,
-                value: ModuleMemberDeclaration::Module(m),
-            }) => Ok(Parent::Module(m)),
+            BorrowedMember::Global {
+                global:
+                    Spanned {
+                        span: _,
+                        value: GlobalDeclaration::Module(m),
+                    },
+                is_initialized,
+            } => Ok(Parent::Module {
+                module: m,
+                is_initialized,
+            }),
+            BorrowedMember::Module {
+                module:
+                    Spanned {
+                        span: _,
+                        value: ModuleMemberDeclaration::Module(m),
+                    },
+                is_initialized,
+            } => Ok(Parent::Module {
+                module: m,
+                is_initialized,
+            }),
             _ => Err(()),
         }
     }
@@ -506,29 +564,59 @@ impl<'a> Parent<'a> {
         match self {
             Parent::TranslationUnit(t) => {
                 t.global_declarations.push(member.into());
-                BorrowedMember::Global(t.global_declarations.last_mut().unwrap())
+                BorrowedMember::Global {
+                    global: t.global_declarations.last_mut().unwrap(),
+                    is_initialized: false,
+                }
             }
-            Parent::Module(m) => {
+            Parent::Module {
+                module: m,
+                is_initialized,
+            } => {
+                assert!(*is_initialized);
                 m.members.push(member.into());
-                BorrowedMember::Module(m.members.last_mut().unwrap())
+                BorrowedMember::Module {
+                    module: m.members.last_mut().unwrap(),
+                    is_initialized: false,
+                }
             }
         }
     }
 
-    fn find_child(&mut self, name: &str) -> Option<BorrowedMember<'a>> {
+    fn find_child<'b>(&'b mut self, path_part: &PathPart) -> Option<BorrowedMember<'b>> {
+        let name = Some(mangle_path_part(path_part));
         match self {
-            Parent::TranslationUnit(x) => None,
-            Parent::Module(x) => None,
+            Parent::TranslationUnit(x) => {
+                for item in x.global_declarations.iter_mut() {
+                    if item.name().map(|x| x.value) == name {
+                        assert!(item.template_parameters().is_empty());
+                        return Some(BorrowedMember::Global {
+                            global: item,
+                            is_initialized: true,
+                        });
+                    }
+                }
+                return None;
+            }
+            Parent::Module {
+                module: x,
+                is_initialized,
+            } => {
+                assert!(*is_initialized);
+                for item in x.members.iter_mut() {
+                    if item.name().map(|x| x.value) == name {
+                        assert!(item.template_parameters().is_empty());
+                        return Some(BorrowedMember::Module {
+                            module: item,
+                            is_initialized: true,
+                        });
+                    }
+                }
+                return None;
+            }
         }
     }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-struct SymbolPath {
-    parent: ConcreteSymbolPath,
-    name: Spanned<String>,
-}
 
-impl Specializer {
     fn is_entry_point(function: &Function) -> bool {
         function
             .attributes
@@ -539,47 +627,94 @@ impl Specializer {
             })
     }
 
+    fn initialize<'b>(
+        &'b mut self,
+        symbol_path: ConcreteSymbolPath,
+        symbol_map: &mut SymbolMap,
+        usages: &mut Usages,
+        alias_cache: &mut AliasCache,
+    ) -> Result<(), CompilerPassError> {
+        match self {
+            Parent::TranslationUnit(t) => {
+                let mut entrypoints = vec![];
+                for declaration in t.global_declarations.drain(..) {
+                    if let GlobalDeclaration::Function(f) = declaration.as_ref() {
+                        if Self::is_entry_point(f) && f.template_parameters.is_empty() {
+                            entrypoints.push(declaration);
+                            continue;
+                        }
+                    } else if let GlobalDeclaration::ConstAssert(_) = declaration.as_ref() {
+                        entrypoints.push(declaration);
+                        continue;
+                    } else if let GlobalDeclaration::Alias(alias) = declaration.as_ref() {
+                        assert!(alias.template_parameters.is_empty());
+                        let mut alias_path = symbol_path.clone();
+                        alias_path.push_back(PathPart {
+                            name: alias.name.clone(),
+                            template_args: None,
+                        });
+                        alias_cache.insert(alias_path, alias.typ.path.iter().cloned().collect());
+                        continue;
+                    }
+                    symbol_map.insert(
+                        SymbolPath {
+                            parent: symbol_path.clone(),
+                            name: declaration.name().unwrap(),
+                        },
+                        OwnedMember::Global(declaration),
+                    );
+                }
+
+                t.global_declarations.append(&mut entrypoints);
+                for member in t.global_declarations.iter_mut() {
+                    let member = BorrowedMember::Global {
+                        global: member,
+                        is_initialized: true,
+                    };
+                    member.collect_usages(usages)?;
+                }
+                Ok(())
+            }
+            Parent::Module {
+                module,
+                is_initialized: false,
+            } => {
+                for declaration in module.members.drain(..) {
+                    symbol_map.insert(
+                        SymbolPath {
+                            parent: symbol_path.clone(),
+                            name: declaration.name().unwrap(),
+                        },
+                        OwnedMember::Module(declaration),
+                    );
+                }
+                Ok(())
+            }
+            _ => Ok(()),
+        }
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct SymbolPath {
+    parent: ConcreteSymbolPath,
+    name: Spanned<String>,
+}
+
+impl Specializer {
     fn specialize_translation_unit<'a>(
         translation_unit: &'a mut TranslationUnit,
     ) -> Result<(), CompilerPassError> {
         let mut symbol_map: SymbolMap = HashMap::new();
-        let mut entrypoints: Vec<Spanned<GlobalDeclaration>> = vec![];
-
-        let symbol_path = ConcreteSymbolPath::new();
-
-        for declaration in translation_unit.global_declarations.drain(..) {
-            if let GlobalDeclaration::Function(f) = declaration.as_ref() {
-                if Self::is_entry_point(f) && f.template_parameters.is_empty() {
-                    entrypoints.push(declaration);
-                    continue;
-                }
-            } else if let GlobalDeclaration::ConstAssert(_) = declaration.as_ref() {
-                entrypoints.push(declaration);
-                continue;
-            } else if let GlobalDeclaration::Alias(_) = declaration.as_ref() {
-                entrypoints.push(declaration);
-                continue;
-            }
-            symbol_map.insert(
-                SymbolPath {
-                    parent: symbol_path.clone(),
-                    name: declaration.name().unwrap(),
-                },
-                OwnedMember::Global(declaration),
-            );
-        }
-
-        translation_unit
-            .global_declarations
-            .append(&mut entrypoints);
-
-        let mut usages = Usages::new();
+        let mut usages: Usages = Usages::new();
         let mut alias_cache = AliasCache::new();
-        for member in translation_unit.global_declarations.iter_mut() {
-            BorrowedMember::Global(member).collect_usages(&mut usages)?;
-        }
 
         let mut parent: Parent<'a> = Parent::TranslationUnit(translation_unit);
+        parent.initialize(
+            im::Vector::new(),
+            &mut symbol_map,
+            &mut usages,
+            &mut alias_cache,
+        )?;
 
         while let Some(remaining_path) = usages.pop() {
             assert!(remaining_path.len() > 0);
@@ -588,6 +723,7 @@ impl Specializer {
                 &mut parent,
                 &mut usages,
                 &mut symbol_map,
+                &mut alias_cache,
                 remaining_path,
                 current_path,
             )?;
@@ -600,19 +736,20 @@ impl Specializer {
         parent: &'a mut Parent<'b>,
         usages: &mut Usages,
         symbol_map: &mut SymbolMap,
+        alias_cache: &mut AliasCache,
         mut remaining_path: ConcreteSymbolPath,
         mut current_path: ConcreteSymbolPath,
     ) -> Result<(), CompilerPassError> {
         assert!(!remaining_path.is_empty());
         let part = remaining_path.pop_front().unwrap();
-        let current: BorrowedMember<'a>;
-        if let Some(m) = parent.find_child(&part.name) {
+        let current;
+        if let Some(m) = parent.find_child(&part) {
             current = m;
         } else if let Some(m) = symbol_map.remove(&SymbolPath {
             parent: current_path.clone(),
             name: part.name.clone(),
         }) {
-            // TODO: Specialize
+            // TODO: Specialize member
             current = parent.add_member(m);
         } else {
             return Err(CompilerPassError::UnableToResolvePath(
@@ -623,7 +760,15 @@ impl Specializer {
         if remaining_path.is_empty() {
             return current.collect_usages(usages);
         } else if let Ok(mut p) = current.try_into_parent() {
-            return Self::specialize(&mut p, usages, symbol_map, current_path, remaining_path);
+            p.initialize(current_path.clone(), symbol_map, usages, alias_cache)?;
+            return Self::specialize(
+                &mut p,
+                usages,
+                symbol_map,
+                alias_cache,
+                current_path,
+                remaining_path,
+            );
         } else {
             return Err(CompilerPassError::UnableToResolvePath(
                 current_path.iter().cloned().collect(),
