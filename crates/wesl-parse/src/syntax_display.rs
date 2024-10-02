@@ -97,7 +97,8 @@ impl Display for Declaration {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let attrs = fmt_attrs(&self.attributes, false);
         let kind = &self.kind;
-        let tplt = fmt_template(&self.template_args);
+        let tplt_args = fmt_template_args(&self.template_args);
+        let tplt_params = fmt_template_params(&self.template_parameters);
         let name = &self.name;
         let typ = self
             .typ
@@ -109,7 +110,11 @@ impl Display for Declaration {
             .as_ref()
             .map(|typ| format!(" = {}", typ))
             .unwrap_or_default();
-        write!(f, "{attrs}{kind}{tplt} {name}{typ}{init};")
+
+        write!(
+            f,
+            "{attrs}{kind}{tplt_args} {name}{tplt_params}{typ}{init};"
+        )
     }
 }
 
@@ -128,15 +133,27 @@ impl Display for Alias {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let name = &self.name;
         let typ = &self.typ;
-        write!(f, "alias {name} = {typ};")
+        let template_params = fmt_template_params(&self.template_parameters);
+        write!(f, "alias {name}{template_params} = {typ};")
     }
+}
+
+fn fmt_template_params(params: &[S<FormalTemplateParameter>]) -> String {
+    let mut result = String::new();
+    if !params.is_empty() {
+        result.push('<');
+        result.push_str(&params.iter().format(", ").to_string());
+        result.push('>');
+    }
+    result
 }
 
 impl Display for Struct {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let name = &self.name;
         let members = Indent(self.members.iter().format(",\n"));
-        write!(f, "struct {name} {{\n{members}\n}}")
+        let template_params = fmt_template_params(&self.template_parameters);
+        write!(f, "struct {name}{template_params} {{\n{members}\n}}")
     }
 }
 
@@ -160,8 +177,12 @@ impl Display for Function {
             .as_ref()
             .map(|typ| format!("-> {ret_attrs}{} ", typ))
             .unwrap_or_default();
+        let template_params = fmt_template_params(&self.template_parameters);
         let body = &self.body;
-        write!(f, "{attrs}fn {name}({params}) {ret_typ}{body}")
+        write!(
+            f,
+            "{attrs}fn {name}{template_params}({params}) {ret_typ}{body}"
+        )
     }
 }
 
@@ -177,7 +198,8 @@ impl Display for FormalParameter {
 impl Display for ConstAssert {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let expr = &self.expression;
-        write!(f, "const_assert {expr};",)
+        let template_params = fmt_template_params(&self.template_parameters);
+        write!(f, "const_assert{template_params} {expr};",)
     }
 }
 
@@ -229,23 +251,17 @@ impl Display for Expression {
     }
 }
 
-impl Display for IdentifierExpression {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.path.join("::"))
-    }
-}
-
 impl Display for LiteralExpression {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             LiteralExpression::True => write!(f, "true"),
             LiteralExpression::False => write!(f, "false"),
-            LiteralExpression::AbstractInt(num) => write!(f, "{num}"),
-            LiteralExpression::AbstractFloat(num) => write!(f, "{num:?}"), // using the Debug formatter to print the trailing .0 in floats representing integers. because format!("{}", 3.0f32) == "3"
+            LiteralExpression::AbstractInt(num) => write!(f, "{}", num.parse::<i64>().unwrap()),
+            LiteralExpression::AbstractFloat(num) => write!(f, "{:?}", num.parse::<f64>().unwrap()), // using the Debug formatter to print the trailing .0 in floats representing integers. because format!("{}", 3.0f32) == "3"
             LiteralExpression::I32(num) => write!(f, "{num}i"),
             LiteralExpression::U32(num) => write!(f, "{num}u"),
-            LiteralExpression::F32(num) => write!(f, "{num}f"),
-            LiteralExpression::F16(num) => write!(f, "{num}h"),
+            LiteralExpression::F32(num) => write!(f, "{}f", num.parse::<f32>().unwrap()),
+            LiteralExpression::F16(num) => write!(f, "{}h", num.parse::<f32>().unwrap()),
         }
     }
 }
@@ -329,40 +345,37 @@ impl Display for BinaryOperator {
 
 impl Display for FunctionCallExpression {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let name = &self.path.join("::");
-        let tplt = fmt_template(&self.template_args);
+        let path = self.path.iter().format("::");
         let args = self.arguments.iter().format(", ");
-        write!(f, "{name}{tplt}({args})")
+        write!(f, "{path}({args})")
     }
 }
 
-// impl Display for IdentifierExpression {
-//     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-//         write!(f, "{self}")
-//     }
-// }
+impl Display for PathPart {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}{}", self.name, fmt_template_args(&self.template_args))
+    }
+}
 
 impl Display for TypeExpression {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let name = &self.path.join("::");
-        let tplt = fmt_template(&self.template_args);
-        write!(f, "{name}{tplt}")
+        write!(f, "{}", &self.path.iter().format("::"))
     }
 }
 
-// impl Display for TemplateArg {
-//     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-//         Ok(())
-//     }
-// }
+impl Display for IdentifierExpression {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", &self.path.iter().format("::"))
+    }
+}
 
-fn fmt_template(tplt: &Option<Vec<S<TemplateArg>>>) -> String {
+fn fmt_template_args(tplt: &Option<Vec<S<TemplateArg>>>) -> String {
     match tplt {
-        Some(tplt) => {
+        Some(tplt) if !tplt.is_empty() => {
             let print = tplt.iter().format(", ");
             format!("<{print}>")
         }
-        None => "".to_string(),
+        _ => "".to_string(),
     }
 }
 
@@ -431,19 +444,20 @@ impl Display for ExtendDirective {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let attrs = fmt_attrs(&self.attributes, true);
 
-        writeln!(f, "{attrs} extend {};", self.path.join("::"))
+        writeln!(f, "{attrs}extend {};", self.path.iter().format("::"))
     }
 }
 
 impl Display for CompoundStatement {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let attrs = fmt_attrs(&self.attributes, true);
-        let mut directives = format!("{}", Indent(self.directives.iter().format("\n")));
+        let mut directives = format!("{}", self.directives.iter().format("\n"));
         if !directives.is_empty() {
+            directives = format!("{}", Indent(directives));
             directives.push('\n');
         }
         let stmts = Indent(self.statements.iter().format("\n"));
-        write!(f, "{attrs}{{\n{directives}{stmts}\n}}")
+        write!(f, "{attrs}{{\n{}{stmts}\n}}", directives)
     }
 }
 
@@ -485,18 +499,6 @@ impl Display for DeclarationStatement {
         Ok(())
     }
 }
-
-// impl Display for IncrementStatement {
-//     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-//         Ok(())
-//     }
-// }
-
-// impl Display for DecrementStatement {
-//     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-//         Ok(())
-//     }
-// }
 
 impl Display for IfStatement {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -646,16 +648,22 @@ impl Display for ModuleMemberDeclaration {
 impl Display for Module {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let attrs = fmt_attrs(&self.attributes, false);
-        let members = Indent(self.members.iter().format("\n\n"));
-        let directives = Indent(self.directives.iter().format("\n"));
-
+        let members = self.members.iter().format("\n\n");
+        let directives = self.directives.iter().format("\n");
+        let mut template_params = String::new();
+        if !self.template_parameters.is_empty() {
+            template_params.push('<');
+            template_params.push_str(&self.template_parameters.iter().format(", ").to_string());
+            template_params.push('>');
+        }
         write!(
             f,
-            "{}{}mod {} {{\n{directives}{}\n}}",
+            "{}{}mod {}{} {{\n{}\n}}",
             attrs,
             if attrs.is_empty() { "" } else { " " },
             self.name,
-            members
+            template_params,
+            Indent(format!("{}{}", directives, members))
         )
     }
 }
@@ -663,11 +671,21 @@ impl Display for Module {
 impl Display for UseContent {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            UseContent::Item(UseItem { name, rename }) => {
+            UseContent::Item(UseItem {
+                name,
+                rename,
+                template_args,
+            }) => {
+                let mut args = String::new();
+                if let Some(template_args) = template_args.as_ref() {
+                    args.push('<');
+                    args.push_str(&template_args.iter().format(", ").to_string());
+                    args.push('>');
+                };
                 if let Some(rename) = rename {
-                    write!(f, "{name} as {rename}")
+                    write!(f, "{name}{args} as {rename}")
                 } else {
-                    write!(f, "{name}")
+                    write!(f, "{name}{args}")
                 }
             }
             UseContent::Collection(c) => {
@@ -680,12 +698,32 @@ impl Display for UseContent {
 impl Display for Use {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let attrs = fmt_attrs(&self.attributes, false);
-        let path = self.path.join("::");
+        let path = self.path.iter().format("::").to_string();
         if !path.is_empty() {
             write!(f, "{attrs}{path}::{}", self.content.value)?;
         } else {
             write!(f, "{attrs}{}", self.content.value)?;
         };
         Ok(())
+    }
+}
+
+impl Display for TemplateArg {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        if let Some(arg_name) = self.arg_name.as_ref() {
+            write!(f, "{arg_name} = {}", self.expression)
+        } else {
+            write!(f, "{}", self.expression)
+        }
+    }
+}
+
+impl Display for FormalTemplateParameter {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        if let Some(default_value) = self.default_value.as_ref() {
+            write!(f, "{} = {default_value}", self.name)
+        } else {
+            write!(f, "{}", self.name)
+        }
     }
 }

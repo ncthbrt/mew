@@ -1,11 +1,8 @@
-extend My_Lib::VertexShader;
-
 mod My_Lib {
-    use VertexShader::Types::Camera;
-    const x: VertexShader::Types::Camera = Camera();
+    alias Camera = VertexShader::Types::Camera;
+    const x: VertexShader::C = Camera();
     
     mod VertexShader {
-        extend Frog;
         
         mod Types {
             struct VertexOutput {
@@ -18,7 +15,11 @@ mod My_Lib {
             struct Camera {
                 viewProjectionMatrix : mat4x4f,
             }
+
+            alias U = Uniforms;
         }
+
+        alias C = Types::Camera;
 
         mod Frog {
             const y: f32 = 0f;
@@ -33,12 +34,12 @@ mod My_Lib {
         @location(0) position : vec4f,
         @location(1) color : vec4f
         ) -> Types::VertexOutput {
-            use Types::{Uniforms}
-            use My_Lib::x as z;
-            let uni = Uniforms();
+            use Types::{U}
+            use My_Lib::x as y;
+            let uni = U();
             var output : Types::VertexOutput;
             output.Position = camera.viewProjectionMatrix * uniforms.modelMatrix[instanceIdx] * position;
-            output.fragColor = color / vec4<f32>(z * y);
+            output.fragColor = color / vec4<f32>(y);
             return output;
         }
     }

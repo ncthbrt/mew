@@ -62,7 +62,7 @@ impl DeclarationStatement {
 
 impl CompoundStatement {
     pub fn construct_scope_tree(&mut self) {
-        let mut queue: VecDeque<S<Statement>> = self.statements.drain(0..).collect();
+        let mut queue: VecDeque<S<Statement>> = self.statements.drain(..).collect();
         while let Some(statement) = queue.pop_front() {
             let span = statement.span();
             match statement.value {
@@ -88,6 +88,42 @@ impl ModuleMemberDeclaration {
             _ => None,
         }
     }
+    pub fn name_mut(&mut self) -> Option<&mut S<String>> {
+        match self {
+            ModuleMemberDeclaration::Declaration(d) => Some(&mut d.name),
+            ModuleMemberDeclaration::Alias(a) => Some(&mut a.name),
+            ModuleMemberDeclaration::Struct(s) => Some(&mut s.name),
+            ModuleMemberDeclaration::Function(f) => Some(&mut f.name),
+            ModuleMemberDeclaration::Module(m) => Some(&mut m.name),
+            ModuleMemberDeclaration::Void => None,
+            ModuleMemberDeclaration::ConstAssert(_) => None,
+        }
+    }
+
+    pub fn template_parameters_mut(&mut self) -> Option<&mut Vec<S<FormalTemplateParameter>>> {
+        match self {
+            ModuleMemberDeclaration::Struct(decl) => Some(&mut decl.template_parameters),
+            ModuleMemberDeclaration::Function(decl) => Some(&mut decl.template_parameters),
+            ModuleMemberDeclaration::Module(decl) => Some(&mut decl.template_parameters),
+            ModuleMemberDeclaration::Declaration(decl) => Some(&mut decl.template_parameters),
+            ModuleMemberDeclaration::Alias(decl) => Some(&mut decl.template_parameters),
+            ModuleMemberDeclaration::ConstAssert(decl) => Some(&mut decl.template_parameters),
+            ModuleMemberDeclaration::Void => None,
+        }
+    }
+
+    pub fn template_parameters(&self) -> Option<&Vec<S<FormalTemplateParameter>>> {
+        match self {
+            ModuleMemberDeclaration::Struct(decl) => Some(&decl.template_parameters),
+            ModuleMemberDeclaration::Function(decl) => Some(&decl.template_parameters),
+            ModuleMemberDeclaration::Module(decl) => Some(&decl.template_parameters),
+            ModuleMemberDeclaration::Declaration(decl) => Some(&decl.template_parameters),
+            ModuleMemberDeclaration::Alias(decl) => Some(&decl.template_parameters),
+            ModuleMemberDeclaration::Void => None,
+            ModuleMemberDeclaration::ConstAssert(decl) => Some(&decl.template_parameters),
+        }
+        .and_then(|x| if x.is_empty() { None } else { Some(x) })
+    }
 }
 
 impl GlobalDeclaration {
@@ -98,7 +134,95 @@ impl GlobalDeclaration {
             GlobalDeclaration::Struct(s) => Some(s.name.clone()),
             GlobalDeclaration::Function(f) => Some(f.name.clone()),
             GlobalDeclaration::Module(m) => Some(m.name.clone()),
-            _ => None,
+            GlobalDeclaration::Void => None,
+            GlobalDeclaration::ConstAssert(_) => None,
+        }
+    }
+
+    pub fn name_mut(&mut self) -> Option<&mut S<String>> {
+        match self {
+            GlobalDeclaration::Declaration(d) => Some(&mut d.name),
+            GlobalDeclaration::Alias(a) => Some(&mut a.name),
+            GlobalDeclaration::Struct(s) => Some(&mut s.name),
+            GlobalDeclaration::Function(f) => Some(&mut f.name),
+            GlobalDeclaration::Module(m) => Some(&mut m.name),
+            GlobalDeclaration::Void => None,
+            GlobalDeclaration::ConstAssert(_) => None,
+        }
+    }
+
+    pub fn template_parameters_mut(&mut self) -> Option<&mut Vec<S<FormalTemplateParameter>>> {
+        match self {
+            GlobalDeclaration::Struct(s) => Some(&mut s.template_parameters),
+            GlobalDeclaration::Function(f) => Some(&mut f.template_parameters),
+            GlobalDeclaration::Module(m) => Some(&mut m.template_parameters),
+            GlobalDeclaration::Declaration(decl) => Some(&mut decl.template_parameters),
+            GlobalDeclaration::Alias(alias) => Some(&mut alias.template_parameters),
+            GlobalDeclaration::Void => None,
+            GlobalDeclaration::ConstAssert(assrt) => Some(&mut assrt.template_parameters),
+        }
+    }
+
+    pub fn template_parameters(&self) -> Option<&Vec<S<FormalTemplateParameter>>> {
+        match self {
+            GlobalDeclaration::Struct(s) => Some(&s.template_parameters),
+            GlobalDeclaration::Function(f) => Some(&f.template_parameters),
+            GlobalDeclaration::Module(m) => Some(&m.template_parameters),
+            GlobalDeclaration::Declaration(decl) => Some(&decl.template_parameters),
+            GlobalDeclaration::Alias(alias) => Some(&alias.template_parameters),
+            GlobalDeclaration::Void => None,
+            GlobalDeclaration::ConstAssert(assrt) => Some(&assrt.template_parameters),
+        }
+        .and_then(|x| if x.is_empty() { None } else { Some(x) })
+    }
+}
+
+impl From<TemplateElaboratedIdent> for TypeExpression {
+    fn from(
+        TemplateElaboratedIdent {
+            path: S { value, span },
+        }: TemplateElaboratedIdent,
+    ) -> Self {
+        TypeExpression {
+            path: S::new(value.into_iter().map(|x| x.into()).collect(), span),
+        }
+    }
+}
+
+impl From<TemplateElaboratedIdent> for IdentifierExpression {
+    fn from(
+        TemplateElaboratedIdent {
+            path: S { value, span },
+        }: TemplateElaboratedIdent,
+    ) -> Self {
+        IdentifierExpression {
+            path: S::new(value.into_iter().map(|x| x.into()).collect(), span),
+        }
+    }
+}
+
+impl From<TemplateElaboratedIdentPart> for PathPart {
+    fn from(value: TemplateElaboratedIdentPart) -> Self {
+        PathPart {
+            name: value.name,
+            template_args: value.template_args,
+        }
+    }
+}
+
+impl TryInto<S<Vec<PathPart>>> for Expression {
+    type Error = ();
+    fn try_into(self) -> Result<S<Vec<PathPart>>, Self::Error> {
+        match self {
+            Expression::Literal(_) => Err(()),
+            Expression::Parenthesized(spanned) => spanned.into_inner().try_into(),
+            Expression::NamedComponent(_) => Err(()),
+            Expression::Indexing(_) => Err(()),
+            Expression::Unary(_) => Err(()),
+            Expression::Binary(_) => Err(()),
+            Expression::FunctionCall(_) => Err(()),
+            Expression::Identifier(identifier_expression) => Ok(identifier_expression.path),
+            Expression::Type(type_expression) => Ok(type_expression.path),
         }
     }
 }

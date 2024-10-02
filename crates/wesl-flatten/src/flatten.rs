@@ -10,7 +10,7 @@ pub struct Flattener;
 
 impl Flattener {
     fn flatten_module(translation_unit: &mut TranslationUnit, mut module: Module) {
-        for decl in module.members.drain(0..) {
+        for decl in module.members.drain(..) {
             let span = decl.span();
             match decl.value {
                 ModuleMemberDeclaration::Module(m) => {
@@ -26,7 +26,7 @@ impl Flattener {
     pub fn flatten_mut(&self, translation_unit: &mut TranslationUnit) {
         let mut modules = vec![];
         let mut others = vec![];
-        for decl in translation_unit.global_declarations.drain(0..) {
+        for decl in translation_unit.global_declarations.drain(..) {
             if let GlobalDeclaration::Module(m) = decl.value {
                 modules.push(m);
             } else {

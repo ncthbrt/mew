@@ -1,6 +1,10 @@
-use wesl_parse::syntax::{
-    Alias, CompoundStatement, ConstAssert, Declaration, Expression, Function, GlobalDeclaration,
-    Module, ModuleMemberDeclaration, Statement, Struct, TranslationUnit, TypeExpression,
+use wesl_parse::{
+    span::Spanned,
+    syntax::{
+        Alias, CompoundStatement, ConstAssert, Declaration, Expression, Function,
+        GlobalDeclaration, Module, ModuleMemberDeclaration, PathPart, Statement, Struct,
+        TranslationUnit, TypeExpression,
+    },
 };
 use wesl_types::CompilerPass;
 
@@ -8,69 +12,101 @@ use wesl_types::CompilerPass;
 pub struct Mangler;
 
 #[derive(Debug, PartialEq, Clone)]
-struct ModulePath(im::Vector<String>);
+struct ModulePath(im::Vector<PathPart>);
 
 impl Mangler {
-    fn mangle_path(path: &mut Vec<String>) {
+    fn mangle_path(path: &mut Vec<PathPart>) {
+        let mut result = Vec::new();
+        let first = path.first();
+        let last = path.last();
+        let mut mangled_span = 0..0;
+        if let (Some(first), Some(last)) = (first, last) {
+            let first_name_span = first.name.span();
+            let last_name_span = last.name.span();
+            let mut end = last_name_span.end;
+            let start = first_name_span.start;
+            if let Some(last) = last.template_args.as_ref().and_then(|x| x.last()) {
+                end = last.span().end;
+            }
+            mangled_span = start..end;
+        };
         for p in path.iter_mut() {
-            *p = p.replace('_', "__");
+            let mut current = String::new();
+            current.push_str(p.name.replace('_', "__").as_str());
+            if let Some(args) = p.template_args.as_mut() {
+                for arg in args.iter_mut() {
+                    current.push_str("__");
+                    if let Some(arg_name) = arg.arg_name.as_ref() {
+                        current.push_str(&arg_name.value);
+                        current.push_str("__");
+                    }
+                    Self::mangle_expression(&mut arg.expression);
+                    current.push_str(format!("{}", arg.expression).as_str());
+                }
+            }
+            result.push(current);
         }
-        let joined = path.join("_");
+        let joined = result.join("_");
         path.clear();
-        path.push(joined);
+        path.push(PathPart {
+            name: Spanned::new(joined, mangled_span),
+            template_args: None,
+        });
     }
 
     fn mangle_name(name: &mut String, path: ModulePath) {
+        let mut path: Vec<PathPart> = path.0.into_iter().collect();
+        Self::mangle_path(&mut path);
         let mut result = String::new();
-        for p in path.0.iter() {
-            result.push_str(&p.replace('_', "__"));
+        result.push_str(path[0].name.value.as_str());
+        if !result.is_empty() {
             result.push('_');
         }
         result.push_str(&name.replace('_', "__"));
         *name = result;
     }
 
-    fn mangle_compound(compound: &mut CompoundStatement, path: ModulePath) {
+    fn mangle_compound(compound: &mut CompoundStatement) {
         for c in compound.statements.iter_mut() {
-            Self::mangle_statement(c, path.clone());
+            Self::mangle_statement(c);
         }
     }
 
-    fn mangle_statement(statement: &mut Statement, path: ModulePath) {
+    fn mangle_statement(statement: &mut Statement) {
         match statement {
             Statement::Void => {
                 // DO NOTHING
             }
-            Statement::Compound(c) => Self::mangle_compound(c, path),
+            Statement::Compound(c) => Self::mangle_compound(c),
             Statement::Assignment(a) => {
-                Self::mangle_expression(&mut a.lhs, path.clone());
-                Self::mangle_expression(&mut a.rhs, path);
+                Self::mangle_expression(&mut a.lhs);
+                Self::mangle_expression(&mut a.rhs);
             }
             Statement::Increment(i) => {
-                Self::mangle_expression(i, path);
+                Self::mangle_expression(i);
             }
             Statement::Decrement(d) => {
-                Self::mangle_expression(d, path);
+                Self::mangle_expression(d);
             }
             Statement::If(iff) => {
-                Self::mangle_expression(&mut iff.if_clause.0, path.clone());
+                Self::mangle_expression(&mut iff.if_clause.0);
                 for c in iff.if_clause.1.statements.iter_mut() {
-                    Self::mangle_statement(c, path.clone());
+                    Self::mangle_statement(c);
                 }
                 if let Some(else_clause) = iff.else_clause.as_mut() {
                     for c in else_clause.statements.iter_mut() {
-                        Self::mangle_statement(c, path.clone());
+                        Self::mangle_statement(c);
                     }
                 }
                 for (elif_expr, elif_statment) in iff.else_if_clauses.iter_mut() {
                     for c in elif_statment.statements.iter_mut() {
-                        Self::mangle_statement(c, path.clone());
+                        Self::mangle_statement(c);
                     }
-                    Self::mangle_expression(elif_expr, path.clone());
+                    Self::mangle_expression(elif_expr);
                 }
             }
             Statement::Switch(s) => {
-                Self::mangle_expression(&mut s.expression, path.clone());
+                Self::mangle_expression(&mut s.expression);
                 for c in s.clauses.iter_mut() {
                     for select in c.case_selectors.iter_mut() {
                         match select.as_mut() {
@@ -78,47 +114,47 @@ impl Mangler {
                                 // DO NOTHING
                             }
                             wesl_parse::syntax::CaseSelector::Expression(expr) => {
-                                Self::mangle_expression(expr, path.clone());
+                                Self::mangle_expression(expr);
                             }
                         }
                     }
                     for c in c.body.statements.iter_mut() {
-                        Self::mangle_statement(c, path.clone());
+                        Self::mangle_statement(c);
                     }
                 }
             }
             Statement::Loop(l) => {
                 for c in l.body.statements.iter_mut() {
-                    Self::mangle_statement(c, path.clone());
+                    Self::mangle_statement(c);
                 }
                 if let Some(cont) = l.continuing.as_mut() {
                     for c in cont.body.statements.iter_mut() {
-                        Self::mangle_statement(c, path.clone());
+                        Self::mangle_statement(c);
                     }
                     if let Some(break_if) = cont.break_if.as_mut() {
-                        Self::mangle_expression(break_if, path);
+                        Self::mangle_expression(break_if);
                     }
                 }
             }
             Statement::For(f) => {
                 for c in f.body.statements.iter_mut() {
-                    Self::mangle_statement(c, path.clone());
+                    Self::mangle_statement(c);
                 }
                 if let Some(cond) = f.condition.as_mut() {
-                    Self::mangle_expression(cond, path.clone());
+                    Self::mangle_expression(cond);
                 }
                 if let Some(statement) = f.initializer.as_mut() {
-                    Self::mangle_statement(statement.as_mut(), path.clone());
+                    Self::mangle_statement(statement.as_mut());
                 }
                 if let Some(update) = f.update.as_mut() {
-                    Self::mangle_statement(update.as_mut(), path);
+                    Self::mangle_statement(update.as_mut());
                 }
             }
             Statement::While(w) => {
                 for c in w.body.statements.iter_mut() {
-                    Self::mangle_statement(c, path.clone());
+                    Self::mangle_statement(c);
                 }
-                Self::mangle_expression(&mut w.condition, path);
+                Self::mangle_expression(&mut w.condition);
             }
             Statement::Break => {
                 // DO NOTHING
@@ -128,7 +164,7 @@ impl Mangler {
             }
             Statement::Return(ret) => {
                 if let Some(ret) = ret.as_mut() {
-                    Self::mangle_expression(ret, path);
+                    Self::mangle_expression(ret);
                 }
             }
             Statement::Discard => {
@@ -137,129 +173,145 @@ impl Mangler {
             Statement::FunctionCall(f) => {
                 Self::mangle_path(&mut f.path);
                 for arg in f.arguments.iter_mut() {
-                    Self::mangle_expression(arg, path.clone());
-                }
-                if let Some(args) = f.template_args.as_mut() {
-                    for arg in args {
-                        Self::mangle_expression(arg, path.clone());
-                    }
+                    Self::mangle_expression(arg);
                 }
             }
             Statement::ConstAssert(assrt) => {
-                Self::mangle_expression(&mut assrt.expression, path);
+                Self::mangle_expression(&mut assrt.expression);
             }
             Statement::Declaration(decl) => {
                 if let Some(typ) = decl.declaration.typ.as_mut() {
-                    Self::mangle_type(typ, path.clone());
+                    Self::mangle_type(typ);
                 }
 
                 if let Some(init) = decl.declaration.initializer.as_mut() {
-                    Self::mangle_expression(init, path.clone());
+                    Self::mangle_expression(init);
                 }
                 for statement in decl.statements.iter_mut() {
-                    Self::mangle_statement(statement, path.clone());
+                    Self::mangle_statement(statement);
                 }
             }
         }
     }
 
-    fn mangle_expression(expr: &mut Expression, path: ModulePath) {
+    fn mangle_expression(expr: &mut Expression) {
         match expr {
             Expression::Literal(_) => {
                 // DO NOTHING
             }
             Expression::Parenthesized(p) => {
-                Self::mangle_expression(p.as_mut(), path);
+                Self::mangle_expression(p.as_mut());
             }
             Expression::NamedComponent(n) => {
-                Self::mangle_expression(&mut n.base, path);
+                Self::mangle_expression(&mut n.base);
             }
             Expression::Indexing(idx) => {
-                Self::mangle_expression(&mut idx.base, path.clone());
-                Self::mangle_expression(&mut idx.index, path);
+                Self::mangle_expression(&mut idx.base);
+                Self::mangle_expression(&mut idx.index);
             }
             Expression::Unary(u) => {
-                Self::mangle_expression(&mut u.operand, path);
+                Self::mangle_expression(&mut u.operand);
             }
             Expression::Binary(b) => {
-                Self::mangle_expression(&mut b.left, path.clone());
-                Self::mangle_expression(&mut b.right, path);
+                Self::mangle_expression(&mut b.left);
+                Self::mangle_expression(&mut b.right);
             }
             Expression::FunctionCall(f) => {
-                Self::mangle_path(&mut f.path);
-                for arg in f.arguments.iter_mut() {
-                    Self::mangle_expression(arg, path.clone());
+                let mut mangle_function_path = true;
+                if f.path.len() == 1 {
+                    let builtin_functions = wesl_types::builtins::get_builtin_functions();
+                    mangle_function_path = !builtin_functions
+                        .functions
+                        .contains_key(&f.path[0].name.value.clone());
                 }
-                if let Some(args) = f.template_args.as_mut() {
-                    for arg in args.iter_mut() {
-                        Self::mangle_expression(arg, path.clone());
+                if mangle_function_path {
+                    Self::mangle_path(&mut f.path);
+                } else if let Some(args) = f.path[0].template_args.as_mut() {
+                    for arg in args {
+                        Self::mangle_expression(&mut arg.expression);
                     }
+                }
+
+                for arg in f.arguments.iter_mut() {
+                    Self::mangle_expression(arg);
                 }
             }
             Expression::Identifier(id) => {
                 Self::mangle_path(&mut id.path);
             }
             Expression::Type(typ) => {
-                Self::mangle_type(typ, path);
+                Self::mangle_type(typ);
             }
         }
     }
 
-    fn mangle_type(typ: &mut TypeExpression, path: ModulePath) {
-        Self::mangle_path(&mut typ.path);
-        if let Some(args) = typ.template_args.as_mut() {
-            for arg in args.iter_mut() {
-                Self::mangle_expression(arg, path.clone());
+    fn mangle_type(typ: &mut TypeExpression) {
+        let mut mangle_type_path = true;
+        if typ.path.len() == 1 {
+            let builtin_tokens = wesl_types::builtins::get_builtin_tokens();
+            mangle_type_path = !builtin_tokens
+                .type_generators
+                .contains(&typ.path[0].name.value.clone());
+            if mangle_type_path {
+                mangle_type_path = !builtin_tokens
+                    .type_aliases
+                    .contains_key(&typ.path[0].name.value.clone());
+            }
+        }
+        if mangle_type_path {
+            Self::mangle_path(&mut typ.path);
+        } else if let Some(args) = typ.path[0].template_args.as_mut() {
+            for arg in args {
+                Self::mangle_expression(&mut arg.expression);
             }
         }
     }
 
     fn mangle_decl(decl: &mut Declaration, path: ModulePath) {
         if let Some(init) = decl.initializer.as_mut() {
-            Self::mangle_expression(init, path.clone());
-        }
-        if let Some(args) = decl.template_args.as_mut() {
-            for a in args.iter_mut() {
-                Self::mangle_expression(a, path.clone());
-            }
+            Self::mangle_expression(init);
         }
         if let Some(typ) = decl.typ.as_mut() {
-            Self::mangle_type(typ, path.clone());
+            Self::mangle_type(typ);
         }
         Self::mangle_name(&mut decl.name, path);
     }
 
     fn mangle_alias(a: &mut Alias, path: ModulePath) {
-        Self::mangle_name(&mut a.name, path.clone());
-        Self::mangle_type(&mut a.typ, path);
+        Self::mangle_name(&mut a.name, path);
+        Self::mangle_type(&mut a.typ);
     }
 
     fn mangle_struct(s: &mut Struct, path: ModulePath) {
         for member in s.members.iter_mut() {
-            Self::mangle_type(&mut member.typ, path.clone());
+            Self::mangle_type(&mut member.typ);
         }
         Self::mangle_name(&mut s.name, path);
     }
 
     fn mangle_func(f: &mut Function, path: ModulePath) {
-        Self::mangle_name(&mut f.name, path.clone());
+        Self::mangle_name(&mut f.name, path);
+
         if let Some(ret) = f.return_type.as_mut() {
-            Self::mangle_type(ret, path.clone());
+            Self::mangle_type(ret);
         }
         for arg in f.parameters.iter_mut() {
-            Self::mangle_type(&mut arg.typ, path.clone());
+            Self::mangle_type(&mut arg.typ);
         }
         for statement in f.body.statements.iter_mut() {
-            Self::mangle_statement(statement, path.clone());
+            Self::mangle_statement(statement);
         }
     }
 
-    fn mangle_const_assert(a: &mut ConstAssert, path: ModulePath) {
-        Self::mangle_expression(&mut a.expression, path);
+    fn mangle_const_assert(a: &mut ConstAssert) {
+        Self::mangle_expression(&mut a.expression);
     }
 
     fn mangle_module(m: &mut Module, mut path: ModulePath) {
-        path.0.push_back(m.name.value.clone());
+        path.0.push_back(PathPart {
+            name: m.name.clone(),
+            template_args: None,
+        });
         for decl in m.members.iter_mut() {
             match decl.as_mut() {
                 ModuleMemberDeclaration::Void => {}
@@ -276,7 +328,7 @@ impl Mangler {
                     Self::mangle_func(f, path.clone());
                 }
                 ModuleMemberDeclaration::ConstAssert(assrt) => {
-                    Self::mangle_const_assert(assrt, path.clone());
+                    Self::mangle_const_assert(assrt);
                 }
                 ModuleMemberDeclaration::Module(module) => {
                     Self::mangle_module(module, path.clone());
@@ -302,7 +354,7 @@ impl Mangler {
                     Self::mangle_func(f, path.clone());
                 }
                 GlobalDeclaration::ConstAssert(assrt) => {
-                    Self::mangle_const_assert(assrt, path.clone());
+                    Self::mangle_const_assert(assrt);
                 }
                 GlobalDeclaration::Module(module) => {
                     Self::mangle_module(module, path.clone());

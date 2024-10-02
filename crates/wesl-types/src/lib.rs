@@ -1,12 +1,22 @@
 use wesl_parse::{
-    span::Span,
-    syntax::{CompoundDirective, GlobalDirective, ModuleDirective, TranslationUnit},
+    span::{Span, Spanned},
+    syntax::{
+        CompoundDirective, FormalTemplateParameter, GlobalDirective, ModuleDirective, PathPart,
+        TranslationUnit,
+    },
 };
+
+pub mod builtins;
+pub mod mangling;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum CompilerPassError {
-    SymbolNotFound(Vec<String>, Span),
+    SymbolNotFound(Vec<PathPart>, Span),
+    UnableToResolvePath(Vec<PathPart>),
+    MissingRequiredTemplateArgument(Spanned<FormalTemplateParameter>, Span),
+    UnknownTemplateArgument(Span),
     InternalError(InternalCompilerError),
+    MalformedTemplateArgument(Span),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -14,6 +24,7 @@ pub enum InternalCompilerError {
     UnexpectedGlobalDirective(GlobalDirective, Span),
     UnexpectedModuleDirective(ModuleDirective, Span),
     UnexpectedCompoundDirective(CompoundDirective, Span),
+    UnexpectedMember,
 }
 
 pub trait CompilerPass {

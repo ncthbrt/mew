@@ -1,5 +1,5 @@
 [package]
-name = "wesl-types"
+name = "wesl-dealias"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
@@ -8,4 +8,5 @@ license.workspace = true
 
 [dependencies]
 wesl-parse = { path = '../wesl-parse' }
-wgsl-spec = { workspace = true, features = ["include"]  }
+wesl-types = { path = '../wesl-types' }
+im = { workspace = true }

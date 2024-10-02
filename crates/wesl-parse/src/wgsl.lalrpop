@@ -149,12 +149,38 @@ GlobalDecl: GlobalDeclaration = {
 
 // BEGIN WESL ROOT ADDITIONS
 ModuleDecl : Module = {
-    <attributes: S<Attribute>*> "mod" <name: S<Ident>>  "{" <directives: S<ModuleDirective>*> <members: S<ModuleMemberDecl>*> "}"  => Module {
+    <attributes: S<Attribute>*> "mod" <name: S<Ident>> <templates: TemplateParameters?> "{" <directives: S<ModuleDirective>*> <members: S<ModuleMemberDecl>*> "}"  => Module {
         name, 
         members,
         attributes,
-        directives
+        directives,
+        template_parameters: templates.unwrap_or_default()
     }
+};
+
+TemplateParameters: Vec<S<FormalTemplateParameter>> = {
+    TokTemplateArgsStart <TemplateParameterCommaList> TokTemplateArgsEnd
+};
+
+
+TemplateParameterCommaList: Vec<S<FormalTemplateParameter>> = {
+    <mut params: (<S<TemplateParameter>> ",")*> <e: S<TemplateParameter>> ","? => {
+        params.push(e);
+        params
+    },
+    <mut params: (<S<TemplateParameter>> ",")*> <mut optional: (<S<OptionalTemplateParameter>> ",")*> <e: S<OptionalTemplateParameter>> ","? => {
+        params.append(&mut optional);
+        params.push(e);
+        params
+    },
+};
+
+TemplateParameter: FormalTemplateParameter = {
+    <name: S<Ident>> => FormalTemplateParameter { name, default_value: None },
+};
+
+OptionalTemplateParameter: FormalTemplateParameter = {
+    <name: S<Ident>> "=" <rhs: S<Expression>> => FormalTemplateParameter { name, default_value: Some(rhs) }
 };
 
 ModuleDirective: ModuleDirective = {
@@ -190,12 +216,12 @@ DiagnosticRuleName: String = {
 // XXX: non-conformant
 // https://www.w3.org/TR/WGSL/#syntax-literal
 Literal: LiteralExpression = {
-    TokAbstractInt   => LiteralExpression::AbstractInt(<>),
-    TokAbstractFloat => LiteralExpression::AbstractFloat(<>),
+    TokAbstractInt   => LiteralExpression::AbstractInt(<>.to_string()),
+    TokAbstractFloat => LiteralExpression::AbstractFloat(<>.to_string()),
     TokI32           => LiteralExpression::I32(<>),
     TokU32           => LiteralExpression::U32(<>),
-    TokF32           => LiteralExpression::F32(<>),
-    TokF16           => LiteralExpression::F16(<>),
+    TokF32           => LiteralExpression::F32(<>.to_string()),
+    TokF16           => LiteralExpression::F16(<>.to_string()),
     BoolLiteral,
 };
 
@@ -244,17 +270,34 @@ SwizzleName: String = {
     IdentPatternToken => <>,
 };
 
+// BEGIN WESL ADDITIONS
+
 TemplateList: Vec<S<TemplateArg>> = {
     TokTemplateArgsStart <TemplateArgCommaList> TokTemplateArgsEnd,
 };
 
 TemplateArgCommaList: Vec<S<TemplateArg>> = {
-    Comma1<TemplateArgExpression>,
+    <mut args: (<S<TemplateArg>> ",")*> <e: S<TemplateArg>> ","? => {
+        args.push(e);
+        args
+    },
+    <mut args: (<S<TemplateArg>> ",")*> <mut named: (<S<NamedTemplateArg>> ",")*> <e: S<NamedTemplateArg>> ","? => {
+        args.append(&mut named);
+        args.push(e);
+        args
+    },
 };
 
-TemplateArgExpression: Expression = {
-    Expression,
+TemplateArg: TemplateArg = {
+    <expression: S<Expression>> => TemplateArg { expression, arg_name: None },
 };
+
+NamedTemplateArg: TemplateArg = {
+    <lhs: S<Ident>> "=" <rhs: S<Expression>> => TemplateArg { expression: rhs, arg_name: Some(lhs) }
+}
+
+// END WESL ADDITIONS
+
 
 // 4. DIRECTIVES
 // https://www.w3.org/TR/WGSL/#directives
@@ -286,10 +329,10 @@ RequiresDirective: RequiresDirective = {
 
 // BEGIN WESL
 Extend: ExtendDirective = {
-    <attributes: S<Attribute>*> "extend"  <l: @L> <mut path: (<Ident> "::")*> <target: Ident>  <r: @R> ";" => {
-        path.push(target);
+    <attributes: S<Attribute>*> "extend" <ident: S<TemplateElaboratedIdent>> ";" => {
+        let span = ident.span();
         ExtendDirective {
-            path: S::new(path, l..r),
+            path: S::new(ident.value.path.into_iter().map(|x| x.into()).collect(), span),
             attributes
         }
     }
@@ -300,24 +343,24 @@ Use: Use = {
 };
 
 RootUsePath: Use = {
-    <l: @L> <path: (<Ident> "::")*> <r: @R> <l2: @L><item: ItemUse><r2: @R> ";" => Use {
+    <l: @L> <path: (<TemplateElaboratedIdentPart> "::")*> <r: @R> <l2: @L><item: ItemUse><r2: @R> ";" => Use {
         attributes: Vec::new(),
-        path: S::new(path, l..r), 
+        path: S::new(path.into_iter().map(|x| x.into()).collect(), l..r), 
         content: S::new(UseContent::Item(item), l2..r2)
     },
-    <l: @L> <path: (<Ident> "::")*> <r: @R> <l2:@L><collection: UseCollection><r2:@R> => {
+    <l: @L> <path: (<TemplateElaboratedIdentPart> "::")*> <r: @R> <l2:@L><collection: UseCollection><r2:@R> => {
         Use {
             attributes: Vec::new(),
-            path: S::new(path, l..r), 
+            path: S::new(path.into_iter().map(|x| x.into()).collect(), l..r), 
             content: S::new(UseContent::Collection(collection), l2..r2)
         }
     }
 };
 
 UsePath: Use = {
-    <l: @L> <path: (<Ident> "::")+> <r: @R>  <content: S<UseContent>> => Use {
+    <l: @L> <path: (<TemplateElaboratedIdentPart> "::")+> <r: @R>  <content: S<UseContent>> => Use {
         attributes: Vec::new(),
-        path: S::new(path, l..r), 
+        path: S::new(path.into_iter().map(|x| x.into()).collect(), l..r), 
         content
     },
     <l: @L><item: ItemUse><r: @R> => Use {
@@ -333,8 +376,8 @@ UseContent: UseContent = {
 };
 
 ItemUse: UseItem = {
-    <name: S<Ident>> <rename: ("as" <S<Ident>>)?> => UseItem {
-        name, rename
+    <name: S<Ident>><template_args: TemplateList?> <rename: ("as" <S<Ident>>)?> => UseItem {
+        name, rename, template_args
     }
 };
 
@@ -362,8 +405,8 @@ DiagnosticDirective: DiagnosticDirective = {
 // https://www.w3.org/TR/WGSL/#types
 
 StructDecl: Struct = {
-    "struct" <name: S<Ident>> <members: StructBodyDecl> => Struct {
-        name, members
+    "struct" <name: S<Ident>> <template_parameters: TemplateParameters?> <members: StructBodyDecl> => Struct {
+        name, members, template_parameters: template_parameters.unwrap_or_default()
     },
 };
 
@@ -378,26 +421,32 @@ StructMember: StructMember = {
 };
 
 AliasDecl: Alias = {
-    "alias" <name: S<Ident>> "=" <typ: S<TypeSpecifier>> => Alias {
-        name, typ
+    "alias" <name: S<Ident>> <templates: TemplateParameters?> "=" <typ: S<TypeSpecifier>> => Alias {
+        name, typ, template_parameters: templates.unwrap_or_default()
     },
 };
 
 TypeSpecifier: TypeExpression = {
     TemplateElaboratedIdent => {
-        let TemplateElaboratedIdent { path, template_args } = <>;
-        TypeExpression { path, template_args }
+        <>.into()
     },
 };
 
+
 TemplateElaboratedIdent: TemplateElaboratedIdent = {
-    <l: @L><mut path: (<Ident> "::")*> <last: Ident><r: @R> /* DisambiguateTemplate */ <template_args: TemplateList?> => {
+    <l: @L><mut path: (<TemplateElaboratedIdentPart> "::")*> <last: TemplateElaboratedIdentPart><r: @R>  => {
         path.push(last);
         TemplateElaboratedIdent {
-            path: S::new(path, l..r),
-            template_args
+            path: S::new(path, l..r)
         }
     },
+};
+
+TemplateElaboratedIdentPart: TemplateElaboratedIdentPart = {
+     <name: S<Ident>> <template_args: TemplateList?>  => TemplateElaboratedIdentPart {
+        name,
+        template_args
+     }
 };
 
 // 7. VARIABLE AND VALUE DECLARATIONS
@@ -410,7 +459,7 @@ VariableOrValueStatement: Declaration = {
         decl
     },
     <l:@L>"let"<r:@R> <ident: OptionallyTypedIdent> "=" <initializer: S<Expression>> => {
-        let (name, typ) = ident;
+        let (name, _, typ) = ident;
         Declaration {
             attributes: Vec::new(),
             kind: S::new(DeclarationKind::Let, l..r),
@@ -418,10 +467,11 @@ VariableOrValueStatement: Declaration = {
             name,
             typ,
             initializer: Some(initializer),
+            template_parameters: vec![]
         }
     },
     <l:@L>"const"<r:@R> <ident: OptionallyTypedIdent> "=" <initializer: S<Expression>> => {
-        let (name, typ) = ident;
+        let (name, _, typ) = ident;
         Declaration {
             attributes: Vec::new(),
             kind: S::new(DeclarationKind::Const, l..r),
@@ -429,13 +479,14 @@ VariableOrValueStatement: Declaration = {
             name,
             typ,
             initializer: Some(initializer),
+            template_parameters: vec![]
         }
     },
 };
 
 VariableDecl: Declaration = {
     <l:@L>"var"<r:@R> /* DisambiguateTemplate */ <template_args: TemplateList?> <ident: OptionallyTypedIdent> => {
-        let (name, typ) = ident;
+        let (name, templates, typ) = ident;
         Declaration {
             attributes: Vec::new(),
             kind: S::new(DeclarationKind::Var, l..r),
@@ -443,12 +494,13 @@ VariableDecl: Declaration = {
             name,
             typ,
             initializer: None,
+            template_parameters: templates.unwrap_or_default()
         }
     },
 };
 
-OptionallyTypedIdent: (S<String>, Option<S<TypeExpression>>) = {
-    <S<Ident>> <(":" <S<TypeSpecifier>>)?>,
+OptionallyTypedIdent: (S<String>, Option<Vec<S<FormalTemplateParameter>>>, Option<S<TypeExpression>>, ) = {
+    <S<Ident>> <TemplateParameters?> <(":" <S<TypeSpecifier>>)?>,
 };
 
 GlobalVariableDecl: Declaration = {
@@ -462,21 +514,7 @@ GlobalVariableDecl: Declaration = {
 // BEGIN WESL MODIFICATIONS
 ModuleValueDecl: Declaration = {
     <l: @L>"const"<r: @R> <ident: OptionallyTypedIdent> "=" <initializer: S<Expression>> => {
-        let (name, typ) = ident;
-        Declaration {
-            attributes: Vec::new(),
-            kind: S::new(DeclarationKind::Const, l..r),
-            template_args: None,
-            name,
-            typ,
-            initializer: Some(initializer)
-        }
-    },
-};
-
-GlobalValueDecl: Declaration = {
-    <l: @L>"const"<r: @R>  <ident: OptionallyTypedIdent> "=" <initializer: S<Expression>> => {
-        let (name, typ) = ident;
+        let (name, template_parameters, typ) = ident;
         Declaration {
             attributes: Vec::new(),
             kind: S::new(DeclarationKind::Const, l..r),
@@ -484,10 +522,26 @@ GlobalValueDecl: Declaration = {
             name,
             typ,
             initializer: Some(initializer),
+            template_parameters: template_parameters.unwrap_or_default()
+        }
+    },
+};
+
+GlobalValueDecl: Declaration = {
+    <l: @L>"const"<r: @R>  <ident: OptionallyTypedIdent> "=" <initializer: S<Expression>> => {
+        let (name, template_parameters, typ) = ident;
+        Declaration {
+            attributes: Vec::new(),
+            kind: S::new(DeclarationKind::Const, l..r),
+            template_args: None,
+            name,
+            typ,
+            initializer: Some(initializer),
+            template_parameters: template_parameters.unwrap_or_default()
         }
     },
     <attributes: S<Attribute>*> <l: @L>"override"<r: @R> <ident: OptionallyTypedIdent> <initializer: ("=" <S<Expression>>)?> => {
-        let (name, typ) = ident;
+        let (name, template_parameters, typ) = ident;
         Declaration {
             attributes,
             kind: S::new(DeclarationKind::Override, l..r),
@@ -495,6 +549,7 @@ GlobalValueDecl: Declaration = {
             name,
             typ,
             initializer,
+            template_parameters: template_parameters.unwrap_or_default()
         }
     }
 };
@@ -506,13 +561,10 @@ GlobalValueDecl: Declaration = {
 // BEGIN WESL MODIFICATIONS
 
 PrimaryExpression: Expression = {
-    TemplateElaboratedIdent => {
-        let  TemplateElaboratedIdent { path, template_args } = <>;
-        match template_args {
-            Some(_) => Expression::Type(TypeExpression { path, template_args }),
-            None => Expression::Identifier(IdentifierExpression {
-                path
-            }),
+    <ident: TemplateElaboratedIdent> => {
+        match &ident.path.last().as_ref().unwrap().template_args.is_some() {
+            true => Expression::Type(ident.into()),
+            false => Expression::Identifier(ident.into()),
         }
     }, // XXX: not sure about this one, is it type?
     CallExpression,
@@ -527,10 +579,11 @@ CallExpression: Expression = {
 };
 
 CallPhrase: FunctionCallExpression = {
-    <callee: TemplateElaboratedIdent> <arguments: ArgumentExpressionList> => {
-        let TemplateElaboratedIdent { path, template_args } = callee;
+    <callee: S<TemplateElaboratedIdent>> <arguments: ArgumentExpressionList> => {
+        let span = callee.span();
+        let TemplateElaboratedIdent { path } = callee.value;
         FunctionCallExpression {
-            path, template_args, arguments
+            path: S::new(path.into_iter().map(|x| x.into()).collect(), span), arguments
         }
     },
 };
@@ -598,9 +651,9 @@ LhsExpression: Expression = {
         operator: S::new(UnaryOperator::AddressOf, l..r), operand: operand.into()
     }),
  };
- 
+
 CoreLhsExpression: Expression = {
-    <l: @L> <ident: Ident> <r: @R> /* DisambiguateTemplate */ => Expression::Identifier(IdentifierExpression { path: S::new(vec![ident], l..r) }),
+    <ident: TemplateElaboratedIdent> => Expression::Identifier(ident.into()),
     "(" <S<LhsExpression>> ")" => Expression::Parenthesized(<>.into()),
 };
 
@@ -742,7 +795,7 @@ AssignmentStatement: AssignmentStatement = {
         operator, lhs, rhs
     },
     <l2: @L> "_" <r2: @R> <l: @L> "=" <r: @R> <rhs: S<Expression>> => {
-        let lhs = S::new(Expression::Identifier(IdentifierExpression { path: S::new(vec!["_".to_string()], l2..r2) }), l2..r2);
+        let lhs = S::new(Expression::Identifier(IdentifierExpression { path: S::new(vec![PathPart{ name: S::new("_".to_string(), l2..r2), template_args: None }], l2..r2) }), l2..r2);
         AssignmentStatement { operator: S::new(AssignmentOperator::Equal, l..r), lhs, rhs }
     },
 };
@@ -886,7 +939,7 @@ ReturnStatement: Option<S<Expression>> = {
 FuncCallStatement = CallPhrase;
 
 ConstAssertStatement: ConstAssert = {
-    "const_assert" <S<Expression>> => ConstAssert { expression: <> },
+    "const_assert" <templates: TemplateParameters?> <expression: S<Expression>> => ConstAssert { expression, template_parameters: templates.unwrap_or_default() },
 };
 
 Statement: Statement = {
@@ -918,19 +971,19 @@ VariableUpdatingStatement: Statement = {
 
 FunctionDecl: Function = {
     <attributes: S<Attribute>*> <header: FunctionHeader> <body: S<CompoundStatement>> => {
-        let (name, parameters, return_attributes, return_type) = header;
-        Function { attributes, name, parameters, return_attributes, return_type, body }
+        let (name, parameters, return_attributes, return_type, template_parameters) = header;
+        Function { attributes, name, parameters, return_attributes, return_type, body, template_parameters }
     },
 };
 
-FunctionHeader: (S<String>, Vec<S<FormalParameter>>, Vec<S<Attribute>>, Option<S<TypeExpression>>) = {
-    "fn" <name: S<Ident>> "(" <parameters: ParamList?> ")" <ret: ("->" <S<Attribute>*> <S<TemplateElaboratedIdent>>)?> => {
-        let (return_attributes, return_type) = ret.map(|(return_attributes, S { value: TemplateElaboratedIdent {path , template_args}, span })| {
-            let return_type = S::new(TypeExpression { path, template_args }, span);
+FunctionHeader: (S<String>, Vec<S<FormalParameter>>, Vec<S<Attribute>>, Option<S<TypeExpression>>, Vec<S<FormalTemplateParameter>>) = {
+    "fn" <name: S<Ident>> <templates: TemplateParameters?>  "(" <parameters: ParamList?> ")" <ret: ("->" <S<Attribute>*> <S<TemplateElaboratedIdent>>)?> => {
+        let (return_attributes, return_type) = ret.map(|(return_attributes, S { value: template_args, span })| {
+            let return_type: S<TypeExpression> = S::new(template_args.into(), span);
             (return_attributes, Some(return_type))
         }).unwrap_or_default();
         let parameters = parameters.unwrap_or_default();
-        (name, parameters, return_attributes, return_type)
+        (name, parameters, return_attributes, return_type, templates.unwrap_or_default())
     },
 };
 

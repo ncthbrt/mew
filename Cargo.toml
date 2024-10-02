@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/wesl-parse", "crates/wesl-test", "crates/wesl-bundle", "crates/wesl-resolve", "crates/wesl-mangle", "crates/wesl-flatten", "crates/wesl-types"]
+members = ["crates/wesl-parse", "crates/wesl-test", "crates/wesl-bundle", "crates/wesl-resolve", "crates/wesl-mangle", "crates/wesl-flatten", "crates/wesl-types", "crates/wesl-dealias", "crates/wesl-specialize", "crates/wesl-template-normalize"]
 
 [workspace.package]
 version = "0.0.2"
@@ -10,6 +10,7 @@ license = "MIT"
 
 [workspace.dependencies]
 im = "15.1.0" 
+wgsl-spec = { version = "0.2.0" }
 
 [package]
 name = "wgsl-tools"
@@ -29,4 +30,8 @@ wesl-resolve  = { path = "crates/wesl-resolve", version = "0.0.2" }
 wesl-mangle  = { path = "crates/wesl-mangle", version = "0.0.2" }
 wesl-flatten  = { path = "crates/wesl-flatten", version = "0.0.2" }
 wesl-types  = { path = "crates/wesl-types", version = "0.0.2" }
+wesl-dealias  = { path = "crates/wesl-dealias", version = "0.0.2" }
+wesl-specialize = {path = "crates/wesl-specialize", version = "0.0.2" }
+wesl-template-normalize = { path = "crates/wesl-template-normalize", version = "0.0.2" }
 tokio = { version="1.40.0", features=["macros", "rt-multi-thread"] }
+

@@ -1,3 +1,5 @@
+
+
 @binding(0) @group(0)
 var<uniform> uniforms: Types_Uniforms;
 
@@ -21,15 +23,15 @@ struct My__Lib_VertexShader_Types_VertexOutput {
     @builtin(position)
     Position: vec4f,
     @location(0)
-    fragColor: vec4f,
+    fragColor: vec4f
 }
 
 struct My__Lib_VertexShader_Types_Uniforms {
-    modelMatrix: array<mat4x4f, 5>,
+    modelMatrix: array<mat4x4f, 5>
 }
 
 struct My__Lib_VertexShader_Types_Camera {
-    viewProjectionMatrix: mat4x4f,
+    viewProjectionMatrix: mat4x4f
 }
 
 const My__Lib_VertexShader_Frog_y: f32 = 0f;
@@ -55,15 +57,15 @@ struct Types_VertexOutput {
     @builtin(position)
     Position: vec4f,
     @location(0)
-    fragColor: vec4f,
+    fragColor: vec4f
 }
 
 struct Types_Uniforms {
-    modelMatrix: array<mat4x4f, 5>,
+    modelMatrix: array<mat4x4f, 5>
 }
 
 struct Types_Camera {
-    viewProjectionMatrix: mat4x4f,
+    viewProjectionMatrix: mat4x4f
 }
 
 const Frog_y: f32 = 0f;

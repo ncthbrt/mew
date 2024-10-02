@@ -34,15 +34,15 @@ impl<Fs: ReadonlyFilesystem> Bundler<Fs> {
         let mut ws: String = String::new();
 
         for item in ctx.entry_points.iter() {
-            let mut file = self
+            let file = self
                 .file_system
                 .read(item)
                 .await
                 .map_err(BundlerError::FileSystemError)?;
             let file_len = file.len();
             let mut file_with_starting_ws = ws.clone();
-            file_with_starting_ws.push_str(&mut file);
-            ws.extend((0..file_len).into_iter().map(|_| ' '));
+            file_with_starting_ws.push_str(&file);
+            ws.extend((0..file_len).map(|_| ' '));
             let mut local_translation_unit = wesl_parse::Parser::parse_str(&file_with_starting_ws)
                 .map_err(|err| BundlerError::ParseError(format!("{}", err)))?;
             result
