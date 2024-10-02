@@ -1,6 +1,3 @@
-extend My_Lib<Hey, WhatsUp>::VertexShader<Hi>;
-
-
 mod Hey {
     alias T = vec4f;
 }
@@ -18,9 +15,7 @@ mod My_Lib<My__Lib_A, My__Lib_B, My__Lib_C = Hi> {
     
     const x: My_Lib<My__Lib_A = My__Lib_A, My__Lib_B = My__Lib_B, My__Lib_C = My__Lib_C>::VertexShader<My__Lib_VertexShader_C = My__Lib_B>::E = My_Lib<My__Lib_A = My__Lib_A, My__Lib_B = My__Lib_B, My__Lib_C = My__Lib_C>::VertexShader<My__Lib_VertexShader_C = My__Lib_B>::E();
     
-    mod VertexShader<My__Lib_VertexShader_C> {
-        extend My_Lib<My__Lib_A, My__Lib_B, My__Lib_C = My__Lib_C>::VertexShader<My__Lib_VertexShader_C>::Frog;
-        
+    mod VertexShader<My__Lib_VertexShader_C> {        
         mod Types {
             struct VertexOutput {
                 @builtin(position)
@@ -61,4 +56,14 @@ mod My_Lib<My__Lib_A, My__Lib_B, My__Lib_C = Hi> {
             return My__Lib_VertexShader_main_D::T();
         }
     }
+}
+
+
+@vertex
+fn main(@builtin(instance_index) instanceIdx: u32, @location(0) position: vec4<f32>, @location(1) color: vec4f) -> My_Lib<My__Lib_A = Hey, My__Lib_B = WhatsUp, My__Lib_C = Hi>::VertexShader<My__Lib_VertexShader_C = Hi>::Types::VertexOutput {
+    let uni = My_Lib<My__Lib_A = Hey, My__Lib_B = WhatsUp, My__Lib_C = Hi>::VertexShader<My__Lib_VertexShader_C = Hi>::Types::Nested();
+    var output: My_Lib<My__Lib_A = Hey, My__Lib_B = WhatsUp, My__Lib_C = Hi>::VertexShader<My__Lib_VertexShader_C = Hi>::Types::VertexOutput;
+    output.Position = My_Lib<My__Lib_A = Hey, My__Lib_B = WhatsUp, My__Lib_C = Hi>::VertexShader<My__Lib_VertexShader_C = Hi>::camera.viewProjectionMatrix * My_Lib<My__Lib_A = Hey, My__Lib_B = WhatsUp, My__Lib_C = Hi>::VertexShader<My__Lib_VertexShader_C  = Hi>::uniforms.modelMatrix[instanceIdx] * position;
+    output.fragColor = color / vec4<f32>(My_Lib<My__Lib_A = Hey, My__Lib_B = WhatsUp, My__Lib_C = Hi>::x);
+    return output;
 }

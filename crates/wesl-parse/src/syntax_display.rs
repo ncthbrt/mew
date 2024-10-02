@@ -110,6 +110,7 @@ impl Display for Declaration {
             .as_ref()
             .map(|typ| format!(" = {}", typ))
             .unwrap_or_default();
+
         write!(
             f,
             "{attrs}{kind}{tplt_args} {name}{tplt_params}{typ}{init};"
@@ -137,7 +138,7 @@ impl Display for Alias {
     }
 }
 
-fn fmt_template_params(params: &Vec<S<FormalTemplateParameter>>) -> String {
+fn fmt_template_params(params: &[S<FormalTemplateParameter>]) -> String {
     let mut result = String::new();
     if !params.is_empty() {
         result.push('<');
@@ -498,18 +499,6 @@ impl Display for DeclarationStatement {
         Ok(())
     }
 }
-
-// impl Display for IncrementStatement {
-//     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-//         Ok(())
-//     }
-// }
-
-// impl Display for DecrementStatement {
-//     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-//         Ok(())
-//     }
-// }
 
 impl Display for IfStatement {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {

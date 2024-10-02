@@ -7,11 +7,11 @@ use wesl_parse::{
     span::Spanned,
     syntax::{
         Alias, CompoundStatement, ConstAssert, Declaration, Expression, FormalTemplateParameter,
-        Function, GlobalDeclaration, IdentifierExpression, Module, ModuleMemberDeclaration,
-        PathPart, Statement, Struct, TemplateArg, TranslationUnit, TypeExpression,
+        Function, GlobalDeclaration, Module, ModuleMemberDeclaration, PathPart, Statement, Struct,
+        TranslationUnit, TypeExpression,
     },
 };
-use wesl_types::CompilerPass;
+use wesl_types::{mangling::mangle_template_args, CompilerPass};
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 struct AliasPath(im::Vector<PathPart>);
@@ -25,11 +25,8 @@ struct ModulePath(im::Vector<PathPart>);
 impl AliasPath {
     fn normalize(&mut self) {
         for p in self.0.iter_mut() {
-            if let Some(t) = p.template_args.as_ref() {
-                if t.is_empty() {
-                    p.template_args = None;
-                }
-            }
+            p.name.value = mangle_template_args(p);
+            p.template_args = None;
         }
     }
 }
@@ -61,8 +58,8 @@ impl Dealiaser {
         });
         let mut alias_path = AliasPath(module_path.0.iter().cloned().collect());
         let mut target = AliasPath(alias.typ.path.value.iter().cloned().collect());
-        alias_path.normalize();
         target.normalize();
+        alias_path.normalize();
         cache.insert(alias_path, target);
     }
 
@@ -73,47 +70,18 @@ impl Dealiaser {
     ) {
         module_path.0.push_back(PathPart {
             name: module.name.clone(),
-            template_args: module
-                .template_parameters
-                .iter()
-                .map(|x| {
-                    Spanned::new(
-                        TemplateArg {
-                            expression: Spanned::new(
-                                Expression::Identifier(IdentifierExpression {
-                                    path: Spanned::new(
-                                        vec![PathPart {
-                                            name: x.name.clone(),
-                                            template_args: None,
-                                        }],
-                                        x.span(),
-                                    ),
-                                }),
-                                x.span(),
-                            ),
-                            arg_name: if x.default_value.is_some() {
-                                Some(x.name.clone())
-                            } else {
-                                None
-                            },
-                        },
-                        x.span(),
-                    )
-                })
-                .collect::<Vec<Spanned<TemplateArg>>>()
-                .into(),
+            template_args: None,
         });
 
         let mut others = vec![];
         for decl in module.members.drain(..) {
             let span = decl.span();
+            assert!(decl.template_parameters().is_none());
             match decl.value {
                 ModuleMemberDeclaration::Alias(alias) => {
                     Self::add_alias_to_cache(module_path.clone(), &alias, cache);
                 }
-                ModuleMemberDeclaration::Module(mut module)
-                    if module.template_parameters.is_empty() =>
-                {
+                ModuleMemberDeclaration::Module(mut module) => {
                     Self::populate_aliases_from_module(&mut module, module_path.clone(), cache);
                     others.push(Spanned::new(ModuleMemberDeclaration::Module(module), span));
                 }
@@ -339,6 +307,9 @@ impl Dealiaser {
                     &mut declaration_statement.declaration,
                     cache,
                 )?;
+                for statement in declaration_statement.statements.iter_mut() {
+                    Self::replace_alias_usages_from_statement(statement, cache)?;
+                }
             }
         }
         Ok(())

@@ -7,6 +7,7 @@ use wesl_parse::{
 };
 
 pub mod builtins;
+pub mod mangling;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum CompilerPassError {
@@ -15,6 +16,7 @@ pub enum CompilerPassError {
     MissingRequiredTemplateArgument(Spanned<FormalTemplateParameter>, Span),
     UnknownTemplateArgument(Span),
     InternalError(InternalCompilerError),
+    MalformedTemplateArgument(Span),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -22,6 +24,7 @@ pub enum InternalCompilerError {
     UnexpectedGlobalDirective(GlobalDirective, Span),
     UnexpectedModuleDirective(ModuleDirective, Span),
     UnexpectedCompoundDirective(CompoundDirective, Span),
+    UnexpectedMember,
 }
 
 pub trait CompilerPass {

@@ -35,7 +35,7 @@ impl TemplateNormalizer {
                 ModuleFunctionOrStruct::Struct(strct) => strct.template_parameters.as_ref(),
             };
 
-        if let Some(template_args) = path_part.template_args.as_ref() {
+        if let Some(template_args) = path_part.template_args.as_mut() {
             let mut result: Vec<Spanned<TemplateArg>> = vec![];
             for (idx, param) in template_params.iter().enumerate() {
                 if let Some(default_value) = param.default_value.as_ref() {
@@ -55,10 +55,11 @@ impl TemplateNormalizer {
                         )
                     };
                     result.push(value);
-                } else if let Some(template_arg) = template_args.get(idx) {
+                } else if let Some(template_arg) = template_args.get_mut(idx) {
                     if template_arg.arg_name.is_none()
                         || template_arg.arg_name.as_ref() == Some(&param.name)
                     {
+                        template_arg.arg_name = Some(param.name.clone());
                         result.push(template_arg.clone());
                     } else {
                         return Err(CompilerPassError::UnknownTemplateArgument(

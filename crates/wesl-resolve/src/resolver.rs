@@ -461,7 +461,7 @@ impl Resolver {
 
         name.push_str(&path);
         name.push('_');
-        name.push_str(&old_name.replace("_", "__"));
+        name.push_str(&old_name.replace('_', "__"));
         name
     }
 
@@ -474,7 +474,7 @@ impl Resolver {
         for param in module.template_parameters.iter_mut() {
             let old_name = param.name.value.clone();
             let new_name =
-                Self::mangle_template_parameter_name(&module_path, &module.name, &old_name);
+                Self::mangle_template_parameter_name(module_path, &module.name, &old_name);
             if let Some(default_value) = param.default_value.as_mut() {
                 Self::expression_to_absolute_paths(
                     default_value.as_mut(),
@@ -482,7 +482,7 @@ impl Resolver {
                     scope.clone(),
                 )?;
             }
-            param.name.value = new_name.clone();
+            param.name.value.clone_from(&new_name);
             template_args.push(Spanned::new(
                 TemplateArg {
                     expression: Spanned::new(
@@ -542,7 +542,7 @@ impl Resolver {
             let old_name = param.name.value.clone();
             let new_name =
                 Self::mangle_template_parameter_name(&module_path, &function.name, &param.name);
-            param.name.value = new_name.clone();
+            param.name.value.clone_from(&new_name);
             scope.insert(
                 new_name.clone(),
                 ScopeMember::TemplateParam(new_name.clone()),

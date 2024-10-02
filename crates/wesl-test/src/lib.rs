@@ -1,6 +1,6 @@
 #![cfg_attr(not(test), allow(dead_code, unused_imports))]
 
-use std::{fs::DirEntry, path::PathBuf};
+use std::path::PathBuf;
 use wesl_bundle::{file_system::PhysicalFilesystem, BundleContext, Bundler, BundlerError};
 use wesl_types::{CompilerPass, CompilerPassError};
 
@@ -388,6 +388,54 @@ fn template_normalize_wesl_samples() -> Result<(), CompilerPassError> {
             let expected_output_location: PathBuf = std::env::current_dir()
                 .unwrap()
                 .join("expected-template-normalize-outputs")
+                .join(path.file_name().unwrap());
+
+            #[cfg(feature = "update_expected_output")]
+            {
+                let disp: String = format!("{result}");
+                let _ = std::fs::write(expected_output_location.clone(), disp).expect("Written");
+            }
+
+            let expected_output_module = wesl_parse::Parser::parse_str(
+                &std::fs::read_to_string(expected_output_location.clone()).expect("READ"),
+            )
+            .inspect_err(|err| eprintln!("{err}"))
+            .expect("parse error");
+            assert_eq!(format!("{}", result), format!("{}", expected_output_module));
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn template_specialize_wesl_samples() -> Result<(), CompilerPassError> {
+    let dir = std::fs::read_dir("expected-template-normalize-outputs")
+        .expect("missing expected-test-inputs");
+
+    for entry in dir {
+        let entry = entry.expect("error reading entry");
+        let path: std::path::PathBuf = entry.path();
+        if path.extension().unwrap() == "wgsl" || path.extension().unwrap() == "wesl" {
+            println!("testing sample `{}`", path.display());
+
+            let source = std::fs::read_to_string(path.clone()).expect("failed to read file");
+            let mut result = wesl_parse::Parser::parse_str(&source)
+                .inspect_err(|err| eprintln!("{err}"))
+                .expect("parse error");
+
+            let mut specializer = wesl_specialize::Specializer::default();
+
+            specializer.apply_mut(&mut result)?;
+
+            let mut dealiaser = wesl_dealias::Dealiaser {
+                ..Default::default()
+            };
+
+            dealiaser.apply_mut(&mut result)?;
+
+            let expected_output_location: PathBuf = std::env::current_dir()
+                .unwrap()
+                .join("expected-template-specialize-outputs")
                 .join(path.file_name().unwrap());
 
             #[cfg(feature = "update_expected_output")]
