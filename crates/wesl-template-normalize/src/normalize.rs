@@ -434,6 +434,9 @@ impl TemplateNormalizer {
                     &mut declaration_statement.declaration,
                     translation_unit,
                 )?;
+                for statement in declaration_statement.statements.iter_mut() {
+                    Self::normalize_template_arguments_from_statement(statement, translation_unit)?;
+                }
             }
         }
         Ok(())

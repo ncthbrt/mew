@@ -29,7 +29,7 @@ enum ScopeMember {
         ModuleMemberDeclaration,
         im::HashMap<String, ScopeMember>,
     ),
-    UseDeclaration(ModulePath, String),
+    UseDeclaration(ModulePath, String, Option<Vec<Spanned<TemplateArg>>>),
     GlobalDeclaration(GlobalDeclaration),
     FormalFunctionParameter,
     TemplateParam(String),
@@ -365,10 +365,13 @@ impl Resolver {
                 ScopeMember::FormalFunctionParameter => {
                     // No action required
                 }
-                ScopeMember::UseDeclaration(module_path, underlying_name) => {
+                ScopeMember::UseDeclaration(module_path, underlying_name, template_args) => {
                     let mut new_path = module_path.0.iter().cloned().collect::<Vec<PathPart>>();
+                    *path.first_mut().unwrap().name = underlying_name.to_string();
+                    if template_args.is_some() {
+                        path.first_mut().unwrap().template_args = template_args;
+                    }
                     new_path.extend(path.iter().cloned());
-                    *new_path.last_mut().unwrap().name = underlying_name.to_string();
                     path.value = new_path;
                 }
                 ScopeMember::BuiltIn => {
@@ -584,6 +587,7 @@ impl Resolver {
                         ScopeMember::UseDeclaration(
                             ModulePath(im::Vector::from(usage.path.value.clone())),
                             item.name.value.clone(),
+                            item.template_args,
                         ),
                     );
                 } else {
@@ -592,6 +596,7 @@ impl Resolver {
                         ScopeMember::UseDeclaration(
                             ModulePath(im::Vector::from(usage.path.value.clone())),
                             item.name.value.clone(),
+                            item.template_args,
                         ),
                     );
                 }
@@ -729,9 +734,9 @@ impl Resolver {
             }
         }
 
-        for extension in extend_dirs {
-            Self::add_extension_to_scope(&extension, module_path.clone(), scope)?;
-        }
+        // for extension in extend_dirs {
+        //     Self::add_extension_to_scope(&extension, module_path.clone(), scope)?;
+        // }
 
         module.directives.append(&mut other_dirs);
 

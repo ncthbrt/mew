@@ -11,7 +11,7 @@ use wesl_parse::{
         TranslationUnit, TypeExpression,
     },
 };
-use wesl_types::{mangling::mangle_template_args, CompilerPass};
+use wesl_types::{builtins, mangling::mangle_template_args, CompilerPass};
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 struct AliasPath(im::Vector<PathPart>);
@@ -24,6 +24,18 @@ struct ModulePath(im::Vector<PathPart>);
 
 impl AliasPath {
     fn normalize(&mut self) {
+        if self.0.len() == 1 {
+            let item = &self.0.get(0).unwrap().name.value;
+            let builtin_tokens = builtins::get_builtin_tokens();
+            let builtin_functions = builtins::get_builtin_functions();
+            if builtin_tokens.type_aliases.contains_key(item)
+                || builtin_tokens.type_generators.contains(item)
+                || builtin_tokens.interpolation_type_names.contains(item)
+                || builtin_functions.functions.contains_key(item)
+            {
+                return;
+            }
+        }
         for p in self.0.iter_mut() {
             p.name.value = mangle_template_args(p);
             p.template_args = None;
