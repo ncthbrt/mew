@@ -56,30 +56,27 @@ enum BorrowedMember<'a> {
 
 impl OwnedMember {
     fn requires_push_down(&self) -> bool {
-        match self {
-            OwnedMember::Global(Spanned {
-                value: GlobalDeclaration::Module(_),
+        matches!(self, OwnedMember::Global(Spanned {
+                value: GlobalDeclaration::Module(m),
                 ..
-            }) => self.template_parameters().is_some(),
-            OwnedMember::Module(Spanned {
-                value: ModuleMemberDeclaration::Module(_),
+            }) | OwnedMember::Module(Spanned {
+                value: ModuleMemberDeclaration::Module(m),
                 ..
-            }) => self.template_parameters().is_some(),
-            _ => false,
-        }
+            }) if !m.template_parameters.is_empty(),
+        )
     }
+
     fn requires_specialization(&self) -> bool {
-        match self {
+        !matches!(
+            self,
             OwnedMember::Global(Spanned {
                 value: GlobalDeclaration::Module(_),
                 ..
-            }) => false,
-            OwnedMember::Module(Spanned {
+            }) | OwnedMember::Module(Spanned {
                 value: ModuleMemberDeclaration::Module(_),
                 ..
-            }) => false,
-            _ => true,
-        }
+            })
+        ) && self.template_parameters().is_some()
     }
 
     fn name_mut(&mut self) -> Option<&mut Spanned<String>> {
@@ -97,17 +94,12 @@ impl OwnedMember {
     }
 
     fn specialize(&mut self, mut with: PathPart) -> Result<(), CompilerPassError> {
-        if with.template_args.is_none() {
-            // No need to specialize if no args
-            return Ok(());
-        }
         if let Some(params) = self.template_parameters().cloned() {
             if let Some(name) = self.name_mut() {
                 if let Some(template_args) = with.template_args.as_mut() {
                     template_args
                         .retain(|x| params.iter().any(|y| Some(&y.name) == x.arg_name.as_ref()));
                 }
-
                 name.value = mangle_template_args(&with);
             }
         }
@@ -574,10 +566,8 @@ impl OwnedMember {
     fn specialize_struct(strct: &mut Struct, with: PathPart) -> Result<(), CompilerPassError> {
         for (param, arg) in Self::match_and_drain(&mut strct.template_parameters, with) {
             let name: &String = &param.name.value;
-
             for member in strct.members.iter_mut() {
                 Self::substitute_path(&mut member.typ.path, name, &arg)?;
-
                 for expr in member
                     .attributes
                     .iter_mut()
@@ -588,6 +578,7 @@ impl OwnedMember {
                 }
             }
         }
+
         Ok(())
     }
 
@@ -621,17 +612,16 @@ impl OwnedMember {
                     declaration: &mut member,
                     is_initialized: false,
                 };
-                let mut usages = Usages::new();
+                let mut usages: Usages = Usages::new();
                 borrowed.collect_usages(&mut usages)?;
                 let usages = usages
                     .set
                     .into_iter()
-                    .map(|x| x.head().map(|x| x.name.value.to_string()))
-                    .flatten()
-                    .collect::<im::HashSet<String>>();
+                    .filter_map(|x| x.head().map(|x| x.name.value.to_string()))
+                    .collect::<HashSet<String>>();
                 let mut used_params = params
                     .iter()
-                    .filter(|x| usages.contains(&x.name.value))
+                    .filter(|x: &&Spanned<FormalTemplateParameter>| usages.contains(&x.name.value))
                     .cloned()
                     .collect::<Vec<Spanned<FormalTemplateParameter>>>();
                 if let Some(template_params) = member.template_parameters_mut() {
@@ -674,14 +664,13 @@ impl<'a> BorrowedMember<'a> {
             } => {
                 // Precondition is that this alias needs to be fully resolved
                 assert!(&alias.template_parameters.is_empty());
-                let mut path = alias
+                let mut path: im::Vector<PathPart> = alias
                     .typ
                     .path
                     .iter()
                     .cloned()
                     .collect::<im::Vector<PathPart>>();
                 path.append(remaining_path);
-
                 usages.insert(path);
                 true
             }
@@ -784,6 +773,7 @@ impl<'a> BorrowedMember<'a> {
         for member in strct.members.iter() {
             Self::collect_usages_from_typ(&member.typ, usages)?;
         }
+
         for arg in strct
             .members
             .iter()
@@ -792,6 +782,7 @@ impl<'a> BorrowedMember<'a> {
         {
             Self::collect_usages_from_expression(arg, usages)?;
         }
+
         Ok(())
     }
 
@@ -834,8 +825,8 @@ impl<'a> BorrowedMember<'a> {
         path: &[PathPart],
         usages: &mut Usages,
     ) -> Result<(), CompilerPassError> {
-        let mut path: Vec<PathPart> = path.into();
-        for part in path.iter_mut() {
+        let path: Vec<PathPart> = path.into();
+        for part in path.iter() {
             if let Some(args) = part.template_args.as_ref() {
                 for arg in args.iter() {
                     Self::collect_usages_from_expression(&arg.expression, usages)?;
@@ -870,7 +861,9 @@ impl<'a> BorrowedMember<'a> {
         alias: &Alias,
         usages: &mut Usages,
     ) -> Result<(), CompilerPassError> {
-        Self::collect_usages_from_typ(&alias.typ, usages)?;
+        if alias.template_parameters.is_empty() {
+            Self::collect_usages_from_typ(&alias.typ, usages)?;
+        }
         Ok(())
     }
 
@@ -1175,6 +1168,16 @@ impl<'a> From<&'a mut TranslationUnit> for Parent<'a> {
 }
 
 impl<'a> Parent<'a> {
+    fn is_initialized(&self) -> bool {
+        match self {
+            Parent::TranslationUnit(_) => true,
+            Parent::Module {
+                module: _,
+                is_initialized,
+            } => *is_initialized,
+        }
+    }
+
     fn add_member(&mut self, member: OwnedMember) -> BorrowedMember<'_> {
         match self {
             Parent::TranslationUnit(t) => {
@@ -1214,7 +1217,7 @@ impl<'a> Parent<'a> {
         match self {
             Parent::TranslationUnit(x) => {
                 for item in x.global_declarations.iter_mut() {
-                    if matches!(item.name(), Some(n) if &n.value == &name) {
+                    if matches!(item.name(), Some(n) if n.value == name) {
                         assert!(item.template_parameters().is_none());
                         return Some(BorrowedMember::Global {
                             declaration: item,
@@ -1225,12 +1228,13 @@ impl<'a> Parent<'a> {
                 None
             }
             Parent::Module {
-                module: x,
+                module,
                 is_initialized,
             } => {
                 assert!(*is_initialized);
-                for item in x.members.iter_mut() {
-                    if matches!(item.name(), Some(n) if &n.value == &name) {
+
+                for item in module.members.iter_mut() {
+                    if matches!(item.name(), Some(n) if n.value == name) {
                         assert!(item.template_parameters().is_none());
                         return Some(BorrowedMember::Module {
                             declaration: item,
@@ -1251,8 +1255,10 @@ impl<'a> Parent<'a> {
     }
 
     fn add_module(&mut self, path_part: PathPart) -> BorrowedMember<'_> {
-        let mut module = Module::default();
-        module.name = Spanned::new(mangle_template_args(&path_part), path_part.name.span());
+        let module = Module {
+            name: Spanned::new(mangle_template_args(&path_part), path_part.name.span()),
+            ..Default::default()
+        };
 
         let mut borrowed = self.add_member(OwnedMember::Global(Spanned::new(
             GlobalDeclaration::Module(module),
@@ -1272,7 +1278,7 @@ impl<'a> Parent<'a> {
                 template_args: None,
             })
             .collect();
-        let result = Alias {
+        Alias {
             name: Spanned::new(mangle_template_args(path_part), path_part.name.span()),
             typ: Spanned::new(
                 TypeExpression {
@@ -1281,8 +1287,7 @@ impl<'a> Parent<'a> {
                 span.clone(),
             ),
             template_parameters: vec![],
-        };
-        result
+        }
     }
 
     fn initialize(
@@ -1303,13 +1308,13 @@ impl<'a> Parent<'a> {
                     } else if let GlobalDeclaration::ConstAssert(assrt) = declaration.as_ref() {
                         if assrt.template_parameters.is_empty() {
                             entrypoints.push(declaration);
+                            continue;
                         }
-                        continue;
                     } else if let GlobalDeclaration::Alias(alias) = declaration.as_ref() {
                         if alias.template_parameters.is_empty() {
                             entrypoints.push(declaration);
+                            continue;
                         }
-                        continue;
                     }
                     if let Some(name) = declaration.name() {
                         let mut symbol_path = symbol_path.clone();
@@ -1319,7 +1324,6 @@ impl<'a> Parent<'a> {
                         entrypoints.push(declaration);
                     }
                 }
-
                 t.global_declarations.append(&mut entrypoints);
 
                 for member in t.global_declarations.iter_mut() {
@@ -1329,12 +1333,13 @@ impl<'a> Parent<'a> {
                     };
                     member.collect_usages(usages)?;
                 }
+
                 Ok(())
             }
             Parent::Module {
                 module,
                 is_initialized,
-            } if *is_initialized == false => {
+            } if !*is_initialized => {
                 let mut others = vec![];
                 for declaration in module.members.drain(..) {
                     if let Some(name) = declaration.name() {
@@ -1351,7 +1356,8 @@ impl<'a> Parent<'a> {
                 Ok(())
             }
             _ => Ok(()),
-        }
+        }?;
+        Ok(())
     }
 }
 type SymbolPath = im::Vector<String>;
@@ -1374,7 +1380,7 @@ impl Specializer {
                 &mut usages,
                 &mut symbol_map,
                 remaining_path.clone(),
-                current_path.clone(),
+                current_path,
             )? {
                 Self::alias(&mut parent, remaining_path, concrete_path)?;
             }
@@ -1392,9 +1398,10 @@ impl Specializer {
         let part: PathPart = remaining_path.pop_front().unwrap();
         let current: BorrowedMember<'_>;
         if let Some(m) = parent.find_child(&part) {
-            current = m;
             if remaining_path.is_empty() {
                 return Ok(());
+            } else {
+                current = m;
             }
         } else if remaining_path.is_empty() {
             parent.add_alias(&part, concrete_path);
@@ -1416,41 +1423,35 @@ impl Specializer {
         mut remaining_path: im::Vector<PathPart>,
         mut current_path: ConcreteSymbolPath,
     ) -> Result<Option<ConcreteSymbolPath>, CompilerPassError> {
-        assert!(!remaining_path.is_empty());
+        assert!(parent.is_initialized());
+        if remaining_path.is_empty() {
+            return Ok(None);
+        }
+
         let mut part: PathPart = remaining_path.pop_front().unwrap();
         let current;
         let mut unparamaterized_part = part.clone();
         unparamaterized_part.template_args = None;
-        if let Some(m) = parent.find_child(&unparamaterized_part) {
-            current = m;
-        } else {
-            let mut symbol_path = current_path.clone();
-            symbol_path.push_back(part.name.value.clone());
-            if let Some(mut member) = symbol_map.remove(&symbol_path) {
-                if member.requires_push_down() {
-                    member.push_down()?;
-                } else if member.requires_specialization() {
-                    // Add back symbol so we can specialize again
-                    symbol_map.insert(symbol_path, member.clone());
-                    member.specialize(part.clone())?;
-                }
-                current = parent.add_member(member);
-            } else {
-                return Ok(None);
-            }
-        }
 
-        if let Some(name) = current.name() {
-            current_path.push_back(name.value);
+        let mut symbol_path = current_path.clone();
+        symbol_path.push_back(part.name.value.clone());
+        if let Some(mut member) = symbol_map.remove(&symbol_path) {
+            if member.requires_push_down() {
+                member.push_down()?;
+            } else if member.requires_specialization() {
+                // Add back symbol so we can specialize again
+                symbol_map.insert(symbol_path, member.clone());
+                member.specialize(part.clone())?;
+            }
+            current = parent.add_member(member);
+        } else if let Some(m) = parent.find_child(&unparamaterized_part) {
+            current = m;
         } else {
             return Ok(None);
         }
+        current_path.push_back(current.name().unwrap().value);
 
-        if remaining_path.is_empty() {
-            current.collect_usages(usages)?;
-            Ok(Some(current_path))
-        } else {
-            let mut head = remaining_path.pop_front().unwrap();
+        if let Some(mut head) = remaining_path.pop_front() {
             let mut parent_args = part.template_args.take().unwrap_or_default();
             if let Some(args) = head.template_args.as_mut() {
                 parent_args.append(args);
@@ -1459,28 +1460,32 @@ impl Specializer {
                 head.template_args = Some(parent_args);
             }
             remaining_path.push_front(head);
+        } else {
+            current.collect_usages(usages)?;
+        }
 
-            match current.try_into_parent() {
-                Ok(mut p) => {
-                    p.initialize(current_path.clone(), symbol_map, usages)?;
-                    Self::specialize(&mut p, usages, symbol_map, remaining_path, current_path)
+        match current.try_into_parent() {
+            Ok(mut p) => {
+                p.initialize(current_path.clone(), symbol_map, usages)?;
+                Self::specialize(&mut p, usages, symbol_map, remaining_path, current_path)
+            }
+            Err(borrowed) => {
+                if borrowed.try_add_alias_usage(remaining_path.clone(), usages)
+                    || remaining_path.is_empty()
+                {
+                    return Ok(Some(current_path));
                 }
-                Err(borrowed) => {
-                    if !borrowed.try_add_alias_usage(remaining_path.clone(), usages) {
-                        return Err(CompilerPassError::UnableToResolvePath(
-                            current_path
-                                .iter()
-                                .cloned()
-                                .map(|x| PathPart {
-                                    name: Spanned::new(x, 0..0),
-                                    template_args: None,
-                                })
-                                .collect(),
-                        ));
-                    } else {
-                        Ok(Some(current_path))
-                    }
-                }
+
+                return Err(CompilerPassError::UnableToResolvePath(
+                    current_path
+                        .iter()
+                        .cloned()
+                        .map(|x| PathPart {
+                            name: Spanned::new(x, 0..0),
+                            template_args: None,
+                        })
+                        .collect(),
+                ));
             }
         }
     }

@@ -36,10 +36,6 @@ impl Mangler {
             if let Some(args) = p.template_args.as_mut() {
                 for arg in args.iter_mut() {
                     current.push_str("__");
-                    if let Some(arg_name) = arg.arg_name.as_ref() {
-                        current.push_str(&arg_name.value);
-                        current.push_str("__");
-                    }
                     Self::mangle_expression(&mut arg.expression);
                     current.push_str(format!("{}", arg.expression).as_str());
                 }

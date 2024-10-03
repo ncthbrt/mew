@@ -1,12 +1,9 @@
-extend My_Lib::VertexShader;
 
 
 mod My_Lib {
     const x: My_Lib::VertexShader::Types::Camera = My_Lib::VertexShader::Types::Camera();
     
     mod VertexShader {
-        extend My_Lib::VertexShader::Frog;
-        
         mod Types {
             struct VertexOutput {
                 @builtin(position)
@@ -42,5 +39,19 @@ mod My_Lib {
             output.fragColor = color / vec4<f32>(My_Lib::x * My_Lib::VertexShader::y);
             return output;
         }
+        
+        alias y = My_Lib::VertexShader::Frog::y;
     }
 }
+
+alias Types = My_Lib::VertexShader::Types;
+
+alias Frog = My_Lib::VertexShader::Frog;
+
+alias uniforms = My_Lib::VertexShader::uniforms;
+
+alias camera = My_Lib::VertexShader::camera;
+
+alias main = My_Lib::VertexShader::main;
+
+alias y = My_Lib::VertexShader::y;

@@ -1,7 +1,4 @@
-use std::{
-    collections::HashMap,
-    fmt::{self, Display, Formatter},
-};
+use std::collections::HashMap;
 
 use wesl_parse::{
     span::Spanned,
@@ -43,21 +40,6 @@ impl AliasPath {
     }
 }
 
-impl Display for AliasPath {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            &self
-                .0
-                .iter()
-                .map(|x| format!("{}", x))
-                .collect::<Vec<String>>()
-                .join("::")
-        )
-    }
-}
-
 impl Dealiaser {
     fn add_alias_to_cache(
         mut module_path: ModulePath,
@@ -69,10 +51,10 @@ impl Dealiaser {
             template_args: None,
         });
         let mut alias_path = AliasPath(module_path.0.iter().cloned().collect());
-        let mut target = AliasPath(alias.typ.path.value.iter().cloned().collect());
-        target.normalize();
+        let mut target_path = AliasPath(alias.typ.path.value.iter().cloned().collect());
+        target_path.normalize();
         alias_path.normalize();
-        cache.insert(alias_path, target);
+        cache.insert(alias_path, target_path);
     }
 
     fn populate_aliases_from_module(
@@ -143,6 +125,7 @@ impl Dealiaser {
             }
             cache.insert(k, prev.clone());
         }
+
         Ok(())
     }
 
@@ -333,11 +316,18 @@ impl Dealiaser {
     ) -> Result<(), wesl_types::CompilerPassError> {
         let mut path = AliasPath(mutable_path.value.clone().into());
         path.normalize();
-        if let Some(new_path) = cache.get(&path) {
-            mutable_path.value.clear();
-            mutable_path.value.extend(new_path.0.iter().cloned());
-        };
-
+        for (k, v) in cache.iter() {
+            if path.0.len() >= k.0.len() {
+                let n = AliasPath(path.0.take(k.0.len()));
+                if &n == k {
+                    let rest = mutable_path.split_off(k.0.len());
+                    mutable_path.clear();
+                    mutable_path.extend(v.0.clone());
+                    mutable_path.extend(rest);
+                    return Ok(());
+                }
+            }
+        }
         Ok(())
     }
 

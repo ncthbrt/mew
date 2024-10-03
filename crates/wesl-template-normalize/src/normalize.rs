@@ -7,10 +7,24 @@ use wesl_types::{CompilerPass, CompilerPassError};
 pub struct TemplateNormalizer;
 
 #[derive(Debug, PartialEq, Clone, Hash)]
-enum ModuleFunctionOrStruct<'a> {
+enum GenericMember<'a> {
     Func(&'a Function),
     Struct(&'a Struct),
     Mod(&'a Module),
+    Alias(&'a Alias),
+    Declaration(&'a Declaration),
+}
+
+impl<'a> GenericMember<'a> {
+    fn template_params(&self) -> &Vec<Spanned<FormalTemplateParameter>> {
+        match self {
+            GenericMember::Func(function) => function.template_parameters.as_ref(),
+            GenericMember::Mod(module) => module.template_parameters.as_ref(),
+            GenericMember::Struct(strct) => strct.template_parameters.as_ref(),
+            GenericMember::Alias(alias) => alias.template_parameters.as_ref(),
+            GenericMember::Declaration(decl) => decl.template_parameters.as_ref(),
+        }
+    }
 }
 
 impl TemplateNormalizer {
@@ -25,90 +39,94 @@ impl TemplateNormalizer {
     }
 
     fn normalize_path_part(
-        module_function_or_struct: &ModuleFunctionOrStruct,
+        generic_member: &GenericMember,
         path_part: &mut PathPart,
     ) -> Result<(), CompilerPassError> {
-        let template_params: &Vec<Spanned<FormalTemplateParameter>> =
-            match module_function_or_struct {
-                ModuleFunctionOrStruct::Func(function) => function.template_parameters.as_ref(),
-                ModuleFunctionOrStruct::Mod(module) => module.template_parameters.as_ref(),
-                ModuleFunctionOrStruct::Struct(strct) => strct.template_parameters.as_ref(),
-            };
-
-        if let Some(template_args) = path_part.template_args.as_mut() {
-            let mut result: Vec<Spanned<TemplateArg>> = vec![];
-            for (idx, param) in template_params.iter().enumerate() {
-                if let Some(default_value) = param.default_value.as_ref() {
-                    let value = if let Some(value) = template_args
-                        .iter()
-                        .find(|x| x.arg_name.as_ref() == Some(&param.name))
-                        .cloned()
-                    {
-                        value
-                    } else {
-                        Spanned::new(
-                            TemplateArg {
-                                expression: default_value.clone(),
-                                arg_name: Some(param.name.clone()),
-                            },
-                            default_value.span(),
-                        )
-                    };
-                    result.push(value);
-                } else if let Some(template_arg) = template_args.get_mut(idx) {
-                    if template_arg.arg_name.is_none()
-                        || template_arg.arg_name.as_ref() == Some(&param.name)
-                    {
-                        template_arg.arg_name = Some(param.name.clone());
-                        result.push(template_arg.clone());
-                    } else {
-                        return Err(CompilerPassError::UnknownTemplateArgument(
-                            template_arg.span(),
-                        ));
-                    }
+        let mut template_args = path_part.template_args.take().unwrap_or_default();
+        let template_params = generic_member.template_params();
+        let mut result: Vec<Spanned<TemplateArg>> = vec![];
+        for (idx, param) in template_params.iter().enumerate() {
+            if let Some(default_value) = param.default_value.as_ref() {
+                let value = if let Some(value) = template_args
+                    .iter()
+                    .find(|x| x.arg_name.as_ref() == Some(&param.name))
+                    .cloned()
+                {
+                    value
                 } else {
-                    return Err(CompilerPassError::MissingRequiredTemplateArgument(
-                        param.clone(),
-                        path_part.name.span(),
+                    Spanned::new(
+                        TemplateArg {
+                            expression: default_value.clone(),
+                            arg_name: Some(param.name.clone()),
+                        },
+                        default_value.span(),
+                    )
+                };
+                result.push(value);
+            } else if let Some(template_arg) = template_args.get_mut(idx) {
+                if template_arg.arg_name.is_none()
+                    || template_arg.arg_name.as_ref() == Some(&param.name)
+                {
+                    template_arg.arg_name = Some(param.name.clone());
+                    result.push(template_arg.clone());
+                } else {
+                    return Err(CompilerPassError::UnknownTemplateArgument(
+                        template_arg.span(),
                     ));
                 }
+            } else {
+                return Err(CompilerPassError::MissingRequiredTemplateArgument(
+                    param.clone(),
+                    path_part.name.span(),
+                ));
             }
+        }
+        if !template_args.is_empty() {
             path_part.template_args = Some(result);
         }
 
         Ok(())
     }
 
-    fn normalize_module_or_function_path(
+    fn normalize_path(
         path: &mut Spanned<Vec<PathPart>>,
         translation_unit: &TranslationUnit,
     ) -> Result<(), CompilerPassError> {
         assert!(!path.is_empty());
         Self::template_args_to_none_if_empty(path);
+
         let mut remaining_path: VecDeque<&mut PathPart> = path.value.iter_mut().collect();
         let fst: &mut PathPart = remaining_path.pop_front().unwrap();
-        if let Some(module_or_function) =
+
+        if let Some(generic_member) =
             translation_unit
                 .global_declarations
                 .iter()
                 .find_map(|x| match x.as_ref() {
                     GlobalDeclaration::Module(m) => {
                         if m.name == fst.name {
-                            Some(ModuleFunctionOrStruct::Mod(m))
+                            Some(GenericMember::Mod(m))
                         } else {
                             None
                         }
                     }
                     GlobalDeclaration::Function(f) => {
                         if f.name == fst.name {
-                            Some(ModuleFunctionOrStruct::Func(f))
+                            Some(GenericMember::Func(f))
                         } else {
                             None
                         }
                     }
                     GlobalDeclaration::Struct(s) => {
                         if s.name == fst.name {
-                            Some(ModuleFunctionOrStruct::Struct(s))
+                            Some(GenericMember::Struct(s))
+                        } else {
+                            None
+                        }
+                    }
+                    GlobalDeclaration::Alias(a) => {
+                        if a.name == fst.name {
+                            Some(GenericMember::Alias(a))
                         } else {
                             None
                         }
@@ -116,70 +134,113 @@ impl TemplateNormalizer {
                     _ => None,
                 })
         {
-            let mut module_function_or_struct = module_or_function;
-            Self::normalize_path_part(&module_function_or_struct, fst)?;
+            let mut generic_member = generic_member;
+            Self::normalize_path_part(&generic_member, fst)?;
+
+            let process_alias = |a: &Alias,
+                                 mut remaining_path: VecDeque<&mut PathPart>|
+             -> Result<(), CompilerPassError> {
+                let mut remaining_path_with_alias: Spanned<Vec<PathPart>> =
+                    Spanned::new(vec![], a.typ.path.span());
+                remaining_path_with_alias.append(&mut a.typ.path.clone());
+
+                for p in remaining_path.iter() {
+                    remaining_path_with_alias.push((**p).clone());
+                }
+                Self::normalize_path(&mut remaining_path_with_alias, translation_unit)?;
+                for (part, resultant_part) in remaining_path
+                    .iter_mut()
+                    .zip(remaining_path_with_alias.into_iter().skip(a.typ.path.len()))
+                {
+                    part.template_args = resultant_part.template_args;
+                    println!("PART {part}");
+                }
+
+                Ok(())
+            };
+
             'outer: while !remaining_path.is_empty() {
-                match &module_function_or_struct {
-                    ModuleFunctionOrStruct::Func(_) => {
+                match &generic_member {
+                    GenericMember::Func(_) => {
                         return Err(CompilerPassError::SymbolNotFound(
                             path.value.clone(),
                             path.span(),
                         ));
                     }
-                    ModuleFunctionOrStruct::Struct(_) => {
+                    GenericMember::Declaration(_) => {
                         return Err(CompilerPassError::SymbolNotFound(
                             path.value.clone(),
                             path.span(),
                         ));
                     }
-                    ModuleFunctionOrStruct::Mod(m) => {
+                    GenericMember::Alias(a) => {
+                        return process_alias(a, remaining_path);
+                    }
+                    GenericMember::Struct(_) => {
+                        return Err(CompilerPassError::SymbolNotFound(
+                            path.value.clone(),
+                            path.span(),
+                        ));
+                    }
+                    GenericMember::Mod(m) => {
                         for decl in m.members.iter() {
                             match decl.as_ref() {
-                                ModuleMemberDeclaration::Module(m) => {
-                                    if m.name == remaining_path.front().as_ref().unwrap().name {
-                                        let path_part = remaining_path.pop_front().unwrap();
-                                        module_function_or_struct = ModuleFunctionOrStruct::Mod(m);
-                                        Self::normalize_path_part(
-                                            &module_function_or_struct,
-                                            path_part,
-                                        )?;
+                                ModuleMemberDeclaration::Module(inner) => {
+                                    if inner.name.value
+                                        == remaining_path.front().as_ref().unwrap().name.value
+                                    {
+                                        let path_part: &mut PathPart =
+                                            remaining_path.pop_front().unwrap();
+                                        generic_member = GenericMember::Mod(inner);
+                                        Self::normalize_path_part(&generic_member, path_part)?;
                                         continue 'outer;
                                     }
                                 }
                                 ModuleMemberDeclaration::Function(func) => {
-                                    if m.name == remaining_path.front().as_ref().unwrap().name {
+                                    if func.name.value
+                                        == remaining_path.front().as_ref().unwrap().name.value
+                                    {
                                         let path_part = remaining_path.pop_front().unwrap();
-                                        module_function_or_struct =
-                                            ModuleFunctionOrStruct::Func(func);
-                                        Self::normalize_path_part(
-                                            &module_function_or_struct,
-                                            path_part,
-                                        )?;
+                                        generic_member = GenericMember::Func(func);
+                                        Self::normalize_path_part(&generic_member, path_part)?;
                                         continue 'outer;
                                     }
                                 }
                                 ModuleMemberDeclaration::Struct(s) => {
-                                    if s.name == remaining_path.front().as_ref().unwrap().name {
+                                    if s.name.value
+                                        == remaining_path.front().as_ref().unwrap().name.value
+                                    {
                                         let path_part = remaining_path.pop_front().unwrap();
-                                        module_function_or_struct =
-                                            ModuleFunctionOrStruct::Struct(s);
-                                        Self::normalize_path_part(
-                                            &module_function_or_struct,
-                                            path_part,
-                                        )?;
+                                        generic_member = GenericMember::Struct(s);
+                                        Self::normalize_path_part(&generic_member, path_part)?;
                                         continue 'outer;
                                     }
                                 }
-                                other => {
-                                    if other.name().as_ref()
-                                        == Some(&remaining_path.front().as_ref().unwrap().name)
+                                ModuleMemberDeclaration::Alias(a) => {
+                                    if a.name.value
+                                        == remaining_path.front().as_ref().unwrap().name.value
                                     {
-                                        let _ = remaining_path.pop_front().unwrap();
+                                        let path_part = remaining_path.pop_front().unwrap();
+                                        generic_member = GenericMember::Alias(a);
+                                        Self::normalize_path_part(&generic_member, path_part)?;
+                                        return process_alias(a, remaining_path);
+                                    }
+                                }
+                                ModuleMemberDeclaration::Void => {}
+                                ModuleMemberDeclaration::ConstAssert(_) => {}
+                                ModuleMemberDeclaration::Declaration(d) => {
+                                    if d.name.value
+                                        == remaining_path.front().as_ref().unwrap().name.value
+                                    {
+                                        let path_part = remaining_path.pop_front().unwrap();
+                                        generic_member = GenericMember::Declaration(d);
+                                        Self::normalize_path_part(&generic_member, path_part)?;
                                         continue 'outer;
                                     }
                                 }
                             }
                         }
+
                         return Err(CompilerPassError::SymbolNotFound(
                             path.value.clone(),
                             path.span(),
@@ -264,19 +325,13 @@ impl TemplateNormalizer {
                 )?;
             }
             Expression::FunctionCall(function_call_expression) => {
-                Self::normalize_module_or_function_path(
-                    &mut function_call_expression.path,
-                    translation_unit,
-                )?;
+                Self::normalize_path(&mut function_call_expression.path, translation_unit)?;
                 for arg in function_call_expression.arguments.iter_mut() {
                     Self::normalize_template_arguments_from_expr(arg, translation_unit)?;
                 }
             }
             Expression::Identifier(identifier_expression) => {
-                Self::normalize_module_or_function_path(
-                    &mut identifier_expression.path,
-                    translation_unit,
-                )?;
+                Self::normalize_path(&mut identifier_expression.path, translation_unit)?;
             }
             Expression::Type(type_expression) => {
                 Self::normalize_template_arguments_from_type(type_expression, translation_unit)?;
@@ -415,10 +470,7 @@ impl TemplateNormalizer {
                 // No action required
             }
             Statement::FunctionCall(function_call_expression) => {
-                Self::normalize_module_or_function_path(
-                    &mut function_call_expression.path,
-                    translation_unit,
-                )?;
+                Self::normalize_path(&mut function_call_expression.path, translation_unit)?;
                 for arg in function_call_expression.arguments.iter_mut() {
                     Self::normalize_template_arguments_from_expr(arg, translation_unit)?;
                 }
@@ -446,7 +498,7 @@ impl TemplateNormalizer {
         expr: &mut TypeExpression,
         translation_unit: &TranslationUnit,
     ) -> Result<(), wesl_types::CompilerPassError> {
-        Self::normalize_module_or_function_path(&mut expr.path, translation_unit)?;
+        Self::normalize_path(&mut expr.path, translation_unit)?;
         Ok(())
     }
 
