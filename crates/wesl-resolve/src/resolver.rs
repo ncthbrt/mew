@@ -734,9 +734,9 @@ impl Resolver {
             }
         }
 
-        // for extension in extend_dirs {
-        //     Self::add_extension_to_scope(&extension, module_path.clone(), scope)?;
-        // }
+        for extension in extend_dirs {
+            Self::add_extension_to_scope(&extension, module_path.clone(), scope)?;
+        }
 
         module.directives.append(&mut other_dirs);
 
