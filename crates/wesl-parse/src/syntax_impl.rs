@@ -226,3 +226,26 @@ impl TryInto<S<Vec<PathPart>>> for Expression {
         }
     }
 }
+
+impl TryInto<S<ModuleDirective>> for S<GlobalDirective> {
+    type Error = S<GlobalDirective>;
+    fn try_into(self) -> Result<S<ModuleDirective>, Self::Error> {
+        let span = self.span();
+        match self.value {
+            GlobalDirective::Diagnostic(diagnostic_directive) => Err(S::new(
+                GlobalDirective::Diagnostic(diagnostic_directive),
+                span,
+            )),
+            GlobalDirective::Enable(enable_directive) => {
+                Err(S::new(GlobalDirective::Enable(enable_directive), span))
+            }
+            GlobalDirective::Requires(requires_directive) => {
+                Err(S::new(GlobalDirective::Requires(requires_directive), span))
+            }
+            GlobalDirective::Use(usage) => Ok(S::new(ModuleDirective::Use(usage), span)),
+            GlobalDirective::Extend(extend_directive) => {
+                Ok(S::new(ModuleDirective::Extend(extend_directive), span))
+            }
+        }
+    }
+}

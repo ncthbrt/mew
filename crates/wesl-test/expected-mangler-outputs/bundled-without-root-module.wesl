@@ -35,6 +35,17 @@ struct Camera {
     viewProjectionMatrix: mat4x4f
 }
 
+@fragment
+fn util__main() -> u32 {
+    return util_my__fn();
+}
+
+mod util {
+    fn util_my__fn() -> u32 {
+        return 42;
+    }
+}
+
 struct VertexOutput {
     @builtin(position)
     Position: vec4f,

@@ -36,6 +36,17 @@ mod MyLib {
         viewProjectionMatrix: mat4x4f
     }
     
+    @fragment
+    fn MyLib_util__main() -> u32 {
+        return MyLib_util_my__fn();
+    }
+    
+    mod util {
+        fn MyLib_util_my__fn() -> u32 {
+            return 42;
+        }
+    }
+    
     struct MyLib_VertexOutput {
         @builtin(position)
         Position: vec4f,

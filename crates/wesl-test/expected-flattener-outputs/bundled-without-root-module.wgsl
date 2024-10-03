@@ -23,6 +23,11 @@ struct Camera {
     viewProjectionMatrix: mat4x4f
 }
 
+@fragment
+fn util__main() -> u32 {
+    return util_my__fn();
+}
+
 struct VertexOutput {
     @builtin(position)
     Position: vec4f,
@@ -47,3 +52,7 @@ struct Types2_Camera {
 }
 
 const Types2_x: Types2_Camera = Types2_Camera();
+
+fn util_my__fn() -> u32 {
+    return 42;
+}

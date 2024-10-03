@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use wesl_parse::{
     span::Spanned,
-    syntax::{self, Module, TranslationUnit},
+    syntax::{self, Module, ModuleDirective, TranslationUnit},
 };
 
 use crate::file_system::ReadonlyFilesystem;
@@ -48,13 +48,13 @@ impl<Fs: ReadonlyFilesystem> Bundler<Fs> {
             result
                 .global_declarations
                 .append(&mut local_translation_unit.global_declarations);
+            result
+                .global_directives
+                .append(&mut local_translation_unit.global_directives);
         }
 
         if let Some(module_name) = &ctx.enclosing_module_name {
             let mut encapsulated_result: TranslationUnit = TranslationUnit::default();
-            encapsulated_result
-                .global_directives
-                .append(&mut result.global_directives);
             let mut module = Module {
                 name: Spanned::new(module_name.to_owned(), 0..0),
                 ..Module::default()
@@ -67,6 +67,18 @@ impl<Fs: ReadonlyFilesystem> Bundler<Fs> {
                 module
                     .members
                     .push(Spanned::new(declaration.value.into(), span));
+            }
+            for directive in result.global_directives {
+                match TryInto::<Spanned<ModuleDirective>>::try_into(directive) {
+                    Ok(dir) => {
+                        module_span.start = usize::min(dir.span().start, module_span.start);
+                        module_span.end = usize::max(dir.span().end, module_span.end);
+                        module.directives.push(dir);
+                    }
+                    Err(directive) => {
+                        encapsulated_result.global_directives.push(directive);
+                    }
+                };
             }
             encapsulated_result.global_declarations.push(Spanned::new(
                 syntax::GlobalDeclaration::Module(module),

@@ -1,6 +1,8 @@
 
 
 mod MyLib {
+    use util::my_fn as x;
+    
     mod Types2 {
         struct Uniforms {
             modelMatrix: array<mat4x4f, 5>
@@ -35,6 +37,17 @@ mod MyLib {
     
     struct Camera {
         viewProjectionMatrix: mat4x4f
+    }
+    
+    @fragment
+    fn util_main() -> u32 {
+        return x();
+    }
+    
+    mod util {
+        fn my_fn() -> u32 {
+            return 42;
+        }
     }
     
     struct VertexOutput {
