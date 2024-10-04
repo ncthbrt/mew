@@ -25,7 +25,7 @@ impl Usages {
 
     fn insert(&mut self, path: im::Vector<PathPart>) -> bool {
         if self.set.insert(path.clone()).is_none() {
-            self.queue.push_back(path);
+            self.queue.push_front(path);
             return true;
         }
         false
@@ -103,6 +103,7 @@ impl OwnedMember {
                 name.value = mangle_template_args(&with);
             }
         }
+
         match self {
             OwnedMember::Global(other) => {
                 Self::specialize_global_declarations(other, with.clone())?
@@ -187,56 +188,28 @@ impl OwnedMember {
                 }
                 Ok(())
             }
-            Expression::Identifier(identifier_expression) => {
-                let start_name = identifier_expression
-                    .path
-                    .first()
-                    .unwrap()
-                    .name
-                    .value
-                    .clone();
+            Expression::Identifier(IdentifierExpression { path })
+            | Expression::Type(TypeExpression { path }) => {
+                let start_name = path.first().unwrap().name.value.clone();
                 if name == &start_name {
-                    if identifier_expression.path.len() == 1 {
+                    if path.len() == 1 {
                         *expression = value.expression.clone().value;
                     } else {
-                        let span = identifier_expression.path.span();
+                        let span = path.span();
                         if let Ok(mut start) = TryInto::<Spanned<Vec<PathPart>>>::try_into(
                             value.expression.value.clone(),
                         ) {
-                            identifier_expression.path.remove(0);
-                            start.value.append(&mut identifier_expression.path);
-                            identifier_expression.path = start;
-                            Self::substitute_path(&mut identifier_expression.path, name, value)?;
+                            path.remove(0);
+                            start.value.append(path);
+                            *path = start;
+                            Self::substitute_path(path, name, value)?;
                         } else {
                             return Err(CompilerPassError::MalformedTemplateArgument(span));
                         }
                     }
                     Ok(())
                 } else {
-                    Self::substitute_path(&mut identifier_expression.path, name, value)
-                }
-            }
-            Expression::Type(type_expression) => {
-                let start_name = type_expression.path.first().unwrap().name.value.clone();
-                if name == &start_name {
-                    if type_expression.path.len() == 1 {
-                        *expression = value.expression.clone().value;
-                    } else {
-                        let span = type_expression.path.span();
-                        if let Ok(mut start) = TryInto::<Spanned<Vec<PathPart>>>::try_into(
-                            value.expression.value.clone(),
-                        ) {
-                            type_expression.path.remove(0);
-                            start.value.append(&mut type_expression.path);
-                            type_expression.path = start;
-                            Self::substitute_path(&mut type_expression.path, name, value)?;
-                        } else {
-                            return Err(CompilerPassError::MalformedTemplateArgument(span));
-                        }
-                    }
-                    Ok(())
-                } else {
-                    Self::substitute_path(&mut type_expression.path, name, value)
+                    Self::substitute_path(path, name, value)
                 }
             }
         }
@@ -466,10 +439,20 @@ impl OwnedMember {
         template_params: &mut Vec<Spanned<FormalTemplateParameter>>,
         with: PathPart,
     ) -> Vec<(Spanned<FormalTemplateParameter>, Spanned<TemplateArg>)> {
+        assert!(
+            template_params.is_empty()
+                || (with.template_args.is_some()
+                    && with
+                        .template_args
+                        .as_ref()
+                        .unwrap()
+                        .iter()
+                        .all(|x| x.arg_name.is_some()))
+        );
         return template_params
             .drain(..)
             .map(|x| {
-                let name = Some(x.name.clone());
+                let name: Option<Spanned<String>> = Some(x.name.clone());
                 (
                     x,
                     with.template_args
@@ -488,7 +471,6 @@ impl OwnedMember {
             let name: &String = &param.name.value;
             Self::substitute_path(&mut alias.typ.path, name, &arg)?;
         }
-
         Ok(())
     }
 
@@ -759,7 +741,6 @@ impl<'a> BorrowedMember<'a> {
                 {
                     Self::collect_usages_from_expression(arg, usages)?;
                 }
-
                 // We're not recursing here
             }
         }
@@ -861,9 +842,7 @@ impl<'a> BorrowedMember<'a> {
         alias: &Alias,
         usages: &mut Usages,
     ) -> Result<(), CompilerPassError> {
-        if alias.template_parameters.is_empty() {
-            Self::collect_usages_from_typ(&alias.typ, usages)?;
-        }
+        Self::collect_usages_from_typ(&alias.typ, usages)?;
         Ok(())
     }
 
@@ -912,11 +891,9 @@ impl<'a> BorrowedMember<'a> {
                 }
                 Ok(())
             }
-            Expression::Identifier(identifier_expression) => {
-                Self::collect_usages_from_path(&identifier_expression.path, usages)
-            }
-            Expression::Type(type_expression) => {
-                Self::collect_usages_from_typ(type_expression, usages)
+            Expression::Identifier(IdentifierExpression { path })
+            | Expression::Type(TypeExpression { path }) => {
+                Self::collect_usages_from_path(path, usages)
             }
         }
     }
@@ -1374,6 +1351,7 @@ impl Specializer {
 
         while let Some(remaining_path) = usages.pop() {
             assert!(!remaining_path.is_empty());
+
             let current_path = im::Vector::new();
             if let Some(concrete_path) = Self::specialize(
                 &mut parent,
@@ -1427,7 +1405,6 @@ impl Specializer {
         if remaining_path.is_empty() {
             return Ok(None);
         }
-
         let mut part: PathPart = remaining_path.pop_front().unwrap();
         let current;
         let mut unparamaterized_part = part.clone();
@@ -1449,7 +1426,6 @@ impl Specializer {
         } else {
             return Ok(None);
         }
-        current_path.push_back(current.name().unwrap().value);
 
         if let Some(mut head) = remaining_path.pop_front() {
             let mut parent_args = part.template_args.take().unwrap_or_default();
@@ -1463,6 +1439,8 @@ impl Specializer {
         } else {
             current.collect_usages(usages)?;
         }
+
+        current_path.push_back(current.name().unwrap().value);
 
         match current.try_into_parent() {
             Ok(mut p) => {
@@ -1484,6 +1462,8 @@ impl Specializer {
                             name: Spanned::new(x, 0..0),
                             template_args: None,
                         })
+                        .take(current_path.len() - 1)
+                        .chain(remaining_path.clone())
                         .collect(),
                 ));
             }

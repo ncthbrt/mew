@@ -377,7 +377,6 @@ fn template_specialize_wesl_samples() -> Result<(), CompilerPassError> {
             };
 
             normalizer.apply_mut(&mut result)?;
-
             let mut specializer = wesl_specialize::Specializer::default();
 
             specializer.apply_mut(&mut result)?;

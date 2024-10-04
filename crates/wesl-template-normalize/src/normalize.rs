@@ -41,13 +41,14 @@ impl TemplateNormalizer {
     fn normalize_path_part(
         generic_member: &GenericMember,
         path_part: &mut PathPart,
+        translation_unit: &TranslationUnit,
     ) -> Result<(), CompilerPassError> {
         let mut template_args = path_part.template_args.take().unwrap_or_default();
         let template_params = generic_member.template_params();
         let mut result: Vec<Spanned<TemplateArg>> = vec![];
         for (idx, param) in template_params.iter().enumerate() {
             if let Some(default_value) = param.default_value.as_ref() {
-                let value = if let Some(value) = template_args
+                let mut value = if let Some(value) = template_args
                     .iter()
                     .find(|x| x.arg_name.as_ref() == Some(&param.name))
                     .cloned()
@@ -62,12 +63,20 @@ impl TemplateNormalizer {
                         default_value.span(),
                     )
                 };
+                Self::normalize_template_arguments_from_expr(
+                    &mut value.expression,
+                    translation_unit,
+                );
                 result.push(value);
             } else if let Some(template_arg) = template_args.get_mut(idx) {
                 if template_arg.arg_name.is_none()
                     || template_arg.arg_name.as_ref() == Some(&param.name)
                 {
                     template_arg.arg_name = Some(param.name.clone());
+                    Self::normalize_template_arguments_from_expr(
+                        &mut template_arg.expression,
+                        translation_unit,
+                    );
                     result.push(template_arg.clone());
                 } else {
                     return Err(CompilerPassError::UnknownTemplateArgument(
@@ -81,7 +90,9 @@ impl TemplateNormalizer {
                 ));
             }
         }
-        if !template_args.is_empty() {
+        if let Some(args) = path_part.template_args.as_mut() {
+            args.append(&mut result);
+        } else {
             path_part.template_args = Some(result);
         }
 
@@ -131,11 +142,18 @@ impl TemplateNormalizer {
                             None
                         }
                     }
+                    GlobalDeclaration::Declaration(d) => {
+                        if d.name == fst.name {
+                            Some(GenericMember::Declaration(d))
+                        } else {
+                            None
+                        }
+                    }
                     _ => None,
                 })
         {
             let mut generic_member = generic_member;
-            Self::normalize_path_part(&generic_member, fst)?;
+            Self::normalize_path_part(&generic_member, fst, translation_unit)?;
 
             let process_alias = |a: &Alias,
                                  mut remaining_path: VecDeque<&mut PathPart>|
@@ -153,7 +171,6 @@ impl TemplateNormalizer {
                     .zip(remaining_path_with_alias.into_iter().skip(a.typ.path.len()))
                 {
                     part.template_args = resultant_part.template_args;
-                    println!("PART {part}");
                 }
 
                 Ok(())
@@ -192,7 +209,11 @@ impl TemplateNormalizer {
                                         let path_part: &mut PathPart =
                                             remaining_path.pop_front().unwrap();
                                         generic_member = GenericMember::Mod(inner);
-                                        Self::normalize_path_part(&generic_member, path_part)?;
+                                        Self::normalize_path_part(
+                                            &generic_member,
+                                            path_part,
+                                            translation_unit,
+                                        )?;
                                         continue 'outer;
                                     }
                                 }
@@ -202,7 +223,11 @@ impl TemplateNormalizer {
                                     {
                                         let path_part = remaining_path.pop_front().unwrap();
                                         generic_member = GenericMember::Func(func);
-                                        Self::normalize_path_part(&generic_member, path_part)?;
+                                        Self::normalize_path_part(
+                                            &generic_member,
+                                            path_part,
+                                            translation_unit,
+                                        )?;
                                         continue 'outer;
                                     }
                                 }
@@ -212,7 +237,11 @@ impl TemplateNormalizer {
                                     {
                                         let path_part = remaining_path.pop_front().unwrap();
                                         generic_member = GenericMember::Struct(s);
-                                        Self::normalize_path_part(&generic_member, path_part)?;
+                                        Self::normalize_path_part(
+                                            &generic_member,
+                                            path_part,
+                                            translation_unit,
+                                        )?;
                                         continue 'outer;
                                     }
                                 }
@@ -222,7 +251,11 @@ impl TemplateNormalizer {
                                     {
                                         let path_part = remaining_path.pop_front().unwrap();
                                         generic_member = GenericMember::Alias(a);
-                                        Self::normalize_path_part(&generic_member, path_part)?;
+                                        Self::normalize_path_part(
+                                            &generic_member,
+                                            path_part,
+                                            translation_unit,
+                                        )?;
                                         return process_alias(a, remaining_path);
                                     }
                                 }
@@ -234,7 +267,11 @@ impl TemplateNormalizer {
                                     {
                                         let path_part = remaining_path.pop_front().unwrap();
                                         generic_member = GenericMember::Declaration(d);
-                                        Self::normalize_path_part(&generic_member, path_part)?;
+                                        Self::normalize_path_part(
+                                            &generic_member,
+                                            path_part,
+                                            translation_unit,
+                                        )?;
                                         continue 'outer;
                                     }
                                 }
@@ -249,6 +286,15 @@ impl TemplateNormalizer {
                 }
             }
             return Ok(());
+        } else {
+            for part in vec![fst].iter_mut().chain(remaining_path.iter_mut()) {
+                for arg in part.template_args.iter_mut().flatten() {
+                    Self::normalize_template_arguments_from_expr(
+                        &mut arg.expression,
+                        translation_unit,
+                    )?;
+                }
+            }
         }
         Ok(())
     }
@@ -257,10 +303,20 @@ impl TemplateNormalizer {
         module: &mut Module,
         translation_unit: &TranslationUnit,
     ) -> Result<(), wesl_types::CompilerPassError> {
+        for decl in module.directives.iter_mut() {
+            match &mut decl.value {
+                ModuleDirective::Use(_) => {
+                    panic!("USE SHOULD HAVE ALREADY BEEN REMOVED");
+                }
+                ModuleDirective::Extend(extend_directive) => {
+                    Self::normalize_path(&mut extend_directive.path, &translation_unit)?;
+                }
+            }
+        }
         for decl in module.members.iter_mut() {
             match decl.as_mut() {
                 ModuleMemberDeclaration::Void => {
-                    // NO ACTION REQUIRED REQUIRED
+                    // NO ACTION REQUIRED
                 }
                 ModuleMemberDeclaration::Declaration(decl) => {
                     Self::normalize_template_arguments_from_decl(decl, translation_unit)?;
@@ -587,6 +643,19 @@ impl TemplateNormalizer {
         translation_unit: &mut TranslationUnit,
     ) -> Result<(), wesl_types::CompilerPassError> {
         let clone = translation_unit.clone();
+        for decl in translation_unit.global_directives.iter_mut() {
+            match &mut decl.value {
+                GlobalDirective::Diagnostic(_) => {}
+                GlobalDirective::Enable(_) => {}
+                GlobalDirective::Requires(_) => {}
+                GlobalDirective::Use(_) => {
+                    panic!("USE SHOULD HAVE ALREADY BEEN REMOVED");
+                }
+                GlobalDirective::Extend(extend_directive) => {
+                    Self::normalize_path(&mut extend_directive.path, &clone)?;
+                }
+            }
+        }
         for decl in translation_unit.global_declarations.iter_mut() {
             match decl.as_mut() {
                 GlobalDeclaration::Void => {

@@ -2,8 +2,8 @@ use wesl_parse::{
     span::Spanned,
     syntax::{
         Alias, CompoundStatement, ConstAssert, Declaration, Expression, Function,
-        GlobalDeclaration, Module, ModuleMemberDeclaration, PathPart, Statement, Struct,
-        TranslationUnit, TypeExpression,
+        GlobalDeclaration, IdentifierExpression, Module, ModuleMemberDeclaration, PathPart,
+        Statement, Struct, TranslationUnit, TypeExpression,
     },
 };
 use wesl_types::CompilerPass;
@@ -233,7 +233,7 @@ impl Mangler {
                 }
             }
             Expression::Identifier(id) => {
-                Self::mangle_path(&mut id.path);
+                Self::mangle_identifier_expression(id);
             }
             Expression::Type(typ) => {
                 Self::mangle_type(typ);
@@ -257,6 +257,27 @@ impl Mangler {
         if mangle_type_path {
             Self::mangle_path(&mut typ.path);
         } else if let Some(args) = typ.path[0].template_args.as_mut() {
+            for arg in args {
+                Self::mangle_expression(&mut arg.expression);
+            }
+        }
+    }
+    fn mangle_identifier_expression(id: &mut IdentifierExpression) {
+        let mut mangle_type_path = true;
+        if id.path.len() == 1 {
+            let builtin_tokens = wesl_types::builtins::get_builtin_tokens();
+            mangle_type_path = !builtin_tokens
+                .type_generators
+                .contains(&id.path[0].name.value.clone());
+            if mangle_type_path {
+                mangle_type_path = !builtin_tokens
+                    .type_aliases
+                    .contains_key(&id.path[0].name.value.clone());
+            }
+        }
+        if mangle_type_path {
+            Self::mangle_path(&mut id.path);
+        } else if let Some(args) = id.path[0].template_args.as_mut() {
             for arg in args {
                 Self::mangle_expression(&mut arg.expression);
             }

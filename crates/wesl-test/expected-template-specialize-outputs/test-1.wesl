@@ -9,6 +9,15 @@ fn main(@builtin(instance_index) instanceIdx: u32, @location(0) position: vec4<f
     return output;
 }
 
+const My__Lib_x__Hey__WhatsUp__Hi: array<mat4x4f, 5> = array<mat4x4f, 5>();
+
+@binding(0) @group(0)
+var<uniform> My__Lib_VertexShader_uniforms__Hey__WhatsUp__Hi__Hi: My__Lib_VertexShader_Types_Uniforms__Hi;
+
+struct My__Lib_VertexShader_Types_Uniforms__Hi {
+    modelMatrix: array<mat4x4f, 5>
+}
+
 struct My__Lib_VertexShader_Types_VertexOutput__Hey {
     @builtin(position)
     Position: vec4f,
@@ -16,14 +25,5 @@ struct My__Lib_VertexShader_Types_VertexOutput__Hey {
     fragColor: vec4f
 }
 
-struct My__Lib_VertexShader_Types_Uniforms__Hi {
-    modelMatrix: array<mat4x4f, 5>
-}
-
 @binding(1) @group(0)
 var<uniform> My__Lib_VertexShader_camera__Hey__WhatsUp__Hi__Hi: array<mat4x4f, 5>;
-
-@binding(0) @group(0)
-var<uniform> My__Lib_VertexShader_uniforms__Hey__WhatsUp__Hi__Hi: My__Lib_VertexShader_Types_Uniforms__Hi;
-
-const My__Lib_x__Hey__WhatsUp__Hi: array<mat4x4f, 5> = array<mat4x4f, 5>();
