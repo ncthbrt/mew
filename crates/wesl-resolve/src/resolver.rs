@@ -401,8 +401,9 @@ impl Resolver {
     fn struct_to_absolute_path(
         strct: &mut Struct,
         module_path: ModulePath,
-        scope: im::HashMap<String, ScopeMember>,
+        mut scope: im::HashMap<String, ScopeMember>,
     ) -> Result<(), CompilerPassError> {
+        Self::struct_template_parameters_to_absolute_path(module_path.clone(), strct, &mut scope)?;
         for m in strct.members.iter_mut() {
             Self::type_to_absolute_path(&mut m.typ, module_path.clone(), scope.clone())?;
         }
@@ -412,8 +413,14 @@ impl Resolver {
     fn decl_to_absolute_path(
         declaration: &mut Declaration,
         module_path: ModulePath,
-        scope: im::HashMap<String, ScopeMember>,
+        mut scope: im::HashMap<String, ScopeMember>,
     ) -> Result<(), CompilerPassError> {
+        Self::decl_template_parameters_to_absolute_path(
+            module_path.clone(),
+            declaration,
+            &mut scope,
+        )?;
+
         if let Some(init) = declaration.initializer.as_mut() {
             Self::expression_to_absolute_paths(init, module_path.clone(), scope.clone())?;
         };
@@ -551,11 +558,113 @@ impl Resolver {
         Ok(())
     }
 
+    fn alias_template_parameters_to_absolute_path(
+        module_path: ModulePath,
+        alias: &mut Alias,
+        scope: &mut im::HashMap<String, ScopeMember>,
+    ) -> Result<(), CompilerPassError> {
+        for param in alias.template_parameters.iter_mut() {
+            if let Some(default_value) = param.default_value.as_mut() {
+                Self::expression_to_absolute_paths(
+                    default_value.as_mut(),
+                    module_path.clone(),
+                    scope.clone(),
+                )?;
+            }
+            let old_name = param.name.value.clone();
+            let new_name =
+                Self::mangle_template_parameter_name(&module_path, &alias.name, &param.name);
+            param.name.value.clone_from(&new_name);
+            scope.insert(
+                new_name.clone(),
+                ScopeMember::TemplateParam(new_name.clone()),
+            );
+            scope.insert(old_name.clone(), ScopeMember::TemplateParam(new_name));
+        }
+        Ok(())
+    }
+
+    fn const_assert_template_parameters_to_absolute_path(
+        module_path: ModulePath,
+        const_assert: &mut ConstAssert,
+        scope: &mut im::HashMap<String, ScopeMember>,
+    ) -> Result<(), CompilerPassError> {
+        for param in const_assert.template_parameters.iter_mut() {
+            if let Some(default_value) = param.default_value.as_mut() {
+                Self::expression_to_absolute_paths(
+                    default_value.as_mut(),
+                    module_path.clone(),
+                    scope.clone(),
+                )?;
+            }
+            let name = param.name.value.clone();
+            scope.insert(name.clone(), ScopeMember::TemplateParam(name));
+        }
+        Ok(())
+    }
+
+    fn decl_template_parameters_to_absolute_path(
+        module_path: ModulePath,
+        declaration: &mut Declaration,
+        scope: &mut im::HashMap<String, ScopeMember>,
+    ) -> Result<(), CompilerPassError> {
+        for param in declaration.template_parameters.iter_mut() {
+            if let Some(default_value) = param.default_value.as_mut() {
+                Self::expression_to_absolute_paths(
+                    default_value.as_mut(),
+                    module_path.clone(),
+                    scope.clone(),
+                )?;
+            }
+            let old_name = param.name.value.clone();
+            let new_name =
+                Self::mangle_template_parameter_name(&module_path, &declaration.name, &param.name);
+            param.name.value.clone_from(&new_name);
+            scope.insert(
+                new_name.clone(),
+                ScopeMember::TemplateParam(new_name.clone()),
+            );
+            scope.insert(old_name.clone(), ScopeMember::TemplateParam(new_name));
+        }
+        Ok(())
+    }
+
+    fn struct_template_parameters_to_absolute_path(
+        module_path: ModulePath,
+        strct: &mut Struct,
+        scope: &mut im::HashMap<String, ScopeMember>,
+    ) -> Result<(), CompilerPassError> {
+        for param in strct.template_parameters.iter_mut() {
+            if let Some(default_value) = param.default_value.as_mut() {
+                Self::expression_to_absolute_paths(
+                    default_value.as_mut(),
+                    module_path.clone(),
+                    scope.clone(),
+                )?;
+            }
+            let old_name = param.name.value.clone();
+            let new_name =
+                Self::mangle_template_parameter_name(&module_path, &strct.name, &param.name);
+            param.name.value.clone_from(&new_name);
+            scope.insert(
+                new_name.clone(),
+                ScopeMember::TemplateParam(new_name.clone()),
+            );
+            scope.insert(old_name.clone(), ScopeMember::TemplateParam(new_name));
+        }
+        Ok(())
+    }
+
     fn const_assert_to_absolute_path(
         assrt: &mut ConstAssert,
         module_path: ModulePath,
-        scope: im::HashMap<String, ScopeMember>,
+        mut scope: im::HashMap<String, ScopeMember>,
     ) -> Result<(), CompilerPassError> {
+        Self::const_assert_template_parameters_to_absolute_path(
+            module_path.clone(),
+            assrt,
+            &mut scope,
+        );
         Self::expression_to_absolute_paths(&mut assrt.expression, module_path, scope)?;
         Ok(())
     }
@@ -563,8 +672,10 @@ impl Resolver {
     fn alias_to_absolute_path(
         alias: &mut Alias,
         module_path: ModulePath,
-        scope: im::HashMap<String, ScopeMember>,
+        mut scope: im::HashMap<String, ScopeMember>,
     ) -> Result<(), CompilerPassError> {
+        Self::alias_template_parameters_to_absolute_path(module_path.clone(), alias, &mut scope)?;
+
         Self::type_to_absolute_path(&mut alias.typ, module_path, scope)?;
         Ok(())
     }
@@ -731,6 +842,12 @@ impl Resolver {
         module.directives.append(&mut other_dirs);
 
         Ok(())
+    }
+
+    fn add_template_params_to_scope(
+        decl: &GlobalDeclaration,
+        scope: &mut im::HashMap<String, ScopeMember>,
+    ) {
     }
 
     fn add_extension_to_scope(

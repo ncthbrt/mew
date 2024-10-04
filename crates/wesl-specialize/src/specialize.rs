@@ -835,6 +835,7 @@ impl<'a> BorrowedMember<'a> {
         if let Some(init) = declaration.initializer.as_ref() {
             Self::collect_usages_from_expression(init.as_ref(), usages)?;
         }
+
         Ok(())
     }
 

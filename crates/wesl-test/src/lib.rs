@@ -396,10 +396,11 @@ fn template_specialize_wesl_samples() -> Result<(), CompilerPassError> {
             let mut flattener = wesl_flatten::Flattener::default();
             flattener.apply_mut(&mut result)?;
 
+            let stem = path.file_stem().unwrap().to_str().unwrap().to_string();
             let expected_output_location: PathBuf = std::env::current_dir()
                 .unwrap()
                 .join("expected-template-specialize-outputs")
-                .join(path.file_name().unwrap());
+                .join(format!("{}.wgsl", stem));
 
             #[cfg(feature = "update_expected_output")]
             {

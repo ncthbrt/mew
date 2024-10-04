@@ -3,16 +3,18 @@ mod Hey {
 }
 
 mod Hi {
-    alias T = array<mat4x4f, 5>;
+    alias T = Camera<mat4x4f>;
+}
+
+struct Camera<Mat> {
+    viewProjectionMatrix: Mat
 }
 
 mod WhatsUp {
     alias T = f32;
 }
 
-mod My_Lib<A, B, C = Hi> {
-    alias Camera = VertexShader<C>::Types::Camera<Mat = mat4x4f>;
-    
+mod My_Lib<A, B, C = Hi> {    
     const x: VertexShader<C>::E = VertexShader<C>::E();
     
     mod VertexShader<C> {        
@@ -26,10 +28,6 @@ mod My_Lib<A, B, C = Hi> {
             
             struct Uniforms {
                 modelMatrix: C::T
-            }
-            
-            struct Camera<Mat> {
-                viewProjectionMatrix: mat4x4f
             }
             
             alias Nested = E;
@@ -49,13 +47,12 @@ mod My_Lib<A, B, C = Hi> {
     }
 }
 
-
 @vertex
 fn main(@builtin(instance_index) instanceIdx: u32, @location(0) position: vec4<f32>, @location(1) color: vec4f) -> My_Lib<Hey, WhatsUp>::VertexShader<Hi>::Types::VertexOutput {
     use My_Lib<Hey, WhatsUp>::VertexShader<Hi> as V;
     let uni = V::Types::Nested();
     var output: V::Types::VertexOutput;
-    output.Position = V::camera.viewProjectionMatrix * V::uniforms.modelMatrix[instanceIdx] * position;
+    output.Position = V::camera.viewProjectionMatrix * V::uniforms.modelMatrix.viewProjectionMatrix[instanceIdx] * position;
     output.fragColor = color / vec4<f32>(My_Lib<Hey, WhatsUp>::x);
     return output;
 }
