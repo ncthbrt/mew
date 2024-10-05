@@ -4,8 +4,8 @@ use wesl_parse::{
     span::Spanned,
     syntax::{
         Alias, CompoundStatement, ConstAssert, Declaration, Expression, FormalTemplateParameter,
-        Function, GlobalDeclaration, Module, ModuleMemberDeclaration, PathPart, Statement, Struct,
-        TranslationUnit, TypeExpression,
+        Function, GlobalDeclaration, IdentifierExpression, Module, ModuleMemberDeclaration,
+        PathPart, Statement, Struct, TranslationUnit, TypeExpression,
     },
 };
 use wesl_types::{builtins, mangling::mangle_template_args, CompilerPass};
@@ -19,10 +19,13 @@ pub struct Dealiaser;
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 struct ModulePath(im::Vector<PathPart>);
 
+type AliasCache = HashMap<AliasPath, AliasPath>;
+type FlattenedAliasCache = Vec<(AliasPath, AliasPath)>;
+
 impl AliasPath {
     fn normalize(&mut self) {
         if self.0.len() == 1 {
-            let item = &self.0.get(0).unwrap().name.value;
+            let item: &String = &self.0.get(0).unwrap().name.value;
             let builtin_tokens = builtins::get_builtin_tokens();
             let builtin_functions = builtins::get_builtin_functions();
             if builtin_tokens.type_aliases.contains_key(item)
@@ -30,6 +33,22 @@ impl AliasPath {
                 || builtin_tokens.interpolation_type_names.contains(item)
                 || builtin_functions.functions.contains_key(item)
             {
+                for p in self.0.iter_mut() {
+                    for arg in p.template_args.iter_mut().flatten() {
+                        if let Ok(path) = TryInto::<Spanned<Vec<PathPart>>>::try_into(
+                            arg.expression.value.clone(),
+                        ) {
+                            let mut result: AliasPath = AliasPath(path.into_iter().collect());
+                            result.normalize();
+                            *arg.expression = Expression::Identifier(IdentifierExpression {
+                                path: Spanned::new(
+                                    result.0.into_iter().collect(),
+                                    arg.expression.span(),
+                                ),
+                            })
+                        }
+                    }
+                }
                 return;
             }
         }
@@ -41,11 +60,7 @@ impl AliasPath {
 }
 
 impl Dealiaser {
-    fn add_alias_to_cache(
-        mut module_path: ModulePath,
-        alias: &Alias,
-        cache: &mut HashMap<AliasPath, AliasPath>,
-    ) {
+    fn add_alias_to_cache(mut module_path: ModulePath, alias: &Alias, cache: &mut AliasCache) {
         module_path.0.push_back(PathPart {
             name: alias.name.clone(),
             template_args: None,
@@ -60,7 +75,7 @@ impl Dealiaser {
     fn populate_aliases_from_module(
         module: &mut Module,
         mut module_path: ModulePath,
-        cache: &mut HashMap<AliasPath, AliasPath>,
+        cache: &mut AliasCache,
     ) {
         module_path.0.push_back(PathPart {
             name: module.name.clone(),
@@ -89,7 +104,7 @@ impl Dealiaser {
 
     fn populate_aliases_from_translation_unit(
         translation_unit: &mut TranslationUnit,
-        cache: &mut HashMap<AliasPath, AliasPath>,
+        cache: &mut AliasCache,
     ) -> Result<(), wesl_types::CompilerPassError> {
         let module_path = ModulePath(im::Vector::new());
         let mut others = vec![];
@@ -113,7 +128,7 @@ impl Dealiaser {
     }
 
     fn resolve_aliases_from_cache(
-        cache: &mut HashMap<AliasPath, AliasPath>,
+        cache: &mut AliasCache,
     ) -> Result<(), wesl_types::CompilerPassError> {
         let keys: im::Vector<AliasPath> = cache.keys().cloned().collect();
         for k in keys {
@@ -131,7 +146,7 @@ impl Dealiaser {
 
     fn replace_alias_usages_from_module(
         module: &mut Module,
-        cache: &HashMap<AliasPath, AliasPath>,
+        cache: &FlattenedAliasCache,
     ) -> Result<(), wesl_types::CompilerPassError> {
         for decl in module.members.iter_mut() {
             match decl.as_mut() {
@@ -163,7 +178,7 @@ impl Dealiaser {
 
     fn replace_alias_usages_from_expr(
         expr: &mut Expression,
-        cache: &HashMap<AliasPath, AliasPath>,
+        cache: &FlattenedAliasCache,
     ) -> Result<(), wesl_types::CompilerPassError> {
         match expr {
             Expression::Literal(_) => {
@@ -203,7 +218,7 @@ impl Dealiaser {
 
     fn replace_alias_usages_from_statement(
         statement: &mut Statement,
-        cache: &HashMap<AliasPath, AliasPath>,
+        cache: &FlattenedAliasCache,
     ) -> Result<(), wesl_types::CompilerPassError> {
         match statement {
             Statement::Void => {
@@ -312,15 +327,21 @@ impl Dealiaser {
 
     fn replace_path_with_alias(
         mutable_path: &mut Spanned<Vec<PathPart>>,
-        cache: &HashMap<AliasPath, AliasPath>,
+        cache: &FlattenedAliasCache,
     ) -> Result<(), wesl_types::CompilerPassError> {
-        let mut path = AliasPath(mutable_path.value.clone().into());
+        let mut path = AliasPath(mutable_path.value.drain(..).collect());
         path.normalize();
+        for p in path.0.iter_mut() {
+            for arg in p.template_args.iter_mut().flatten() {
+                Self::replace_alias_usages_from_expr(&mut arg.expression, cache)?;
+            }
+        }
+        // TODO: Perform a tree search here instead
         for (k, v) in cache.iter() {
             if path.0.len() >= k.0.len() {
                 let n = AliasPath(path.0.take(k.0.len()));
                 if &n == k {
-                    let rest = mutable_path.split_off(k.0.len());
+                    let rest = path.0.clone().split_off(k.0.len());
                     mutable_path.clear();
                     mutable_path.extend(v.0.clone());
                     mutable_path.extend(rest);
@@ -328,12 +349,14 @@ impl Dealiaser {
                 }
             }
         }
+        mutable_path.value.extend(path.0);
+
         Ok(())
     }
 
     fn replace_alias_usages_from_type(
         expr: &mut TypeExpression,
-        cache: &HashMap<AliasPath, AliasPath>,
+        cache: &FlattenedAliasCache,
     ) -> Result<(), wesl_types::CompilerPassError> {
         Self::replace_path_with_alias(&mut expr.path, cache)?;
         Ok(())
@@ -341,7 +364,7 @@ impl Dealiaser {
 
     fn replace_alias_usages_from_decl(
         decl: &mut Declaration,
-        cache: &HashMap<AliasPath, AliasPath>,
+        cache: &FlattenedAliasCache,
     ) -> Result<(), wesl_types::CompilerPassError> {
         if let Some(init) = decl.initializer.as_mut() {
             Self::replace_alias_usages_from_expr(init.as_mut(), cache)?;
@@ -356,7 +379,7 @@ impl Dealiaser {
 
     fn replace_alias_usages_from_struct(
         strct: &mut Struct,
-        cache: &HashMap<AliasPath, AliasPath>,
+        cache: &FlattenedAliasCache,
     ) -> Result<(), wesl_types::CompilerPassError> {
         for m in strct.members.iter_mut() {
             Self::replace_alias_usages_from_type(&mut m.typ, cache)?;
@@ -366,7 +389,7 @@ impl Dealiaser {
 
     fn replace_alias_usages_from_template_params(
         params: &mut Vec<Spanned<FormalTemplateParameter>>,
-        cache: &HashMap<AliasPath, AliasPath>,
+        cache: &FlattenedAliasCache,
     ) -> Result<(), wesl_types::CompilerPassError> {
         for p in params {
             if let Some(def) = p.default_value.as_mut() {
@@ -378,7 +401,7 @@ impl Dealiaser {
 
     fn replace_alias_usages_from_compound_statement(
         statement: &mut CompoundStatement,
-        cache: &HashMap<AliasPath, AliasPath>,
+        cache: &FlattenedAliasCache,
     ) -> Result<(), wesl_types::CompilerPassError> {
         for statement in statement.statements.iter_mut() {
             Self::replace_alias_usages_from_statement(statement.as_mut(), cache)?;
@@ -388,7 +411,7 @@ impl Dealiaser {
 
     fn replace_alias_usages_from_function(
         func: &mut Function,
-        cache: &HashMap<AliasPath, AliasPath>,
+        cache: &FlattenedAliasCache,
     ) -> Result<(), wesl_types::CompilerPassError> {
         if let Some(r) = func.return_type.as_mut() {
             Self::replace_alias_usages_from_type(r, cache)?;
@@ -399,13 +422,17 @@ impl Dealiaser {
             Self::replace_alias_usages_from_type(&mut p.typ, cache)?;
         }
 
+        if let Some(ret) = func.return_type.as_mut() {
+            Self::replace_alias_usages_from_type(&mut ret.value, cache)?;
+        }
+
         Self::replace_alias_usages_from_compound_statement(&mut func.body, cache)?;
         Ok(())
     }
 
     fn replace_alias_usages_from_const_assert(
         assrt: &mut ConstAssert,
-        cache: &HashMap<AliasPath, AliasPath>,
+        cache: &FlattenedAliasCache,
     ) -> Result<(), wesl_types::CompilerPassError> {
         Self::replace_alias_usages_from_expr(&mut assrt.expression, cache)?;
         Ok(())
@@ -413,7 +440,7 @@ impl Dealiaser {
 
     fn replace_alias_usages_from_translation_unit(
         translation_unit: &mut TranslationUnit,
-        cache: &HashMap<AliasPath, AliasPath>,
+        cache: &FlattenedAliasCache,
     ) -> Result<(), wesl_types::CompilerPassError> {
         for decl in translation_unit.global_declarations.iter_mut() {
             match decl.as_mut() {
@@ -452,7 +479,8 @@ impl CompilerPass for Dealiaser {
         let mut cache: HashMap<AliasPath, AliasPath> = HashMap::new();
         Self::populate_aliases_from_translation_unit(translation_unit, &mut cache)?;
         Self::resolve_aliases_from_cache(&mut cache)?;
-        Self::replace_alias_usages_from_translation_unit(translation_unit, &cache)?;
+        let flattened_cache = cache.into_iter().collect();
+        Self::replace_alias_usages_from_translation_unit(translation_unit, &flattened_cache)?;
         Ok(())
     }
 }

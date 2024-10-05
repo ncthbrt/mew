@@ -371,7 +371,6 @@ fn template_specialize_wesl_samples() -> Result<(), CompilerPassError> {
 
             let mut resolver = wesl_resolve::Resolver::default();
             let mut result = resolver.apply(&source_module)?;
-
             let mut normalizer = wesl_template_normalize::TemplateNormalizer {
                 ..Default::default()
             };

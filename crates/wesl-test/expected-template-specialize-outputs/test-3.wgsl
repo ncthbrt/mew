@@ -1,6 +1,6 @@
 
 
-fn ReduceBuffer_reduceSrcBlock__SumBinaryOp____260SumBinaryOp____295N____261F32____262__BlockArea__WorkSize__Threads(a: array<ReduceBuffer__SumBinaryOp__F32__BlockArea__WorkSize__Threads_Output, BlockArea_value>) -> Sum_T__F32 {
+fn ReduceBuffer_reduceSrcBlock__SumBinaryOp____260SumBinaryOp____295N____261F32____262__BlockArea__WorkSize__Threads(a: array<Sum_T__F32, BlockArea_value>) -> Sum_T__F32 {
     var v = a[0];
     for (var i = 1u; i < BlockArea_value; i = i + 1u) {
         v = SumBinaryOp_binaryOp__F32(v, a[i]);
@@ -8,10 +8,10 @@ fn ReduceBuffer_reduceSrcBlock__SumBinaryOp____260SumBinaryOp____295N____261F32_
     return v;
 }
 
-fn ReduceBuffer_fetchSrcBuffer__SumBinaryOp____260SumBinaryOp____295N____261F32____262__BlockArea__WorkSize__Threads(gridX: u32) -> array<ReduceBuffer__SumBinaryOp__F32__BlockArea__WorkSize__Threads_Output, BlockArea_value> {
+fn ReduceBuffer_fetchSrcBuffer__SumBinaryOp____260SumBinaryOp____295N____261F32____262__BlockArea__WorkSize__Threads(gridX: u32) -> array<Sum_T__F32, BlockArea_value> {
     let start = ReduceBuffer_u__SumBinaryOp____260SumBinaryOp____295N____261F32____262__BlockArea__WorkSize__Threads.sourceOffset + (gridX * BlockArea_value);
     let end = arrayLength(&ReduceBuffer_src__SumBinaryOp____260SumBinaryOp____295N____261F32____262__BlockArea__WorkSize__Threads);
-    var a = array<ReduceBuffer__SumBinaryOp__F32__BlockArea__WorkSize__Threads_Output, BlockArea_value>();
+    var a = array<Sum_T__F32, BlockArea_value>();
     for (var i = 0u; i < BlockArea_value; i = i + 1u) {
         var idx = i + start;
         if idx < end {
@@ -46,10 +46,10 @@ const ReduceBuffer_workgroupThreads = 4u;
 var<storage, read_write> ReduceBuffer_debug: array<f32>;
 
 @group(0) @binding(2)
-var<storage, read_write> ReduceBuffer_out__SumBinaryOp____260SumBinaryOp____295N____261F32____262__BlockArea__WorkSize__Threads: array<ReduceBuffer__SumBinaryOp__F32__BlockArea__WorkSize__Threads_Output>;
+var<storage, read_write> ReduceBuffer_out__SumBinaryOp____260SumBinaryOp____295N____261F32____262__BlockArea__WorkSize__Threads: array<Sum_T__F32>;
 
 @group(0) @binding(1)
-var<storage, read> ReduceBuffer_src__SumBinaryOp____260SumBinaryOp____295N____261F32____262__BlockArea__WorkSize__Threads: array<ReduceBuffer__SumBinaryOp__F32__BlockArea__WorkSize__Threads_Input>;
+var<storage, read> ReduceBuffer_src__SumBinaryOp____260SumBinaryOp____295N____261F32____262__BlockArea__WorkSize__Threads: array<Sum_T__F32>;
 
 @group(0) @binding(0)
 var<uniform> ReduceBuffer_u__SumBinaryOp____260SumBinaryOp____295N____261F32____262__BlockArea__WorkSize__Threads: ReduceBuffer_Uniforms;
@@ -69,7 +69,7 @@ fn ReduceWorkgroup_reduceWorkgroup__SumBinaryOp____260SumBinaryOp____295N____261
     }
 }
 
-var<workgroup> ReduceWorkgroup_work__SumBinaryOp____260SumBinaryOp____295N____261F32____262__WorkSize: array<SumBinaryOp__F32_OpElem, WorkSize_value>;
+var<workgroup> ReduceWorkgroup_work__SumBinaryOp____260SumBinaryOp____295N____261F32____262__WorkSize: array<Sum_T__F32, WorkSize_value>;
 
 const Threads_value: u32 = 10u;
 

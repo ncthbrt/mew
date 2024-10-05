@@ -66,7 +66,7 @@ impl TemplateNormalizer {
                 Self::normalize_template_arguments_from_expr(
                     &mut value.expression,
                     translation_unit,
-                );
+                )?;
                 result.push(value);
             } else if let Some(template_arg) = template_args.get_mut(idx) {
                 if template_arg.arg_name.is_none()
@@ -76,7 +76,7 @@ impl TemplateNormalizer {
                     Self::normalize_template_arguments_from_expr(
                         &mut template_arg.expression,
                         translation_unit,
-                    );
+                    )?;
                     result.push(template_arg.clone());
                 } else {
                     return Err(CompilerPassError::UnknownTemplateArgument(

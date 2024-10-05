@@ -664,7 +664,7 @@ impl Resolver {
             module_path.clone(),
             assrt,
             &mut scope,
-        );
+        )?;
         Self::expression_to_absolute_paths(&mut assrt.expression, module_path, scope)?;
         Ok(())
     }
@@ -842,12 +842,6 @@ impl Resolver {
         module.directives.append(&mut other_dirs);
 
         Ok(())
-    }
-
-    fn add_template_params_to_scope(
-        decl: &GlobalDeclaration,
-        scope: &mut im::HashMap<String, ScopeMember>,
-    ) {
     }
 
     fn add_extension_to_scope(

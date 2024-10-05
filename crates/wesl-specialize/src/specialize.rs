@@ -195,17 +195,7 @@ impl OwnedMember {
                     if path.len() == 1 {
                         *expression = value.expression.clone().value;
                     } else {
-                        let span = path.span();
-                        if let Ok(mut start) = TryInto::<Spanned<Vec<PathPart>>>::try_into(
-                            value.expression.value.clone(),
-                        ) {
-                            path.remove(0);
-                            start.value.append(path);
-                            *path = start;
-                            Self::substitute_path(path, name, value)?;
-                        } else {
-                            return Err(CompilerPassError::MalformedTemplateArgument(span));
-                        }
+                        Self::substitute_path(path, name, value)?;
                     }
                     Ok(())
                 } else {
@@ -220,9 +210,6 @@ impl OwnedMember {
         name: &String,
         value: &Spanned<TemplateArg>,
     ) -> Result<(), CompilerPassError> {
-        for statement in statement.statements.iter_mut() {
-            Self::substitute_statement(statement, name, value)?;
-        }
         for arg in statement
             .attributes
             .iter_mut()
@@ -230,6 +217,10 @@ impl OwnedMember {
             .flatten()
         {
             Self::substitute_expression(&mut arg.value, name, value)?;
+        }
+
+        for statement in statement.statements.iter_mut() {
+            Self::substitute_statement(statement, name, value)?;
         }
 
         Ok(())
@@ -439,16 +430,6 @@ impl OwnedMember {
         template_params: &mut Vec<Spanned<FormalTemplateParameter>>,
         with: PathPart,
     ) -> Vec<(Spanned<FormalTemplateParameter>, Spanned<TemplateArg>)> {
-        assert!(
-            template_params.is_empty()
-                || (with.template_args.is_some()
-                    && with
-                        .template_args
-                        .as_ref()
-                        .unwrap()
-                        .iter()
-                        .all(|x| x.arg_name.is_some()))
-        );
         return template_params
             .drain(..)
             .map(|x| {
@@ -592,7 +573,7 @@ impl OwnedMember {
             } else {
                 let borrowed = BorrowedMember::Module {
                     declaration: &mut member,
-                    is_initialized: false,
+                    is_initialized: true,
                 };
                 let mut usages: Usages = Usages::new();
                 borrowed.collect_usages(&mut usages)?;
@@ -752,7 +733,7 @@ impl<'a> BorrowedMember<'a> {
         usages: &mut Usages,
     ) -> Result<(), CompilerPassError> {
         for member in strct.members.iter() {
-            Self::collect_usages_from_typ(&member.typ, usages)?;
+            Self::collect_usages_from_type(&member.typ, usages)?;
         }
 
         for arg in strct
@@ -786,15 +767,20 @@ impl<'a> BorrowedMember<'a> {
                 Self::collect_usages_from_expression(arg.as_ref(), usages)?;
             }
         }
+
         for param in function.parameters.iter() {
-            Self::collect_usages_from_typ(&param.typ, usages)?;
+            Self::collect_usages_from_type(&param.typ, usages)?;
+        }
+
+        if let Some(ret) = function.return_type.as_ref() {
+            Self::collect_usages_from_type(ret, usages)?;
         }
 
         Self::collect_usages_from_compound_statement(&function.body, usages)?;
         Ok(())
     }
 
-    fn collect_usages_from_typ(
+    fn collect_usages_from_type(
         typ: &TypeExpression,
         usages: &mut Usages,
     ) -> Result<(), CompilerPassError> {
@@ -806,7 +792,6 @@ impl<'a> BorrowedMember<'a> {
         path: &[PathPart],
         usages: &mut Usages,
     ) -> Result<(), CompilerPassError> {
-        let path: Vec<PathPart> = path.into();
         for part in path.iter() {
             if let Some(args) = part.template_args.as_ref() {
                 for arg in args.iter() {
@@ -829,7 +814,7 @@ impl<'a> BorrowedMember<'a> {
         }
 
         if let Some(typ) = declaration.typ.as_ref() {
-            Self::collect_usages_from_typ(typ, usages)?;
+            Self::collect_usages_from_type(typ, usages)?;
         }
 
         if let Some(init) = declaration.initializer.as_ref() {
@@ -843,7 +828,7 @@ impl<'a> BorrowedMember<'a> {
         alias: &Alias,
         usages: &mut Usages,
     ) -> Result<(), CompilerPassError> {
-        Self::collect_usages_from_typ(&alias.typ, usages)?;
+        Self::collect_usages_from_type(&alias.typ, usages)?;
         Ok(())
     }
 
@@ -851,9 +836,6 @@ impl<'a> BorrowedMember<'a> {
         const_assert: &ConstAssert,
         usages: &mut Usages,
     ) -> Result<(), CompilerPassError> {
-        if const_assert.template_parameters.is_empty() {
-            return Ok(());
-        }
         Self::collect_usages_from_expression(&const_assert.expression, usages)?;
         Ok(())
     }
@@ -1319,12 +1301,17 @@ impl<'a> Parent<'a> {
                 is_initialized,
             } if !*is_initialized => {
                 let mut others = vec![];
-                for declaration in module.members.drain(..) {
+                for mut declaration in module.members.drain(..) {
                     if let Some(name) = declaration.name() {
                         let mut symbol_path: im::Vector<String> = symbol_path.clone();
                         symbol_path.push_back(name.value.clone());
                         symbol_map.insert(symbol_path, OwnedMember::Module(declaration));
                     } else {
+                        let member: BorrowedMember<'_> = BorrowedMember::Module {
+                            declaration: &mut declaration,
+                            is_initialized: true,
+                        };
+                        member.collect_usages(usages)?;
                         others.push(declaration);
                     }
                 }
@@ -1346,13 +1333,11 @@ impl Specializer {
     ) -> Result<(), CompilerPassError> {
         let mut symbol_map: SymbolMap = HashMap::new();
         let mut usages: Usages = Usages::new();
-
         let mut parent: Parent<'a> = Parent::TranslationUnit(translation_unit);
         parent.initialize(im::Vector::new(), &mut symbol_map, &mut usages)?;
 
         while let Some(remaining_path) = usages.pop() {
             assert!(!remaining_path.is_empty());
-
             let current_path = im::Vector::new();
             if let Some(concrete_path) = Self::specialize(
                 &mut parent,
@@ -1364,7 +1349,6 @@ impl Specializer {
                 Self::alias(&mut parent, remaining_path, concrete_path)?;
             }
         }
-
         Ok(())
     }
 
@@ -1413,6 +1397,7 @@ impl Specializer {
 
         let mut symbol_path = current_path.clone();
         symbol_path.push_back(part.name.value.clone());
+
         if let Some(mut member) = symbol_map.remove(&symbol_path) {
             if member.requires_push_down() {
                 member.push_down()?;
@@ -1433,14 +1418,13 @@ impl Specializer {
             if let Some(args) = head.template_args.as_mut() {
                 parent_args.append(args);
                 *args = parent_args;
-            } else {
+            } else if !parent_args.is_empty() {
                 head.template_args = Some(parent_args);
             }
             remaining_path.push_front(head);
         } else {
             current.collect_usages(usages)?;
         }
-
         current_path.push_back(current.name().unwrap().value);
 
         match current.try_into_parent() {
