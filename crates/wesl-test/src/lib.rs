@@ -138,9 +138,7 @@ fn resolve_wesl_samples() -> Result<(), BundlerError<std::io::Error>> {
         if path.extension().unwrap() == "wgsl" || path.extension().unwrap() == "wesl" {
             println!("testing sample `{}`", path.display());
 
-            let mut resolver = wesl_resolve::Resolver {
-                ..Default::default()
-            };
+            let mut resolver = wesl_resolve::Resolver::default();
 
             let source = std::fs::read_to_string(path.clone()).expect("failed to read file");
             let source_module = wesl_parse::Parser::parse_str(&source)
@@ -226,9 +224,7 @@ fn flatten_wesl_samples() -> Result<(), CompilerPassError> {
         if path.extension().unwrap() == "wgsl" || path.extension().unwrap() == "wesl" {
             println!("testing sample `{}`", path.display());
 
-            let mut flattener = wesl_flatten::Flattener {
-                ..Default::default()
-            };
+            let mut flattener = wesl_flatten::Flattener::default();
 
             let source = std::fs::read_to_string(path.clone()).expect("failed to read file");
             let source_module = wesl_parse::Parser::parse_str(&source)
@@ -270,9 +266,7 @@ fn extend_wesl_samples() -> Result<(), CompilerPassError> {
         if path.extension().unwrap() == "wgsl" || path.extension().unwrap() == "wesl" {
             println!("testing sample `{}`", path.display());
 
-            let mut resolver = wesl_resolve::Resolver {
-                ..Default::default()
-            };
+            let mut resolver = wesl_resolve::Resolver::default();
 
             let source = std::fs::read_to_string(path.clone()).expect("failed to read file");
             let source_module = wesl_parse::Parser::parse_str(&source)
@@ -313,9 +307,7 @@ fn dealias_wesl_samples() -> Result<(), CompilerPassError> {
         if path.extension().unwrap() == "wgsl" || path.extension().unwrap() == "wesl" {
             println!("testing sample `{}`", path.display());
 
-            let mut resolver = wesl_resolve::Resolver {
-                ..Default::default()
-            };
+            let mut resolver = wesl_resolve::Resolver::default();
 
             let source = std::fs::read_to_string(path.clone()).expect("failed to read file");
             let source_module = wesl_parse::Parser::parse_str(&source)
@@ -324,9 +316,7 @@ fn dealias_wesl_samples() -> Result<(), CompilerPassError> {
 
             let mut result = resolver.apply(&source_module)?;
 
-            let mut dealiaser = wesl_dealias::Dealiaser {
-                ..Default::default()
-            };
+            let mut dealiaser = wesl_dealias::Dealiaser::default();
 
             dealiaser.apply_mut(&mut result)?;
 
@@ -369,30 +359,24 @@ fn template_specialize_wesl_samples() -> Result<(), CompilerPassError> {
                 .inspect_err(|err| eprintln!("{err}"))
                 .expect("parse error");
 
-            let mut resolver = wesl_resolve::Resolver::default();
+            let mut resolver = wesl_resolve::Resolver;
             let mut result = resolver.apply(&source_module)?;
-            let mut normalizer = wesl_template_normalize::TemplateNormalizer {
-                ..Default::default()
-            };
+            let mut normalizer = wesl_template_normalize::TemplateNormalizer::default();
 
             normalizer.apply_mut(&mut result)?;
-            let mut specializer = wesl_specialize::Specializer::default();
+            let mut specializer = wesl_specialize::Specializer;
 
             specializer.apply_mut(&mut result)?;
 
-            let mut dealiaser = wesl_dealias::Dealiaser {
-                ..Default::default()
-            };
+            let mut dealiaser = wesl_dealias::Dealiaser::default();
 
             dealiaser.apply_mut(&mut result)?;
 
-            let mut mangler = wesl_mangle::Mangler {
-                ..Default::default()
-            };
+            let mut mangler = wesl_mangle::Mangler::default();
 
             mangler.apply_mut(&mut result)?;
 
-            let mut flattener = wesl_flatten::Flattener::default();
+            let mut flattener = wesl_flatten::Flattener;
             flattener.apply_mut(&mut result)?;
 
             let stem = path.file_stem().unwrap().to_str().unwrap().to_string();

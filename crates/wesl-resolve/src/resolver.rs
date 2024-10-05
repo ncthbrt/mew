@@ -829,7 +829,7 @@ impl Resolver {
         }
 
         for extension in extend_dirs {
-            let aliases = Self::add_extension_to_scope(&extension, &module_path, scope)?;
+            let aliases = Self::add_extension_to_scope(&extension, module_path, scope)?;
 
             for alias in aliases {
                 module.members.push(Spanned::new(

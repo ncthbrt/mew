@@ -287,7 +287,7 @@ impl TemplateNormalizer {
             }
             return Ok(());
         } else {
-            for part in vec![fst].iter_mut().chain(remaining_path.iter_mut()) {
+            for part in [fst].iter_mut().chain(remaining_path.iter_mut()) {
                 for arg in part.template_args.iter_mut().flatten() {
                     Self::normalize_template_arguments_from_expr(
                         &mut arg.expression,
@@ -309,7 +309,7 @@ impl TemplateNormalizer {
                     panic!("USE SHOULD HAVE ALREADY BEEN REMOVED");
                 }
                 ModuleDirective::Extend(extend_directive) => {
-                    Self::normalize_path(&mut extend_directive.path, &translation_unit)?;
+                    Self::normalize_path(&mut extend_directive.path, translation_unit)?;
                 }
             }
         }
