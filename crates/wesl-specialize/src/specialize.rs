@@ -1236,6 +1236,7 @@ impl<'a> Parent<'a> {
             .map(|x| PathPart {
                 name: Spanned::new(x, 0..0),
                 template_args: None,
+                inline_template_args: None,
             })
             .collect();
         Alias {
@@ -1446,6 +1447,7 @@ impl Specializer {
                         .map(|x| PathPart {
                             name: Spanned::new(x, 0..0),
                             template_args: None,
+                            inline_template_args: None,
                         })
                         .take(current_path.len() - 1)
                         .chain(remaining_path.clone())

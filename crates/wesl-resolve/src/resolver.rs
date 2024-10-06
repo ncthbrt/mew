@@ -497,6 +497,7 @@ impl Resolver {
                                 vec![PathPart {
                                     name: Spanned::new(new_name.clone(), param.name.span()),
                                     template_args: None,
+                                    inline_template_args: None,
                                 }],
                                 param.span(),
                             ),
@@ -526,6 +527,7 @@ impl Resolver {
                 } else {
                     Some(template_args)
                 },
+                inline_template_args: None,
             });
         }
 
@@ -870,6 +872,7 @@ impl Resolver {
                 path.push(PathPart {
                     name: name.clone(),
                     template_args: None,
+                    inline_template_args: None,
                 });
                 let alias = Alias {
                     name: name.clone(),

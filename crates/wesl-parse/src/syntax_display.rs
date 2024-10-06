@@ -675,6 +675,7 @@ impl Display for UseContent {
                 name,
                 rename,
                 template_args,
+                inline_template_args,
             }) => {
                 let mut args = String::new();
                 if let Some(template_args) = template_args.as_ref() {
@@ -682,6 +683,9 @@ impl Display for UseContent {
                     args.push_str(&template_args.iter().format(", ").to_string());
                     args.push('>');
                 };
+                if let Some(inlines) = inline_template_args.as_ref() {
+                    args.push_str(&format!("{inlines}"));
+                }
                 if let Some(rename) = rename {
                     write!(f, "{name}{args} as {rename}")
                 } else {
@@ -692,6 +696,20 @@ impl Display for UseContent {
                 write!(f, "{{ {} }}", c.iter().map(|x| format!("{x}")).join(", "))
             }
         }
+    }
+}
+
+impl Display for InlineTemplateArgs {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "with {{\n{}\n}}",
+            Indent(format!(
+                "{}{}",
+                self.directives.iter().map(|x| format!("{x}")).join("\n"),
+                self.members.iter().map(|x| format!("{x}")).join("\n"),
+            ))
+        )
     }
 }
 

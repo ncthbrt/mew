@@ -182,6 +182,7 @@ pub struct TemplateElaboratedIdent {
 pub struct TemplateElaboratedIdentPart {
     pub name: S<String>,
     pub template_args: Option<Vec<S<TemplateArg>>>,
+    pub inline_template_args: Option<InlineTemplateArgs>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -363,6 +364,13 @@ pub struct FunctionCallExpression {
 pub struct PathPart {
     pub name: S<String>,
     pub template_args: Option<Vec<S<TemplateArg>>>,
+    pub inline_template_args: Option<InlineTemplateArgs>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct InlineTemplateArgs {
+    pub directives: Vec<S<ModuleDirective>>,
+    pub members: Vec<S<ModuleMemberDeclaration>>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -530,4 +538,5 @@ pub struct UseItem {
     pub name: S<String>,
     pub rename: Option<S<String>>,
     pub template_args: Option<Vec<S<TemplateArg>>>,
+    pub inline_template_args: Option<InlineTemplateArgs>,
 }

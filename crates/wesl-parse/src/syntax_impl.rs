@@ -206,6 +206,7 @@ impl From<TemplateElaboratedIdentPart> for PathPart {
         PathPart {
             name: value.name,
             template_args: value.template_args,
+            inline_template_args: value.inline_template_args,
         }
     }
 }

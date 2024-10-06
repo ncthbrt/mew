@@ -47,6 +47,7 @@ impl Mangler {
         path.push(PathPart {
             name: Spanned::new(joined, mangled_span),
             template_args: None,
+            inline_template_args: None,
         });
     }
 
@@ -328,6 +329,7 @@ impl Mangler {
         path.0.push_back(PathPart {
             name: m.name.clone(),
             template_args: None,
+            inline_template_args: None,
         });
         for decl in m.members.iter_mut() {
             match decl.as_mut() {

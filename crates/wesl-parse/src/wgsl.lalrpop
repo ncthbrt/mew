@@ -101,6 +101,7 @@ extern {
         "extend" => Token::KwExtend,
         "sig" => Token::KwSig,
         "as" => Token::KwAs,
+        "with" => Token::KwWith,
         // END WESL ADDITIONS
         IdentPatternToken => Token::Ident(<String>),
         TokAbstractInt => Token::AbstractInt(<i64>),
@@ -357,6 +358,7 @@ RootUsePath: Use = {
     }
 };
 
+
 UsePath: Use = {
     <l: @L> <path: (<TemplateElaboratedIdentPart> "::")+> <r: @R>  <content: S<UseContent>> => Use {
         attributes: Vec::new(),
@@ -376,8 +378,8 @@ UseContent: UseContent = {
 };
 
 ItemUse: UseItem = {
-    <name: S<Ident>><template_args: TemplateList?> <rename: ("as" <S<Ident>>)?> => UseItem {
-        name, rename, template_args
+    <name: S<Ident>><template_args: TemplateList?><inline_template_args: InlineDeclaration?> <rename: ("as" <S<Ident>>)?> => UseItem {
+        name, rename, template_args, inline_template_args
     }
 };
 
@@ -443,11 +445,16 @@ TemplateElaboratedIdent: TemplateElaboratedIdent = {
 };
 
 TemplateElaboratedIdentPart: TemplateElaboratedIdentPart = {
-     <name: S<Ident>> <template_args: TemplateList?>  => TemplateElaboratedIdentPart {
+     <name: S<Ident>> <template_args: TemplateList?> <inline_template_args: InlineDeclaration?> => TemplateElaboratedIdentPart {
         name,
-        template_args
+        template_args,
+        inline_template_args
      }
 };
+
+InlineDeclaration: InlineTemplateArgs = {
+    "with" "{" <directives: S<ModuleDirective>*> <members: S<ModuleMemberDecl>*> "}" => InlineTemplateArgs { directives, members }
+}
 
 // 7. VARIABLE AND VALUE DECLARATIONS
 // https://www.w3.org/TR/WGSL/#var-and-value
@@ -795,7 +802,7 @@ AssignmentStatement: AssignmentStatement = {
         operator, lhs, rhs
     },
     <l2: @L> "_" <r2: @R> <l: @L> "=" <r: @R> <rhs: S<Expression>> => {
-        let lhs = S::new(Expression::Identifier(IdentifierExpression { path: S::new(vec![PathPart{ name: S::new("_".to_string(), l2..r2), template_args: None }], l2..r2) }), l2..r2);
+        let lhs = S::new(Expression::Identifier(IdentifierExpression { path: S::new(vec![PathPart{ name: S::new("_".to_string(), l2..r2), template_args: None, inline_template_args: None }], l2..r2) }), l2..r2);
         AssignmentStatement { operator: S::new(AssignmentOperator::Equal, l..r), lhs, rhs }
     },
 };

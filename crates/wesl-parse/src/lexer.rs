@@ -197,7 +197,7 @@ pub enum Token {
     SymGreaterThan,
     #[token(">=", |lex| maybe_template_end(lex, Token::SymGreaterThanEqual, Some(Token::SymEqual)))]
     SymGreaterThanEqual,
-    #[token(">>", |lex| maybe_template_end(lex, Token::SymShiftRight, Some(Token::SymGreaterThan)))]
+    #[token(">>", |lex|  maybe_template_end(lex, Token::SymShiftRight, Some(Token::SymGreaterThan)))]
     SymShiftRight,
     #[token("<")]
     SymLessThan,
@@ -322,6 +322,8 @@ pub enum Token {
     KwSig,
     #[token("as")]
     KwAs,
+    #[token("with")]
+    KwWith,
     // END WESL KEYWORDS
 
     // XXX: should we also register reserved words as tokens?
@@ -547,6 +549,7 @@ impl Display for Token {
             Token::KwMod => f.write_str("mod"),
             Token::KwExtend => f.write_str("extend"),
             Token::KwSig => f.write_str("sig"),
+            Token::KwWith => f.write_str("with"),
             Token::Ident(s) => write!(f, "identifier `{s}`"),
             Token::AbstractInt(n) => write!(f, "{n}"),
             Token::AbstractFloat(n) => write!(f, "{n}"),

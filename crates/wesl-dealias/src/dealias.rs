@@ -64,6 +64,7 @@ impl Dealiaser {
         module_path.0.push_back(PathPart {
             name: alias.name.clone(),
             template_args: None,
+            inline_template_args: None,
         });
         let mut alias_path = AliasPath(module_path.0.iter().cloned().collect());
         let mut target_path = AliasPath(alias.typ.path.value.iter().cloned().collect());
@@ -80,6 +81,7 @@ impl Dealiaser {
         module_path.0.push_back(PathPart {
             name: module.name.clone(),
             template_args: None,
+            inline_template_args: None,
         });
 
         let mut others = vec![];
