@@ -14,7 +14,6 @@ pub enum CompilerPassError {
     SymbolNotFound(Vec<PathPart>, Span),
     UnableToResolvePath(Vec<PathPart>),
     MissingRequiredTemplateArgument(Spanned<FormalTemplateParameter>, Span),
-    UnknownTemplateArgument(Span),
     InternalError(InternalCompilerError),
     MalformedTemplateArgument(Span),
 }

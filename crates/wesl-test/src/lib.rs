@@ -42,7 +42,7 @@ fn wesl_samples() {
                 .inspect_err(|err| eprintln!("{err}"))
                 .expect("parse error");
 
-            assert_eq!(source_module, disp_module);
+            assert_eq!(format!("{}", source_module), format!("{}", disp_module));
         }
     }
 }

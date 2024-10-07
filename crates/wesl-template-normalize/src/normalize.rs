@@ -78,10 +78,6 @@ impl TemplateNormalizer {
                         translation_unit,
                     )?;
                     result.push(template_arg.clone());
-                } else {
-                    return Err(CompilerPassError::UnknownTemplateArgument(
-                        template_arg.span(),
-                    ));
                 }
             } else {
                 return Err(CompilerPassError::MissingRequiredTemplateArgument(

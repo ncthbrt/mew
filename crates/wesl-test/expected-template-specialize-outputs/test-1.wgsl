@@ -2,6 +2,7 @@
 
 @vertex
 fn main(@builtin(instance_index) instanceIdx: u32, @location(0) position: vec4<f32>, @location(1) color: vec4f) -> My__Lib_VertexShader_Types_VertexOutput__Hey {
+    use My_Lib<Hey, WhatsUp>::VertexShader<Hi> as V;
     let uni = Camera__mat4x4f();
     var output: My__Lib_VertexShader_Types_VertexOutput__Hey;
     output.Position = My__Lib_VertexShader_camera__Hey__WhatsUp__Hi__Hi.viewProjectionMatrix * My__Lib_VertexShader_uniforms__Hey__WhatsUp__Hi__Hi.modelMatrix.viewProjectionMatrix[instanceIdx] * position;

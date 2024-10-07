@@ -9,3 +9,4 @@ license.workspace = true
 [dependencies]
 wesl-parse = { path = '../wesl-parse' }
 wgsl-spec = { workspace = true, features = ["include"]  }
+im = { workspace = true }

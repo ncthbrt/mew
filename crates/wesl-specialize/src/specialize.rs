@@ -1035,7 +1035,6 @@ impl<'a> BorrowedMember<'a> {
         compound_statement: &CompoundStatement,
         usages: &mut Usages,
     ) -> Result<(), CompilerPassError> {
-        assert!(compound_statement.directives.is_empty());
         for attribute in compound_statement.attributes.iter() {
             for arg in attribute.arguments.iter().flatten() {
                 Self::collect_usages_from_expression(arg, usages)?;

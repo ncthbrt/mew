@@ -12,6 +12,7 @@ extend ReduceBuffer<SumBinaryOp<F32>> with {
     }
 };
 
+
 mod Sum<N> {
     struct T {
       sum: N::T

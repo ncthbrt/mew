@@ -353,7 +353,13 @@ impl Display for FunctionCallExpression {
 
 impl Display for PathPart {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{}{}", self.name, fmt_template_args(&self.template_args))
+        write!(
+            f,
+            "{}{}{}",
+            self.name,
+            fmt_template_args(&self.template_args),
+            fmt_inline_args(&self.inline_template_args)
+        )
     }
 }
 
@@ -376,6 +382,14 @@ fn fmt_template_args(tplt: &Option<Vec<S<TemplateArg>>>) -> String {
             format!("<{print}>")
         }
         _ => "".to_string(),
+    }
+}
+
+fn fmt_inline_args(inline: &Option<InlineTemplateArgs>) -> String {
+    if let Some(inline) = inline.as_ref() {
+        format!("{inline}")
+    } else {
+        "".to_string()
     }
 }
 
@@ -703,9 +717,9 @@ impl Display for InlineTemplateArgs {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "with {{\n{}\n}}",
+            " with {{\n{}\n}}",
             Indent(format!(
-                "{}{}",
+                "{}\n{}",
                 self.directives.iter().map(|x| format!("{x}")).join("\n"),
                 self.members.iter().map(|x| format!("{x}")).join("\n"),
             ))

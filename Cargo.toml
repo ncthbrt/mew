@@ -1,11 +1,22 @@
 [workspace]
-members = ["crates/wesl-parse", "crates/wesl-test", "crates/wesl-bundle", "crates/wesl-resolve", "crates/wesl-mangle", "crates/wesl-flatten", "crates/wesl-types", "crates/wesl-dealias", "crates/wesl-specialize", "crates/wesl-template-normalize"]
+members = [
+    "crates/wesl-parse", 
+    "crates/wesl-test", 
+    "crates/wesl-bundle", 
+    "crates/wesl-resolve", 
+    "crates/wesl-mangle", 
+    "crates/wesl-flatten", 
+    "crates/wesl-types", 
+    "crates/wesl-dealias", 
+    "crates/wesl-specialize", 
+    "crates/wesl-template-normalize",
+]
 
 [workspace.package]
 version = "0.0.2"
 edition = "2021"
 authors = ["Mathis Brossier <mathis.brossier@gmail.com>", "Natalie Cuthbert <natalie@cuthbert.co.za>"]
-repository = "https://github.com/k2d222/wgsl-tools"
+repository = "https://github.com/ncthbrt/wesl-rust"
 license = "MIT"
 
 [workspace.dependencies]
@@ -13,9 +24,9 @@ im = "15.1.0"
 wgsl-spec = { version = "0.2.0" }
 
 [package]
-name = "wgsl-tools"
+name = "wgsl-rust"
 description = "Various tools to parse, verify, evaluate and modify wgsl shader source."
-documentation = "https://docs.rs/wgsl-tools"
+documentation = "https://docs.rs/wesl-rust"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true

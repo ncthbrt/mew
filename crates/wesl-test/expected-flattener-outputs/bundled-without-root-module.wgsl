@@ -1,4 +1,4 @@
-
+use util::my_fn as x;
 
 @binding(0) @group(0)
 var<uniform> uniforms: Types2_Uniforms;
@@ -8,6 +8,7 @@ var<uniform> camera: Camera;
 
 @vertex
 fn main2(@builtin(instance_index) instanceIdx: u32, @location(0) position: vec4f, @location(1) color: vec4f) -> VertexOutput {
+    use Types2::{ Types2::Uniforms, Types2::x as y }
     let uni = Types2_Uniforms();
     var output: VertexOutput;
     output.Position = camera.viewProjectionMatrix * uniforms.modelMatrix[instanceIdx] * position;

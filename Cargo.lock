@@ -1035,22 +1035,13 @@ dependencies = [
 name = "wesl-types"
 version = "0.0.2"
 dependencies = [
+ "im",
  "wesl-parse",
  "wgsl-spec",
 ]
 
 [[package]]
-name = "wgsl-spec"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b67cf01d39a6404b7d29e4ca583748624c862e30be47a6b00ddd239d80132e45"
-dependencies = [
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "wgsl-tools"
+name = "wgsl-rust"
 version = "0.0.2"
 dependencies = [
  "clap",
@@ -1064,6 +1055,16 @@ dependencies = [
  "wesl-specialize",
  "wesl-template-normalize",
  "wesl-types",
+]
+
+[[package]]
+name = "wgsl-spec"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b67cf01d39a6404b7d29e4ca583748624c862e30be47a6b00ddd239d80132e45"
+dependencies = [
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
