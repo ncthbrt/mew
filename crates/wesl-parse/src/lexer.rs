@@ -13,7 +13,11 @@ fn maybe_template_end(
         if lex.extras.depth == *depth {
             // found a ">" on the same nesting level as the opening "<"
             lex.extras.template_depths.pop();
-            lex.extras.lookahead = lookahead;
+            if lookahead == Some(Token::SymGreaterThan) && !lex.extras.template_depths.is_empty() {
+                lex.extras.lookahead = Some(Token::TemplateArgsEnd); // <-- basically the same fix as yours, but also checks the template depth.
+            } else {
+                lex.extras.lookahead = lookahead;
+            }
             return Token::TemplateArgsEnd;
         }
     }
@@ -608,14 +612,18 @@ impl<'s> Lexer<'s> {
 /// # use wesl_parse::lexer::recognize_template_list;
 /// // examples from the spec:
 /// assert_eq!(recognize_template_list("<i32,select(2,3,a>b)>"), true);
-/// assert_eq!(recognize_template_list("<d]>"), false);
 /// assert_eq!(recognize_template_list("<B<<C>"), true);
 /// assert_eq!(recognize_template_list("<B<=C>"), true);
 /// assert_eq!(recognize_template_list("<(B>=C)>"), true);
 /// assert_eq!(recognize_template_list("<(B!=C)>"), true);
 /// assert_eq!(recognize_template_list("<(B==C)>"), true);
-///
+/// assert_eq!(recognize_template_list("<F<SumBinaryOp<F32>>>"), true);
+/// assert_eq!(recognize_template_list("<SumBinaryOp<F32>>"), true);
+/// assert_eq!(recognize_template_list("<SumBinaryOp with { mod F32 { alias T = f32; } }>"), true);
+/// assert_eq!(recognize_template_list("<SumBinaryOp<8,F32<16>>::v>>>"), true);
+
 /// // false cases
+/// assert_eq!(recognize_template_list("<d]>"), false);
 /// assert_eq!(recognize_template_list(""), false);
 /// assert_eq!(recognize_template_list("<>"), false);
 /// assert_eq!(recognize_template_list("<b || c>d"), false);
