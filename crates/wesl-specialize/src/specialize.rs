@@ -441,7 +441,7 @@ impl OwnedMember {
                         .flatten()
                         .find(|y| y.arg_name == name)
                         .cloned()
-                        .unwrap(),
+                        .expect(&format!("EXPECTED {:?}", name)),
                 )
             })
             .collect();

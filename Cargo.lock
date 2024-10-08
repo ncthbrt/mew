@@ -966,6 +966,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "wesl-inline"
+version = "0.0.2"
+dependencies = [
+ "im",
+ "wesl-parse",
+ "wesl-types",
+]
+
+[[package]]
 name = "wesl-mangle"
 version = "0.0.2"
 dependencies = [
@@ -1023,6 +1032,7 @@ dependencies = [
  "wesl-bundle",
  "wesl-dealias",
  "wesl-flatten",
+ "wesl-inline",
  "wesl-mangle",
  "wesl-parse",
  "wesl-resolve",
@@ -1049,6 +1059,7 @@ dependencies = [
  "wesl-bundle",
  "wesl-dealias",
  "wesl-flatten",
+ "wesl-inline",
  "wesl-mangle",
  "wesl-parse",
  "wesl-resolve",

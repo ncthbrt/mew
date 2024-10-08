@@ -1,4 +1,3 @@
-extend ReduceBuffer<ReduceBuffer_Op = SumBinaryOp<SumBinaryOp_N = F32>, ReduceBuffer_BlockArea = BlockArea, ReduceBuffer_WorkSize = WorkSize, ReduceBuffer_Threads = Threads>;
 
 
 fn ReduceBuffer_reduceSrcBlock__SumBinaryOp__60__SumBinaryOp__95__N__61__F32__62__BlockArea__WorkSize__Threads(a: array<Sum_T__F32, BlockArea_value>) -> Sum_T__F32 {

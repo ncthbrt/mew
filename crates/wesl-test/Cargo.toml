@@ -20,4 +20,5 @@ wesl-flatten = { path = '../wesl-flatten' }
 wesl-dealias = { path = '../wesl-dealias' }
 wesl-specialize = { path = '../wesl-specialize' }
 wesl-template-normalize = { path = '../wesl-template-normalize' }
+wesl-inline = { path = '../wesl-inline' }
 tokio = { version="1.40.0", features=["macros", "rt"] }

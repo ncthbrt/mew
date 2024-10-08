@@ -707,24 +707,21 @@ impl Resolver {
             .last()
             .map(|x| x.name.clone())
             .unwrap_or_default();
-        let (module_path, module_name) = if let Some(
+        let module_path = if let Some(
             ScopeMember::ModuleMemberDeclaration(_, ModuleMemberDeclaration::Module(_))
             | ScopeMember::GlobalDeclaration(GlobalDeclaration::Module(_)),
         ) = scope.get(&enclosing_item_name.value)
         {
-            (module_path.clone(), enclosing_item_name)
+            module_path.clone()
         } else {
-            (
-                ModulePath(module_path.0.take(module_path.0.len().saturating_sub(1))),
-                enclosing_item_name,
-            )
+            ModulePath(module_path.0.take(module_path.0.len().saturating_sub(1)))
         };
         for p in path.iter_mut() {
             current.push_back(p.clone());
             let mut template_args = p.template_args.take().unwrap_or_default();
             if let Some(inline_args) = p.inline_template_args.as_mut() {
                 let mut derived_module = Module {
-                    name: module_name.clone(),
+                    name: enclosing_item_name.clone(),
                     ..Default::default()
                 };
                 let mut inner_scope: im::HashMap<String, ScopeMember> = inner_scope.clone();
@@ -744,11 +741,17 @@ impl Resolver {
                             ScopeMember::Inline(name.clone()),
                         );
                         scope.insert(name.clone(), ScopeMember::Inline(name.clone()));
+                        let arg_name = Self::mangle_template_parameter_name(
+                            &ModulePath(current.clone().take(current.len() - 1)),
+                            &current.last().cloned().unwrap().name.value,
+                            &initial_name.value,
+                        );
                         inner_scope.insert(
                             initial_name.value.clone(),
                             ScopeMember::Inline(name.clone()),
                         );
                         inner_scope.insert(name.clone(), ScopeMember::Inline(name.clone()));
+
                         template_args.push(Spanned::new(
                             TemplateArg {
                                 expression: Spanned::new(
@@ -767,7 +770,7 @@ impl Resolver {
                                     }),
                                     initial_name.span(),
                                 ),
-                                arg_name: Some(initial_name.clone()),
+                                arg_name: Some(Spanned::new(arg_name, initial_name.span())),
                             },
                             initial_name.span(),
                         ));

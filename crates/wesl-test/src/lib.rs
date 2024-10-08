@@ -2,6 +2,7 @@
 
 use std::path::PathBuf;
 use wesl_bundle::{file_system::PhysicalFilesystem, BundleContext, Bundler, BundlerError};
+use wesl_inline::inline;
 use wesl_types::{CompilerPass, CompilerPassError};
 
 #[test]
@@ -361,9 +362,13 @@ fn template_specialize_wesl_samples() -> Result<(), CompilerPassError> {
 
             let mut resolver = wesl_resolve::Resolver;
             let mut result = resolver.apply(&source_module)?;
-            let mut normalizer = wesl_template_normalize::TemplateNormalizer::default();
 
+            let mut inliner = wesl_inline::Inliner::default();
+            inliner.apply_mut(&mut result)?;
+
+            let mut normalizer = wesl_template_normalize::TemplateNormalizer::default();
             normalizer.apply_mut(&mut result)?;
+
             let mut specializer = wesl_specialize::Specializer;
 
             specializer.apply_mut(&mut result)?;

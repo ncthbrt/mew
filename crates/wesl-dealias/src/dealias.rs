@@ -132,10 +132,12 @@ impl Dealiaser {
     fn resolve_aliases_from_cache(
         cache: &mut AliasCache,
     ) -> Result<(), wesl_types::CompilerPassError> {
-        let keys: im::Vector<AliasPath> = cache.keys().cloned().collect();
+        let mut keys: im::Vector<AliasPath> = cache.keys().cloned().collect();
+        keys.sort_by(|l, r| l.0.len().cmp(&r.0.len()));
         for k in keys {
             let mut prev = cache.get(&k).unwrap();
             let mut current = Some(prev);
+            // TODO: This is incorrect logic. We need to perform similar logic to replace_path_with_alias
             while let Some(unwrapped) = current {
                 prev = unwrapped;
                 current = cache.get(prev);
@@ -447,7 +449,7 @@ impl Dealiaser {
         for decl in translation_unit.global_declarations.iter_mut() {
             match decl.as_mut() {
                 GlobalDeclaration::Void => {
-                    // NO ACTION REQUIRED REQUIRED
+                    // NO ACTION REQUIRED
                 }
                 GlobalDeclaration::Declaration(decl) => {
                     Self::replace_alias_usages_from_decl(decl, cache)?;

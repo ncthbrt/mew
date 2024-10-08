@@ -1,3 +1,98 @@
 
 
+struct Sum__F32 {
+    sum: f32
+}
 
+const ReduceBuffer____SumBinaryOp____60____F32____62__threads: u32 = 10u;
+
+const ReduceBuffer____SumBinaryOp____60____F32____62__work____size: u32 = 18u;
+
+const ReduceBuffer____SumBinaryOp____60____F32____62__block____area: u32 = 4u;
+
+fn ReduceBuffer_reduceSrcBlock__SumBinaryOp__60__SumBinaryOp__95__N__61__F32__62__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__block__95__95__area__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__work__95__95__size__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__threads(a: array<Sum__F32, ReduceBuffer____SumBinaryOp____60____F32____62__block____area>) -> Sum__F32 {
+    var v = a[0];
+    for (var i = 1u; i < ReduceBuffer____SumBinaryOp____60____F32____62__block____area; i = i + 1u) {
+        v = SumBinaryOp_binaryOp__F32(v, a[i]);
+    }
+    return v;
+}
+
+fn ReduceBuffer_fetchSrcBuffer__SumBinaryOp__60__SumBinaryOp__95__N__61__F32__62__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__block__95__95__area__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__work__95__95__size__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__threads(gridX: u32) -> array<Sum__F32, ReduceBuffer____SumBinaryOp____60____F32____62__block____area> {
+    let start = ReduceBuffer_u__SumBinaryOp__60__SumBinaryOp__95__N__61__F32__62__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__block__95__95__area__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__work__95__95__size__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__threads.sourceOffset + (gridX * ReduceBuffer____SumBinaryOp____60____F32____62__block____area);
+    let end = arrayLength(&ReduceBuffer_src__SumBinaryOp__60__SumBinaryOp__95__N__61__F32__62__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__block__95__95__area__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__work__95__95__size__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__threads);
+    var a = array<Sum__F32, ReduceBuffer____SumBinaryOp____60____F32____62__block____area>();
+    for (var i = 0u; i < ReduceBuffer____SumBinaryOp____60____F32____62__block____area; i = i + 1u) {
+        var idx = i + start;
+        if idx < end {
+            a[i] = SumBinaryOp_loadOp__F32(ReduceBuffer_src__SumBinaryOp__60__SumBinaryOp__95__N__61__F32__62__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__block__95__95__area__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__work__95__95__size__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__threads[idx]);
+        }
+        else {
+            a[i] = SumBinaryOp_identityOp__F32();
+        }
+    }
+    return a;
+}
+
+fn ReduceBuffer_reduceBufferToWork__SumBinaryOp__60__SumBinaryOp__95__N__61__F32__62__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__block__95__95__area__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__work__95__95__size__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__threads(grid: vec2<u32>, localId: u32) {
+    var values = ReduceBuffer_fetchSrcBuffer__SumBinaryOp__60__SumBinaryOp__95__N__61__F32__62__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__block__95__95__area__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__work__95__95__size__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__threads(grid.x);
+    var v = ReduceBuffer_reduceSrcBlock__SumBinaryOp__60__SumBinaryOp__95__N__61__F32__62__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__block__95__95__area__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__work__95__95__size__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__threads(values);
+    ReduceWorkgroup_work__SumBinaryOp__60__SumBinaryOp__95__N__61__F32__62__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__work__95__95__size[localId] = v;
+}
+
+@compute @workgroup_size(workgroup_threads, 1, 1)
+fn ReduceBuffer_main__SumBinaryOp__60__SumBinaryOp__95__N__61__F32__62__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__block__95__95__area__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__work__95__95__size__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__threads(@builtin(global_invocation_id) grid: vec3<u32>, @builtin(local_invocation_index) localIndex: u32, @builtin(num_workgroups) numWorkgroups: vec3<u32>, @builtin(workgroup_id) workgroupId: vec3<u32>) {
+    ReduceBuffer_reduceBufferToWork__SumBinaryOp__60__SumBinaryOp__95__N__61__F32__62__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__block__95__95__area__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__work__95__95__size__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__threads(grid.xy, localIndex);
+    let outDex = workgroupId.x + ReduceBuffer_u__SumBinaryOp__60__SumBinaryOp__95__N__61__F32__62__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__block__95__95__area__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__work__95__95__size__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__threads.resultOffset;
+    ReduceWorkgroup_reduceWorkgroup__SumBinaryOp__60__SumBinaryOp__95__N__61__F32__62__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__work__95__95__size__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__threads(localIndex);
+    if localIndex == 0u {
+        ReduceBuffer_out__SumBinaryOp__60__SumBinaryOp__95__N__61__F32__62__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__block__95__95__area__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__work__95__95__size__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__threads[outDex] = ReduceWorkgroup_work__SumBinaryOp__60__SumBinaryOp__95__N__61__F32__62__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__work__95__95__size[0];
+    }
+}
+
+const ReduceBuffer_workgroup__threads = 4u;
+
+@group(0) @binding(11)
+var<storage, read_write> ReduceBuffer_debug: array<f32>;
+
+@group(0) @binding(2)
+var<storage, read_write> ReduceBuffer_out__SumBinaryOp__60__SumBinaryOp__95__N__61__F32__62__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__block__95__95__area__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__work__95__95__size__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__threads: array<Sum__F32>;
+
+@group(0) @binding(1)
+var<storage, read> ReduceBuffer_src__SumBinaryOp__60__SumBinaryOp__95__N__61__F32__62__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__block__95__95__area__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__work__95__95__size__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__threads: array<Sum__F32>;
+
+@group(0) @binding(0)
+var<uniform> ReduceBuffer_u__SumBinaryOp__60__SumBinaryOp__95__N__61__F32__62__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__block__95__95__area__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__work__95__95__size__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__threads: ReduceBuffer_Uniforms;
+
+struct ReduceBuffer_Uniforms {
+    sourceOffset: u32,
+    resultOffset: u32
+}
+
+fn ReduceWorkgroup_reduceWorkgroup__SumBinaryOp__60__SumBinaryOp__95__N__61__F32__62__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__work__95__95__size__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__threads(localId: u32) {
+    let workDex = localId << 1u;
+    for (var step = 1u; step < ReduceBuffer____SumBinaryOp____60____F32____62__threads; step <<= 1u) {
+        workgroupBarrier();
+        if localId % step == 0u {
+            ReduceWorkgroup_work__SumBinaryOp__60__SumBinaryOp__95__N__61__F32__62__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__work__95__95__size[workDex] = SumBinaryOp_binaryOp__F32(ReduceWorkgroup_work__SumBinaryOp__60__SumBinaryOp__95__N__61__F32__62__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__work__95__95__size[workDex], ReduceWorkgroup_work__SumBinaryOp__60__SumBinaryOp__95__N__61__F32__62__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__work__95__95__size[workDex + step]);
+        }
+    }
+}
+
+var<workgroup> ReduceWorkgroup_work__SumBinaryOp__60__SumBinaryOp__95__N__61__F32__62__ReduceBuffer__95__95__SumBinaryOp__95__95__60__95__95__F32__95__95__62__95__work__95__95__size: array<Sum__F32, ReduceBuffer____SumBinaryOp____60____F32____62__work____size>;
+
+fn SumBinaryOp_binaryOp__F32(a: Sum__F32, b: Sum__F32) -> Sum__F32 {
+    return Sum__F32(F32_add(a.sum, b.sum));
+}
+
+fn SumBinaryOp_identityOp__F32() -> Sum__F32 {
+    return Sum__F32();
+}
+
+fn SumBinaryOp_loadOp__F32(a: Sum__F32) -> Sum__F32 {
+    return Sum__F32(a.sum);
+}
+
+fn F32_add(a: f32, b: f32) -> f32 {
+    return a + b;
+}

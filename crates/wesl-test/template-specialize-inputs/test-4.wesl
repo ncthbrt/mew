@@ -1,27 +1,16 @@
 extend ReduceBuffer<SumBinaryOp<F32>> with {
-    mod BlockArea {
-        const value: u32 = 4u;
-    }
-
-    mod WorkSize {
-        const value: u32 = 18u;
-    }
-
-    mod Threads {
-        const value: u32 = 10u;
-    }
+    const block_area: u32 = 4u;
+    const work_size: u32 = 18u;
+    const threads: u32 = 10u;
 };
 
-
-mod Sum<N> {
-    struct T {
-      sum: N::T
-    }
+struct Sum<N> {
+    sum: N::T
 }
 
 mod SumBinaryOp<N>  {
-    alias OpElem = Sum<N>::T;
-    alias LoadElem = Sum<N>::T;
+    alias OpElem = Sum<N>;
+    alias LoadElem = Sum<N>;
 
     fn identityOp() -> OpElem {
       return OpElem();
@@ -48,18 +37,11 @@ mod F32 {
   }
 }
 
-mod U32 {
-  alias T = u32;
-}
-
-// Here we don't care about the exact generic mod values
-// passed to BinaryOp as we can extract the underlying types from the module 
-// members
-mod ReduceWorkgroup<Op, WorkSize, Threads> {
-    var <workgroup> work: array<Op::OpElem, WorkSize::value>; 
+mod ReduceWorkgroup<Op, work_size, threads> {
+    var <workgroup> work: array<Op::OpElem, work_size>; 
     fn reduceWorkgroup(localId: u32) {
         let workDex = localId << 1u;
-        for (var step = 1u; step < Threads::value; step <<= 1u) {
+        for (var step = 1u; step < threads; step <<= 1u) {
             workgroupBarrier();
             if localId % step == 0u {
                 work[workDex] = Op::binaryOp(work[workDex], work[workDex + step]);
@@ -69,9 +51,9 @@ mod ReduceWorkgroup<Op, WorkSize, Threads> {
 }
 
 // Same here
-mod ReduceBuffer<Op, BlockArea, WorkSize, Threads> {
+mod ReduceBuffer<Op, block_area, work_size, threads> {
   // extend brings the module members into the namespace
-  extend ReduceWorkgroup<Op, WorkSize, Threads>;
+  extend ReduceWorkgroup<Op, work_size, threads>;
 
   alias Input = Op::LoadElem;
   alias Output = Op::OpElem;
@@ -86,9 +68,9 @@ mod ReduceBuffer<Op, BlockArea, WorkSize, Threads> {
   @group(0) @binding(2) var<storage, read_write> out: array<Output>;  
   @group(0) @binding(11) var<storage, read_write> debug: array<f32>; // buffer to hold debug values
 
-  const workgroupThreads = 4u;                          
+  const workgroup_threads = 4u;                          
 
-  var <workgroup> work: array<Output, workgroupThreads>; 
+  var <workgroup> work: array<Output, workgroup_threads>; 
 
   // reduce a buffer of values to a single value, returned as the last element of the out array
   // 
@@ -101,7 +83,7 @@ mod ReduceBuffer<Op, BlockArea, WorkSize, Threads> {
   //    . start and end indices in the uniforms indicate input and output positions in the buffer
   // 
   @compute
-  @workgroup_size(workgroupThreads, 1, 1) 
+  @workgroup_size(workgroup_threads, 1, 1) 
   fn main(
       @builtin(global_invocation_id) grid: vec3<u32>,    // coords in the global compute grid
       @builtin(local_invocation_index) localIndex: u32,  // index inside the this workgroup
@@ -122,11 +104,11 @@ mod ReduceBuffer<Op, BlockArea, WorkSize, Threads> {
       work[localId] = v;
   }
 
-  fn fetchSrcBuffer(gridX: u32) -> array<Output, BlockArea::value> {
-      let start = u.sourceOffset + (gridX * BlockArea::value);
+  fn fetchSrcBuffer(gridX: u32) -> array<Output, block_area> {
+      let start = u.sourceOffset + (gridX * block_area);
       let end = arrayLength(&src);
-      var a = array<Output, BlockArea::value>();
-      for (var i = 0u; i < BlockArea::value; i = i + 1u) {
+      var a = array<Output, block_area>();
+      for (var i = 0u; i < block_area; i = i + 1u) {
           var idx = i + start;
           if idx < end {
               a[i] = Op::loadOp(src[idx]);
@@ -137,9 +119,9 @@ mod ReduceBuffer<Op, BlockArea, WorkSize, Threads> {
       return a;
   }
 
-  fn reduceSrcBlock(a: array<Output, BlockArea::value>) -> Output {
+  fn reduceSrcBlock(a: array<Output, block_area>) -> Output {
       var v = a[0];
-      for (var i = 1u; i < BlockArea::value; i = i + 1u) {
+      for (var i = 1u; i < block_area; i = i + 1u) {
           v = Op::binaryOp(v, a[i]);
       }
       return v;

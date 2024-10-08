@@ -4,6 +4,7 @@ members = [
     "crates/wesl-test", 
     "crates/wesl-bundle", 
     "crates/wesl-resolve", 
+    "crates/wesl-inline",
     "crates/wesl-mangle", 
     "crates/wesl-flatten", 
     "crates/wesl-types", 
@@ -44,5 +45,6 @@ wesl-types  = { path = "crates/wesl-types", version = "0.0.2" }
 wesl-dealias  = { path = "crates/wesl-dealias", version = "0.0.2" }
 wesl-specialize = {path = "crates/wesl-specialize", version = "0.0.2" }
 wesl-template-normalize = { path = "crates/wesl-template-normalize", version = "0.0.2" }
+wesl-inline = { path = "crates/wesl-inline", version = "0.0.2" }
 tokio = { version="1.40.0", features=["macros", "rt-multi-thread"] }
 

@@ -1,4 +1,3 @@
-extend My_Lib<My__Lib_A = Hey, My__Lib_B = WhatsUp, My__Lib_C = Hi>::VertexShader<My__Lib_VertexShader_C = Hi>;
 
 
 struct Camera__mat4x4f {
