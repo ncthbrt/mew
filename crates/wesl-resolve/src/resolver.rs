@@ -735,17 +735,18 @@ impl Resolver {
 
                 for mut arg in inline_args.members.drain(..) {
                     if let Some(initial_name) = arg.name_mut() {
-                        let name = mangle_inline_arg_name(&module_path.0, &current, &initial_name);
-                        scope.insert(
-                            initial_name.value.clone(),
-                            ScopeMember::Inline(name.clone()),
-                        );
-                        scope.insert(name.clone(), ScopeMember::Inline(name.clone()));
                         let arg_name = Self::mangle_template_parameter_name(
                             &ModulePath(current.clone().take(current.len() - 1)),
                             &current.last().cloned().unwrap().name.value,
                             &initial_name.value,
                         );
+                        let name = mangle_inline_arg_name(&module_path.0, &current, &arg_name);
+                        scope.insert(
+                            initial_name.value.clone(),
+                            ScopeMember::Inline(name.clone()),
+                        );
+                        scope.insert(name.clone(), ScopeMember::Inline(name.clone()));
+
                         inner_scope.insert(
                             initial_name.value.clone(),
                             ScopeMember::Inline(name.clone()),

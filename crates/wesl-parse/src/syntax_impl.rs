@@ -205,7 +205,13 @@ impl From<TemplateElaboratedIdentPart> for PathPart {
     fn from(value: TemplateElaboratedIdentPart) -> Self {
         PathPart {
             name: value.name,
-            template_args: value.template_args,
+            template_args: if value.template_args.is_none()
+                || matches!(&value.template_args, Some(args) if args.is_empty())
+            {
+                None
+            } else {
+                value.template_args
+            },
             inline_template_args: value.inline_template_args,
         }
     }

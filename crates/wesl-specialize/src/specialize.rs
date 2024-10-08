@@ -1045,6 +1045,25 @@ impl<'a> BorrowedMember<'a> {
         }
         Ok(())
     }
+
+    fn is_alias(&self) -> bool {
+        matches!(
+            self,
+            BorrowedMember::Global {
+                declaration: Spanned {
+                    value: GlobalDeclaration::Alias(_),
+                    ..
+                },
+                ..
+            } | BorrowedMember::Module {
+                declaration: Spanned {
+                    value: ModuleMemberDeclaration::Alias(_),
+                    ..
+                },
+                ..
+            }
+        )
+    }
 }
 
 impl From<OwnedMember> for Spanned<GlobalDeclaration> {
@@ -1206,6 +1225,25 @@ impl<'a> Parent<'a> {
         }
     }
 
+    fn remove_child<'b>(&'b mut self, path_part: &PathPart) {
+        let name = mangle_template_args(path_part);
+        match self {
+            Parent::TranslationUnit(x) => {
+                x.global_declarations
+                    .retain(|x| !matches!(x.name(), Some(n) if n.value == name));
+            }
+            Parent::Module {
+                module,
+                is_initialized,
+            } => {
+                assert!(*is_initialized);
+                module
+                    .members
+                    .retain(|x: &Spanned<ModuleMemberDeclaration>| !matches!(x.name(), Some(n) if n.value == name));
+            }
+        }
+    }
+
     fn is_entry_point(function: &Function) -> bool {
         function
             .attributes
@@ -1360,6 +1398,7 @@ impl Specializer {
         assert!(!remaining_path.is_empty());
         let part: PathPart = remaining_path.pop_front().unwrap();
         let current: BorrowedMember<'_>;
+
         if let Some(m) = parent.find_child(&part) {
             if remaining_path.is_empty() {
                 return Ok(());
@@ -1415,10 +1454,10 @@ impl Specializer {
 
         if let Some(mut head) = remaining_path.pop_front() {
             let mut parent_args = part.template_args.take().unwrap_or_default();
-            if let Some(args) = head.template_args.as_mut() {
-                parent_args.append(args);
-                *args = parent_args;
-            } else if !parent_args.is_empty() {
+            if let Some(mut args) = head.template_args.take() {
+                parent_args.append(&mut args);
+            }
+            if !parent_args.is_empty() {
                 head.template_args = Some(parent_args);
             }
             remaining_path.push_front(head);
@@ -1438,7 +1477,6 @@ impl Specializer {
                 {
                     return Ok(Some(current_path));
                 }
-
                 return Err(CompilerPassError::UnableToResolvePath(
                     current_path
                         .iter()

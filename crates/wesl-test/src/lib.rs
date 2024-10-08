@@ -2,7 +2,6 @@
 
 use std::path::PathBuf;
 use wesl_bundle::{file_system::PhysicalFilesystem, BundleContext, Bundler, BundlerError};
-use wesl_inline::inline;
 use wesl_types::{CompilerPass, CompilerPassError};
 
 #[test]

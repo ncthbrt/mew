@@ -26,7 +26,7 @@ fn mangle_expression(expr: &Expression) -> String {
 }
 
 pub fn mangle_template_args(path_part: &PathPart) -> String {
-    if path_part.template_args.is_none() {
+    if path_part.template_args.is_none() || path_part.template_args.as_ref().unwrap().is_empty() {
         return path_part.name.value.clone();
     }
     let name = &path_part.name.replace('_', "__");

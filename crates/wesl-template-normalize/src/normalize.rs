@@ -86,9 +86,11 @@ impl TemplateNormalizer {
                 ));
             }
         }
-        if let Some(args) = path_part.template_args.as_mut() {
+        if let Some(mut args) = path_part.template_args.take() {
             args.append(&mut result);
-        } else {
+            result = args;
+        }
+        if !result.is_empty() {
             path_part.template_args = Some(result);
         }
 

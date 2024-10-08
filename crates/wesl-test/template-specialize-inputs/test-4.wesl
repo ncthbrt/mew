@@ -1,4 +1,5 @@
-extend ReduceBuffer<SumBinaryOp<F32>> with {
+extend ReduceBuffer with {
+    alias Op = SumBinaryOp<F32>;
     const block_area: u32 = 4u;
     const work_size: u32 = 18u;
     const threads: u32 = 10u;
@@ -25,17 +26,19 @@ mod SumBinaryOp<N>  {
     }
 }
 
-mod F32 {
-  alias T = f32;
-  
-  fn add(a: T, b: T) -> T {
-    return a + b;
-  }
+mod Intrinsic<N> {
+    alias T = N;
 
-  fn identity() -> T {
-    return 0.0;
-  }
+    fn add(a: T, b: T) -> T {
+        return a + b;
+    }
+
+    fn identity() -> T {
+        return N();
+    }
 }
+
+alias F32 = Intrinsic<f32>;
 
 mod ReduceWorkgroup<Op, work_size, threads> {
     var <workgroup> work: array<Op::OpElem, work_size>; 

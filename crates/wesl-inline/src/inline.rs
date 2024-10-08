@@ -30,7 +30,7 @@ impl<'a> Parent<'a> {
                     }
                 }
 
-                for arg in inline_args.members {
+                for arg in inline_args.members.drain(..) {
                     self.add_member(arg);
                 }
             }
