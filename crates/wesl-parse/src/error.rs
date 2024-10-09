@@ -6,7 +6,7 @@ use annotate_snippets::*;
 use itertools::Itertools;
 use thiserror::Error;
 
-use crate::lexer::Token;
+use crate::{lexer::Token, span::Span};
 
 #[derive(Error, Clone, Debug, Default, PartialEq)]
 pub enum ParseError {
@@ -28,6 +28,16 @@ pub struct SpannedError<'s> {
 impl<'s> SpannedError<'s> {
     pub(crate) fn new(inner: LalrError, source: &'s str) -> Self {
         Self { inner, source }
+    }
+
+    pub fn span(&self) -> Span {
+        match &self.inner {
+            lalrpop_util::ParseError::InvalidToken { location } => *location..*location,
+            lalrpop_util::ParseError::UnrecognizedEof { location, .. } => *location..*location,
+            lalrpop_util::ParseError::UnrecognizedToken { token, .. } => token.0..token.2,
+            lalrpop_util::ParseError::ExtraToken { token } => token.0..token.2,
+            lalrpop_util::ParseError::User { error } => error.0..error.2,
+        }
     }
 }
 

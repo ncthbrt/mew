@@ -1,98 +1,93 @@
 
 
-fn ReduceBuffer_reduceSrcBlock__SumBinaryOp__60__SumBinaryOp__95__N__61__F32__62__BlockArea__WorkSize__Threads(a: array<Sum_T__F32, BlockArea_value>) -> Sum_T__F32 {
+@compute @workgroup_size(workgroupThreads, 1, 1)
+fn test__3_ReduceBuffer_main__test__95__3__58__58__SumBinaryOp__60__test__95__95__3__95__SumBinaryOp__95__N__61__test__95__3__58__58__F32__62__test__95__3__58__58__BlockArea__test__95__3__58__58__WorkSize__test__95__3__58__58__Threads(@builtin(global_invocation_id) grid: vec3<u32>, @builtin(local_invocation_index) localIndex: u32, @builtin(num_workgroups) numWorkgroups: vec3<u32>, @builtin(workgroup_id) workgroupId: vec3<u32>) {
+    test__3_ReduceBuffer_reduceBufferToWork__test__95__3__58__58__SumBinaryOp__60__test__95__95__3__95__SumBinaryOp__95__N__61__test__95__3__58__58__F32__62__test__95__3__58__58__BlockArea__test__95__3__58__58__WorkSize__test__95__3__58__58__Threads(grid.xy, localIndex);
+    let outDex = workgroupId.x + test__3_ReduceBuffer_u__test__95__3__58__58__SumBinaryOp__60__test__95__95__3__95__SumBinaryOp__95__N__61__test__95__3__58__58__F32__62__test__95__3__58__58__BlockArea__test__95__3__58__58__WorkSize__test__95__3__58__58__Threads.resultOffset;
+    test__3_ReduceWorkgroup_reduceWorkgroup__test__95__3__58__58__SumBinaryOp__60__test__95__95__3__95__SumBinaryOp__95__N__61__test__95__3__58__58__F32__62__test__95__3__58__58__WorkSize__test__95__3__58__58__Threads(localIndex);
+    if localIndex == 0u {
+        test__3_ReduceBuffer_out__test__95__3__58__58__SumBinaryOp__60__test__95__95__3__95__SumBinaryOp__95__N__61__test__95__3__58__58__F32__62__test__95__3__58__58__BlockArea__test__95__3__58__58__WorkSize__test__95__3__58__58__Threads[outDex] = test__3_ReduceWorkgroup_work__test__95__3__58__58__SumBinaryOp__60__test__95__95__3__95__SumBinaryOp__95__N__61__test__95__3__58__58__F32__62__test__95__3__58__58__WorkSize[0];
+    }
+}
+
+@group(0) @binding(2)
+var<storage, read_write> test__3_ReduceBuffer_out__test__95__3__58__58__SumBinaryOp__60__test__95__95__3__95__SumBinaryOp__95__N__61__test__95__3__58__58__F32__62__test__95__3__58__58__BlockArea__test__95__3__58__58__WorkSize__test__95__3__58__58__Threads: array<test__3_Sum_T__test__95__3__58__58__F32>;
+
+@group(0) @binding(0)
+var<uniform> test__3_ReduceBuffer_u__test__95__3__58__58__SumBinaryOp__60__test__95__95__3__95__SumBinaryOp__95__N__61__test__95__3__58__58__F32__62__test__95__3__58__58__BlockArea__test__95__3__58__58__WorkSize__test__95__3__58__58__Threads: test__3_ReduceBuffer_Uniforms;
+
+struct test__3_ReduceBuffer_Uniforms {
+    sourceOffset: u32,
+    resultOffset: u32
+}
+
+fn test__3_ReduceBuffer_reduceBufferToWork__test__95__3__58__58__SumBinaryOp__60__test__95__95__3__95__SumBinaryOp__95__N__61__test__95__3__58__58__F32__62__test__95__3__58__58__BlockArea__test__95__3__58__58__WorkSize__test__95__3__58__58__Threads(grid: vec2<u32>, localId: u32) {
+    var values = test__3_ReduceBuffer_fetchSrcBuffer__test__95__3__58__58__SumBinaryOp__60__test__95__95__3__95__SumBinaryOp__95__N__61__test__95__3__58__58__F32__62__test__95__3__58__58__BlockArea__test__95__3__58__58__WorkSize__test__95__3__58__58__Threads(grid.x);
+    var v = test__3_ReduceBuffer_reduceSrcBlock__test__95__3__58__58__SumBinaryOp__60__test__95__95__3__95__SumBinaryOp__95__N__61__test__95__3__58__58__F32__62__test__95__3__58__58__BlockArea__test__95__3__58__58__WorkSize__test__95__3__58__58__Threads(values);
+    test__3_ReduceWorkgroup_work__test__95__3__58__58__SumBinaryOp__60__test__95__95__3__95__SumBinaryOp__95__N__61__test__95__3__58__58__F32__62__test__95__3__58__58__WorkSize[localId] = v;
+}
+
+fn test__3_ReduceBuffer_reduceSrcBlock__test__95__3__58__58__SumBinaryOp__60__test__95__95__3__95__SumBinaryOp__95__N__61__test__95__3__58__58__F32__62__test__95__3__58__58__BlockArea__test__95__3__58__58__WorkSize__test__95__3__58__58__Threads(a: array<test__3_Sum_T__test__95__3__58__58__F32, test__3_BlockArea_value>) -> test__3_Sum_T__test__95__3__58__58__F32 {
     var v = a[0];
-    for (var i = 1u; i < BlockArea_value; i = i + 1u) {
-        v = SumBinaryOp_binaryOp__F32(v, a[i]);
+    for (var i = 1u; i < test__3_BlockArea_value; i = i + 1u) {
+        v = test__3_SumBinaryOp_binaryOp__test__95__3__58__58__F32(v, a[i]);
     }
     return v;
 }
 
-fn ReduceBuffer_fetchSrcBuffer__SumBinaryOp__60__SumBinaryOp__95__N__61__F32__62__BlockArea__WorkSize__Threads(gridX: u32) -> array<Sum_T__F32, BlockArea_value> {
-    let start = ReduceBuffer_u__SumBinaryOp__60__SumBinaryOp__95__N__61__F32__62__BlockArea__WorkSize__Threads.sourceOffset + (gridX * BlockArea_value);
-    let end = arrayLength(&ReduceBuffer_src__SumBinaryOp__60__SumBinaryOp__95__N__61__F32__62__BlockArea__WorkSize__Threads);
-    var a = array<Sum_T__F32, BlockArea_value>();
-    for (var i = 0u; i < BlockArea_value; i = i + 1u) {
+fn test__3_ReduceBuffer_fetchSrcBuffer__test__95__3__58__58__SumBinaryOp__60__test__95__95__3__95__SumBinaryOp__95__N__61__test__95__3__58__58__F32__62__test__95__3__58__58__BlockArea__test__95__3__58__58__WorkSize__test__95__3__58__58__Threads(gridX: u32) -> array<test__3_Sum_T__test__95__3__58__58__F32, test__3_BlockArea_value> {
+    let start = test__3_ReduceBuffer_u__test__95__3__58__58__SumBinaryOp__60__test__95__95__3__95__SumBinaryOp__95__N__61__test__95__3__58__58__F32__62__test__95__3__58__58__BlockArea__test__95__3__58__58__WorkSize__test__95__3__58__58__Threads.sourceOffset + (gridX * test__3_BlockArea_value);
+    let end = arrayLength(&test__3_ReduceBuffer_src__test__95__3__58__58__SumBinaryOp__60__test__95__95__3__95__SumBinaryOp__95__N__61__test__95__3__58__58__F32__62__test__95__3__58__58__BlockArea__test__95__3__58__58__WorkSize__test__95__3__58__58__Threads);
+    var a = array<test__3_Sum_T__test__95__3__58__58__F32, test__3_BlockArea_value>();
+    for (var i = 0u; i < test__3_BlockArea_value; i = i + 1u) {
         var idx = i + start;
         if idx < end {
-            a[i] = SumBinaryOp_loadOp__F32(ReduceBuffer_src__SumBinaryOp__60__SumBinaryOp__95__N__61__F32__62__BlockArea__WorkSize__Threads[idx]);
+            a[i] = test__3_SumBinaryOp_loadOp__test__95__3__58__58__F32(test__3_ReduceBuffer_src__test__95__3__58__58__SumBinaryOp__60__test__95__95__3__95__SumBinaryOp__95__N__61__test__95__3__58__58__F32__62__test__95__3__58__58__BlockArea__test__95__3__58__58__WorkSize__test__95__3__58__58__Threads[idx]);
         }
         else {
-            a[i] = SumBinaryOp_identityOp__F32();
+            a[i] = test__3_SumBinaryOp_identityOp__test__95__3__58__58__F32();
         }
     }
     return a;
 }
 
-fn ReduceBuffer_reduceBufferToWork__SumBinaryOp__60__SumBinaryOp__95__N__61__F32__62__BlockArea__WorkSize__Threads(grid: vec2<u32>, localId: u32) {
-    var values = ReduceBuffer_fetchSrcBuffer__SumBinaryOp__60__SumBinaryOp__95__N__61__F32__62__BlockArea__WorkSize__Threads(grid.x);
-    var v = ReduceBuffer_reduceSrcBlock__SumBinaryOp__60__SumBinaryOp__95__N__61__F32__62__BlockArea__WorkSize__Threads(values);
-    ReduceWorkgroup_work__SumBinaryOp__60__SumBinaryOp__95__N__61__F32__62__WorkSize[localId] = v;
-}
-
-@compute @workgroup_size(workgroupThreads, 1, 1)
-fn ReduceBuffer_main__SumBinaryOp__60__SumBinaryOp__95__N__61__F32__62__BlockArea__WorkSize__Threads(@builtin(global_invocation_id) grid: vec3<u32>, @builtin(local_invocation_index) localIndex: u32, @builtin(num_workgroups) numWorkgroups: vec3<u32>, @builtin(workgroup_id) workgroupId: vec3<u32>) {
-    ReduceBuffer_reduceBufferToWork__SumBinaryOp__60__SumBinaryOp__95__N__61__F32__62__BlockArea__WorkSize__Threads(grid.xy, localIndex);
-    let outDex = workgroupId.x + ReduceBuffer_u__SumBinaryOp__60__SumBinaryOp__95__N__61__F32__62__BlockArea__WorkSize__Threads.resultOffset;
-    ReduceWorkgroup_reduceWorkgroup__SumBinaryOp__60__SumBinaryOp__95__N__61__F32__62__WorkSize__Threads(localIndex);
-    if localIndex == 0u {
-        ReduceBuffer_out__SumBinaryOp__60__SumBinaryOp__95__N__61__F32__62__BlockArea__WorkSize__Threads[outDex] = ReduceWorkgroup_work__SumBinaryOp__60__SumBinaryOp__95__N__61__F32__62__WorkSize[0];
-    }
-}
-
-const ReduceBuffer_workgroupThreads = 4u;
-
-@group(0) @binding(11)
-var<storage, read_write> ReduceBuffer_debug: array<f32>;
-
-@group(0) @binding(2)
-var<storage, read_write> ReduceBuffer_out__SumBinaryOp__60__SumBinaryOp__95__N__61__F32__62__BlockArea__WorkSize__Threads: array<Sum_T__F32>;
-
 @group(0) @binding(1)
-var<storage, read> ReduceBuffer_src__SumBinaryOp__60__SumBinaryOp__95__N__61__F32__62__BlockArea__WorkSize__Threads: array<Sum_T__F32>;
+var<storage, read> test__3_ReduceBuffer_src__test__95__3__58__58__SumBinaryOp__60__test__95__95__3__95__SumBinaryOp__95__N__61__test__95__3__58__58__F32__62__test__95__3__58__58__BlockArea__test__95__3__58__58__WorkSize__test__95__3__58__58__Threads: array<test__3_Sum_T__test__95__3__58__58__F32>;
 
-@group(0) @binding(0)
-var<uniform> ReduceBuffer_u__SumBinaryOp__60__SumBinaryOp__95__N__61__F32__62__BlockArea__WorkSize__Threads: ReduceBuffer_Uniforms;
+var<workgroup> test__3_ReduceWorkgroup_work__test__95__3__58__58__SumBinaryOp__60__test__95__95__3__95__SumBinaryOp__95__N__61__test__95__3__58__58__F32__62__test__95__3__58__58__WorkSize: array<test__3_Sum_T__test__95__3__58__58__F32, test__3_WorkSize_value>;
 
-struct ReduceBuffer_Uniforms {
-    sourceOffset: u32,
-    resultOffset: u32
-}
-
-fn ReduceWorkgroup_reduceWorkgroup__SumBinaryOp__60__SumBinaryOp__95__N__61__F32__62__WorkSize__Threads(localId: u32) {
+fn test__3_ReduceWorkgroup_reduceWorkgroup__test__95__3__58__58__SumBinaryOp__60__test__95__95__3__95__SumBinaryOp__95__N__61__test__95__3__58__58__F32__62__test__95__3__58__58__WorkSize__test__95__3__58__58__Threads(localId: u32) {
     let workDex = localId << 1u;
-    for (var step = 1u; step < Threads_value; step <<= 1u) {
+    for (var step = 1u; step < test__3_Threads_value; step <<= 1u) {
         workgroupBarrier();
         if localId % step == 0u {
-            ReduceWorkgroup_work__SumBinaryOp__60__SumBinaryOp__95__N__61__F32__62__WorkSize[workDex] = SumBinaryOp_binaryOp__F32(ReduceWorkgroup_work__SumBinaryOp__60__SumBinaryOp__95__N__61__F32__62__WorkSize[workDex], ReduceWorkgroup_work__SumBinaryOp__60__SumBinaryOp__95__N__61__F32__62__WorkSize[workDex + step]);
+            test__3_ReduceWorkgroup_work__test__95__3__58__58__SumBinaryOp__60__test__95__95__3__95__SumBinaryOp__95__N__61__test__95__3__58__58__F32__62__test__95__3__58__58__WorkSize[workDex] = test__3_SumBinaryOp_binaryOp__test__95__3__58__58__F32(test__3_ReduceWorkgroup_work__test__95__3__58__58__SumBinaryOp__60__test__95__95__3__95__SumBinaryOp__95__N__61__test__95__3__58__58__F32__62__test__95__3__58__58__WorkSize[workDex], test__3_ReduceWorkgroup_work__test__95__3__58__58__SumBinaryOp__60__test__95__95__3__95__SumBinaryOp__95__N__61__test__95__3__58__58__F32__62__test__95__3__58__58__WorkSize[workDex + step]);
         }
     }
 }
 
-var<workgroup> ReduceWorkgroup_work__SumBinaryOp__60__SumBinaryOp__95__N__61__F32__62__WorkSize: array<Sum_T__F32, WorkSize_value>;
+const test__3_WorkSize_value: u32 = 18u;
 
-const Threads_value: u32 = 10u;
-
-fn SumBinaryOp_binaryOp__F32(a: Sum_T__F32, b: Sum_T__F32) -> Sum_T__F32 {
-    return Sum_T__F32(F32_add(a.sum, b.sum));
+fn test__3_SumBinaryOp_binaryOp__test__95__3__58__58__F32(a: test__3_Sum_T__test__95__3__58__58__F32, b: test__3_Sum_T__test__95__3__58__58__F32) -> test__3_Sum_T__test__95__3__58__58__F32 {
+    return test__3_Sum_T__test__95__3__58__58__F32(test__3_F32_add(a.sum, b.sum));
 }
 
-fn SumBinaryOp_identityOp__F32() -> Sum_T__F32 {
-    return Sum_T__F32();
+fn test__3_SumBinaryOp_identityOp__test__95__3__58__58__F32() -> test__3_Sum_T__test__95__3__58__58__F32 {
+    return test__3_Sum_T__test__95__3__58__58__F32();
 }
 
-fn SumBinaryOp_loadOp__F32(a: Sum_T__F32) -> Sum_T__F32 {
-    return Sum_T__F32(a.sum);
+fn test__3_SumBinaryOp_loadOp__test__95__3__58__58__F32(a: test__3_Sum_T__test__95__3__58__58__F32) -> test__3_Sum_T__test__95__3__58__58__F32 {
+    return test__3_Sum_T__test__95__3__58__58__F32(a.sum);
 }
 
-fn F32_add(a: f32, b: f32) -> f32 {
-    return a + b;
-}
-
-struct Sum_T__F32 {
+struct test__3_Sum_T__test__95__3__58__58__F32 {
     sum: f32
 }
 
-const WorkSize_value: u32 = 18u;
+fn test__3_F32_add(a: f32, b: f32) -> f32 {
+    return a + b;
+}
 
-const BlockArea_value: u32 = 4u;
+const test__3_Threads_value: u32 = 10u;
+
+const test__3_BlockArea_value: u32 = 4u;

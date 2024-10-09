@@ -8,4 +8,5 @@ license.workspace = true
 
 [dependencies]
 wesl-parse = { path = '../wesl-parse' }
-async-trait = "0.1.82"
+wesl-types = { path = '../wesl-types' }
+

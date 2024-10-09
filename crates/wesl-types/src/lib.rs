@@ -16,6 +16,7 @@ pub enum CompilerPassError {
     MissingRequiredTemplateArgument(Spanned<FormalTemplateParameter>, Span),
     InternalError(InternalCompilerError),
     MalformedTemplateArgument(Span),
+    ParseError(String, Span),
 }
 
 #[derive(Debug, Clone, PartialEq)]

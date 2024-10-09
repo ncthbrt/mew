@@ -7,8 +7,10 @@ use wesl_parse::{
 };
 use wesl_types::{mangling::mangle_template_args, CompilerPass, CompilerPassError};
 
-#[derive(Debug, Default, Clone, Copy)]
-pub struct Specializer;
+#[derive(Debug, Clone)]
+pub struct Specializer {
+    pub entrypoint: Option<Vec<PathPart>>,
+}
 
 type ConcreteSymbolPath = im::Vector<String>;
 
@@ -434,6 +436,7 @@ impl OwnedMember {
             .drain(..)
             .map(|x| {
                 let name: Option<Spanned<String>> = Some(x.name.clone());
+                println!("{with}");
                 (
                     x,
                     with.template_args
@@ -441,7 +444,7 @@ impl OwnedMember {
                         .flatten()
                         .find(|y| y.arg_name == name)
                         .cloned()
-                        .expect(&format!("EXPECTED {:?}", name)),
+                        .unwrap_or_else(|| panic!("EXPECTED {:?}", name)),
                 )
             })
             .collect();
@@ -1045,25 +1048,6 @@ impl<'a> BorrowedMember<'a> {
         }
         Ok(())
     }
-
-    fn is_alias(&self) -> bool {
-        matches!(
-            self,
-            BorrowedMember::Global {
-                declaration: Spanned {
-                    value: GlobalDeclaration::Alias(_),
-                    ..
-                },
-                ..
-            } | BorrowedMember::Module {
-                declaration: Spanned {
-                    value: ModuleMemberDeclaration::Alias(_),
-                    ..
-                },
-                ..
-            }
-        )
-    }
 }
 
 impl From<OwnedMember> for Spanned<GlobalDeclaration> {
@@ -1225,7 +1209,7 @@ impl<'a> Parent<'a> {
         }
     }
 
-    fn remove_child<'b>(&'b mut self, path_part: &PathPart) {
+    fn remove_child(&mut self, path_part: &PathPart) {
         let name = mangle_template_args(path_part);
         match self {
             Parent::TranslationUnit(x) => {
@@ -1367,10 +1351,14 @@ type SymbolPath = im::Vector<String>;
 
 impl Specializer {
     fn specialize_translation_unit<'a>(
+        &self,
         translation_unit: &'a mut TranslationUnit,
     ) -> Result<(), CompilerPassError> {
         let mut symbol_map: SymbolMap = HashMap::new();
         let mut usages: Usages = Usages::new();
+        if let Some(entrypoint) = self.entrypoint.as_ref() {
+            usages.insert(entrypoint.iter().cloned().collect());
+        }
         let mut parent: Parent<'a> = Parent::TranslationUnit(translation_unit);
         parent.initialize(im::Vector::new(), &mut symbol_map, &mut usages)?;
 
@@ -1500,7 +1488,7 @@ impl CompilerPass for Specializer {
         &mut self,
         translation_unit: &mut TranslationUnit,
     ) -> Result<(), CompilerPassError> {
-        Self::specialize_translation_unit(translation_unit)?;
+        self.specialize_translation_unit(translation_unit)?;
         Ok(())
     }
 }

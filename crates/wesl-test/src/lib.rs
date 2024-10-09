@@ -1,7 +1,9 @@
 #![cfg_attr(not(test), allow(dead_code, unused_imports))]
 
-use std::path::PathBuf;
-use wesl_bundle::{file_system::PhysicalFilesystem, BundleContext, Bundler, BundlerError};
+use std::{collections::HashMap, fs, path::PathBuf};
+use wesl_api::{ModuleDescriptor, Path, WeslError};
+use wesl_bundle::Bundler;
+use wesl_parse::syntax::TranslationUnit;
 use wesl_types::{CompilerPass, CompilerPassError};
 
 #[test]
@@ -48,9 +50,9 @@ fn wesl_samples() {
 }
 
 #[tokio::test]
-async fn bundle_wesl_samples() -> Result<(), BundlerError<std::io::Error>> {
+async fn bundle_wesl_samples() -> Result<(), CompilerPassError> {
     let dir = std::fs::read_dir("wesl-samples").expect("missing wesl-samples");
-    let mut entrypoints: Vec<PathBuf> = vec![];
+    let mut entrypoints: Vec<String> = vec![];
     let mut dir_contents = dir.into_iter().collect::<Vec<_>>();
 
     dir_contents.sort_by_cached_key(|x| x.as_ref().unwrap().file_name());
@@ -59,29 +61,25 @@ async fn bundle_wesl_samples() -> Result<(), BundlerError<std::io::Error>> {
         let entry = entry.expect("error reading entry");
         let path: std::path::PathBuf = entry.path();
         if path.extension().unwrap() == "wgsl" || path.extension().unwrap() == "wesl" {
-            entrypoints.push(PathBuf::from("./").join(path.file_name().unwrap()));
+            entrypoints.push(fs::read_to_string(path).unwrap());
         }
     }
 
-    let bundler = Bundler {
-        file_system: PhysicalFilesystem {
-            entry_point: std::env::current_dir().unwrap().join("wesl-samples"),
-        },
+    let mut bundler = Bundler {
+        sources: entrypoints.iter().map(|x| x.as_str()).collect(),
+        enclosing_module_name: Some("MyLib".to_owned()),
     };
 
-    let result_with_root_module = bundler
-        .bundle(&BundleContext {
-            entry_points: entrypoints.clone(),
-            enclosing_module_name: Some("MyLib".to_owned()),
-        })
-        .await?;
+    let translation_unit = TranslationUnit::default();
 
-    let result_without_root_module = bundler
-        .bundle(&BundleContext {
-            entry_points: entrypoints,
-            enclosing_module_name: None,
-        })
-        .await?;
+    let result_with_root_module = bundler.apply(&translation_unit)?;
+
+    let mut bundler = Bundler {
+        sources: entrypoints.iter().map(|x| x.as_str()).collect(),
+        enclosing_module_name: None,
+    };
+
+    let result_without_root_module = bundler.apply(&translation_unit)?;
 
     let expected_output_with_root_module_location: PathBuf = std::env::current_dir()
         .unwrap()
@@ -128,7 +126,7 @@ async fn bundle_wesl_samples() -> Result<(), BundlerError<std::io::Error>> {
 }
 
 #[test]
-fn resolve_wesl_samples() -> Result<(), BundlerError<std::io::Error>> {
+fn resolve_wesl_samples() -> Result<(), CompilerPassError> {
     let dir =
         std::fs::read_dir("expected-bundle-outputs").expect("missing expected-bundle-outputs");
 
@@ -138,7 +136,7 @@ fn resolve_wesl_samples() -> Result<(), BundlerError<std::io::Error>> {
         if path.extension().unwrap() == "wgsl" || path.extension().unwrap() == "wesl" {
             println!("testing sample `{}`", path.display());
 
-            let mut resolver = wesl_resolve::Resolver::default();
+            let mut resolver = wesl_resolve::Resolver;
 
             let source = std::fs::read_to_string(path.clone()).expect("failed to read file");
             let source_module = wesl_parse::Parser::parse_str(&source)
@@ -180,9 +178,7 @@ fn mangle_wesl_samples() -> Result<(), CompilerPassError> {
         if path.extension().unwrap() == "wgsl" || path.extension().unwrap() == "wesl" {
             println!("testing sample `{}`", path.display());
 
-            let mut mangler = wesl_mangle::Mangler {
-                ..Default::default()
-            };
+            let mut mangler = wesl_mangle::Mangler;
 
             let source = std::fs::read_to_string(path.clone()).expect("failed to read file");
             let source_module = wesl_parse::Parser::parse_str(&source)
@@ -224,7 +220,7 @@ fn flatten_wesl_samples() -> Result<(), CompilerPassError> {
         if path.extension().unwrap() == "wgsl" || path.extension().unwrap() == "wesl" {
             println!("testing sample `{}`", path.display());
 
-            let mut flattener = wesl_flatten::Flattener::default();
+            let mut flattener = wesl_flatten::Flattener;
 
             let source = std::fs::read_to_string(path.clone()).expect("failed to read file");
             let source_module = wesl_parse::Parser::parse_str(&source)
@@ -266,7 +262,7 @@ fn extend_wesl_samples() -> Result<(), CompilerPassError> {
         if path.extension().unwrap() == "wgsl" || path.extension().unwrap() == "wesl" {
             println!("testing sample `{}`", path.display());
 
-            let mut resolver = wesl_resolve::Resolver::default();
+            let mut resolver = wesl_resolve::Resolver;
 
             let source = std::fs::read_to_string(path.clone()).expect("failed to read file");
             let source_module = wesl_parse::Parser::parse_str(&source)
@@ -307,7 +303,7 @@ fn dealias_wesl_samples() -> Result<(), CompilerPassError> {
         if path.extension().unwrap() == "wgsl" || path.extension().unwrap() == "wesl" {
             println!("testing sample `{}`", path.display());
 
-            let mut resolver = wesl_resolve::Resolver::default();
+            let mut resolver = wesl_resolve::Resolver;
 
             let source = std::fs::read_to_string(path.clone()).expect("failed to read file");
             let source_module = wesl_parse::Parser::parse_str(&source)
@@ -316,7 +312,7 @@ fn dealias_wesl_samples() -> Result<(), CompilerPassError> {
 
             let mut result = resolver.apply(&source_module)?;
 
-            let mut dealiaser = wesl_dealias::Dealiaser::default();
+            let mut dealiaser = wesl_dealias::Dealiaser;
 
             dealiaser.apply_mut(&mut result)?;
 
@@ -343,9 +339,17 @@ fn dealias_wesl_samples() -> Result<(), CompilerPassError> {
 }
 
 #[test]
-fn template_specialize_wesl_samples() -> Result<(), CompilerPassError> {
+fn template_specialize_wesl_samples() -> Result<(), WeslError> {
     let dir =
         std::fs::read_dir("template-specialize-inputs").expect("missing expected-test-inputs");
+
+    let entrypoints = HashMap::from([
+        ("test_1", "test_1::main"),
+        ("test_2", "test_2::main"),
+        ("test_3", "test_3::main"),
+        ("test_4", "test_4::main"),
+        ("test_5", "test_5::main"),
+    ]);
 
     for entry in dir {
         let entry = entry.expect("error reading entry");
@@ -355,33 +359,22 @@ fn template_specialize_wesl_samples() -> Result<(), CompilerPassError> {
 
             let source = std::fs::read_to_string(path.clone()).expect("failed to read file");
 
-            let source_module = wesl_parse::Parser::parse_str(&source)
-                .inspect_err(|err| eprintln!("{err}"))
-                .expect("parse error");
+            let mut api = wesl_api::WeslApi::default();
 
-            let mut resolver = wesl_resolve::Resolver;
-            let mut result = resolver.apply(&source_module)?;
+            let module_name = path
+                .file_stem()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .replace('-', "_");
+            api.add_module(ModuleDescriptor {
+                module_name: module_name.as_str(),
+                source: wesl_api::Source::Text(&source),
+            })?;
 
-            let mut inliner = wesl_inline::Inliner::default();
-            inliner.apply_mut(&mut result)?;
-
-            let mut normalizer = wesl_template_normalize::TemplateNormalizer::default();
-            normalizer.apply_mut(&mut result)?;
-
-            let mut specializer = wesl_specialize::Specializer;
-
-            specializer.apply_mut(&mut result)?;
-
-            let mut dealiaser = wesl_dealias::Dealiaser::default();
-
-            dealiaser.apply_mut(&mut result)?;
-
-            let mut mangler = wesl_mangle::Mangler::default();
-
-            mangler.apply_mut(&mut result)?;
-
-            let mut flattener = wesl_flatten::Flattener;
-            flattener.apply_mut(&mut result)?;
+            let result = api.compile(&Path::Text(
+                entrypoints.get(module_name.as_str()).unwrap().to_string(),
+            ))?;
 
             let stem = path.file_stem().unwrap().to_str().unwrap().to_string();
             let expected_output_location: PathBuf = std::env::current_dir()
@@ -400,7 +393,7 @@ fn template_specialize_wesl_samples() -> Result<(), CompilerPassError> {
             )
             .inspect_err(|err| eprintln!("{err}"))
             .expect("parse error");
-            assert_eq!(format!("{}", result), format!("{}", expected_output_module));
+            assert_eq!(result, format!("{}", expected_output_module));
         }
     }
     Ok(())

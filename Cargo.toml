@@ -11,6 +11,7 @@ members = [
     "crates/wesl-dealias", 
     "crates/wesl-specialize", 
     "crates/wesl-template-normalize",
+    "crates/wesl-api"
 ]
 
 [workspace.package]
@@ -46,5 +47,6 @@ wesl-dealias  = { path = "crates/wesl-dealias", version = "0.0.2" }
 wesl-specialize = {path = "crates/wesl-specialize", version = "0.0.2" }
 wesl-template-normalize = { path = "crates/wesl-template-normalize", version = "0.0.2" }
 wesl-inline = { path = "crates/wesl-inline", version = "0.0.2" }
+wesl-api = { path = "crates/wesl-api", version = "0.0.2" }
 tokio = { version="1.40.0", features=["macros", "rt-multi-thread"] }
 

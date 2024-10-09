@@ -1,50 +1,33 @@
-use std::path::PathBuf;
-
 use wesl_parse::{
     span::Spanned,
     syntax::{self, Module, ModuleDirective, TranslationUnit},
 };
+use wesl_types::CompilerPass;
 
-use crate::file_system::ReadonlyFilesystem;
-
-#[derive(Debug, Default, Clone, Copy)]
-pub struct Bundler<Fs: ReadonlyFilesystem> {
-    pub file_system: Fs,
-}
-
-#[derive(Debug)]
-pub enum BundlerError<FileSystemError> {
-    FileSystemError(FileSystemError),
-    ParseError(String),
-}
-
-#[derive(Default, Debug)]
-pub struct BundleContext {
-    pub entry_points: Vec<PathBuf>,
+#[derive(Debug, Default)]
+pub struct Bundler<'a> {
+    pub sources: Vec<&'a str>,
     pub enclosing_module_name: Option<String>,
 }
 
-impl<Fs: ReadonlyFilesystem> Bundler<Fs> {
-    pub async fn bundle(
-        &self,
-        ctx: &BundleContext,
-    ) -> Result<TranslationUnit, BundlerError<Fs::Error>> {
+impl<'a> CompilerPass for Bundler<'a> {
+    fn apply_mut(
+        &mut self,
+        translation_unit: &mut TranslationUnit,
+    ) -> Result<(), wesl_types::CompilerPassError> {
         let mut result: TranslationUnit = TranslationUnit::default();
 
         let mut ws: String = String::new();
 
-        for item in ctx.entry_points.iter() {
-            let file = self
-                .file_system
-                .read(item)
-                .await
-                .map_err(BundlerError::FileSystemError)?;
+        for file in self.sources.iter() {
             let file_len = file.len();
             let mut file_with_starting_ws = ws.clone();
-            file_with_starting_ws.push_str(&file);
+            file_with_starting_ws.push_str(file);
             ws.extend((0..file_len).map(|_| ' '));
             let mut local_translation_unit = wesl_parse::Parser::parse_str(&file_with_starting_ws)
-                .map_err(|err| BundlerError::ParseError(format!("{}", err)))?;
+                .map_err(|err| {
+                    wesl_types::CompilerPassError::ParseError(format!("{}", err), err.span())
+                })?;
             result
                 .global_declarations
                 .append(&mut local_translation_unit.global_declarations);
@@ -53,8 +36,7 @@ impl<Fs: ReadonlyFilesystem> Bundler<Fs> {
                 .append(&mut local_translation_unit.global_directives);
         }
 
-        if let Some(module_name) = &ctx.enclosing_module_name {
-            let mut encapsulated_result: TranslationUnit = TranslationUnit::default();
+        if let Some(module_name) = &self.enclosing_module_name {
             let mut module = Module {
                 name: Spanned::new(module_name.to_owned(), 0..0),
                 ..Module::default()
@@ -76,17 +58,24 @@ impl<Fs: ReadonlyFilesystem> Bundler<Fs> {
                         module.directives.push(dir);
                     }
                     Err(directive) => {
-                        encapsulated_result.global_directives.push(directive);
+                        translation_unit.global_directives.push(directive);
                     }
                 };
             }
-            encapsulated_result.global_declarations.push(Spanned::new(
+            translation_unit.global_declarations.push(Spanned::new(
                 syntax::GlobalDeclaration::Module(module),
                 module_span,
             ));
-            Ok(encapsulated_result)
+            Ok(())
         } else {
-            Ok(result)
+            translation_unit
+                .global_declarations
+                .append(&mut result.global_declarations);
+            translation_unit
+                .global_directives
+                .append(&mut result.global_directives);
+
+            Ok(())
         }
     }
 }

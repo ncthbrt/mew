@@ -92,20 +92,20 @@ impl AliasTree {
                         let mut new_path = alias_path.clone();
                         new_path.0.append(path.0.clone());
                         path.0 = new_path.0;
-                        return true;
+                        true
                     }
                     AliasEntry::Node(alias_tree) => {
-                        return alias_tree.resolve(current, path);
+                        alias_tree.resolve(current, path)
                     }
                 }
             } else {
                 current.0.append(path.0.clone());
                 path.0 = current.0;
-                return false;
+                false
             }
         } else {
             path.0 = current.0;
-            return false;
+            false
         }
     }
 

@@ -1,16 +1,13 @@
 [package]
-name = "wesl-test"
+name = "wesl-api"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
 repository.workspace = true
 license.workspace = true
 
-
-[features]
-update_expected_output = []
-
 [dependencies]
+async-trait = "0.1.82"
 wesl-parse = { path = '../wesl-parse' }
 wesl-bundle = { path = '../wesl-bundle' }
 wesl-resolve = { path = '../wesl-resolve' }
@@ -21,5 +18,5 @@ wesl-dealias = { path = '../wesl-dealias' }
 wesl-specialize = { path = '../wesl-specialize' }
 wesl-template-normalize = { path = '../wesl-template-normalize' }
 wesl-inline = { path = '../wesl-inline' }
-wesl-api = { path = '../wesl-api' }
-tokio = { version="1.40.0", features=["macros", "rt"] }
+im = { workspace = true }
+naga = { version = "22.1", features = ["wgsl-in", "wgsl-out"] }

@@ -18,7 +18,7 @@ enum Parent<'a> {
 }
 
 impl<'a> Parent<'a> {
-    fn inline_path<'b>(&'b mut self, path: &mut Vec<PathPart>) -> Result<(), CompilerPassError> {
+    fn inline_path(&mut self, path: &mut Vec<PathPart>) -> Result<(), CompilerPassError> {
         for p in path.iter_mut() {
             if let Some(mut inline_args) = p.inline_template_args.take() {
                 for directive in inline_args.directives.drain(..) {
@@ -38,8 +38,8 @@ impl<'a> Parent<'a> {
         Ok(())
     }
 
-    fn inline_expression<'b>(
-        &'b mut self,
+    fn inline_expression(
+        &mut self,
         expression: &mut Expression,
     ) -> Result<(), CompilerPassError> {
         match expression {
@@ -71,8 +71,8 @@ impl<'a> Parent<'a> {
         }
     }
 
-    fn inline_compound_statement<'b>(
-        &'b mut self,
+    fn inline_compound_statement(
+        &mut self,
         statement: &mut CompoundStatement,
     ) -> Result<(), CompilerPassError> {
         for arg in statement
@@ -91,8 +91,8 @@ impl<'a> Parent<'a> {
         Ok(())
     }
 
-    fn inline_statement<'b>(
-        &'b mut self,
+    fn inline_statement(
+        &mut self,
         statement: &mut Statement,
     ) -> Result<(), CompilerPassError> {
         match statement {
@@ -238,7 +238,7 @@ impl<'a> Parent<'a> {
         }
     }
 
-    fn function_to_inline<'b>(&'b mut self, func: &mut Function) -> Result<(), CompilerPassError> {
+    fn function_to_inline(&mut self, func: &mut Function) -> Result<(), CompilerPassError> {
         self.inline_template_params(&mut func.template_parameters)?;
         self.inline_compound_statement(&mut func.body)?;
 
@@ -267,8 +267,8 @@ impl<'a> Parent<'a> {
         Ok(())
     }
 
-    fn inline_template_params<'b>(
-        &'b mut self,
+    fn inline_template_params(
+        &mut self,
         template_params: &mut Vec<Spanned<FormalTemplateParameter>>,
     ) -> Result<(), CompilerPassError> {
         for p in template_params.iter_mut() {
@@ -279,14 +279,14 @@ impl<'a> Parent<'a> {
         Ok(())
     }
 
-    fn alias_to_inline<'b>(&'b mut self, alias: &mut Alias) -> Result<(), CompilerPassError> {
+    fn alias_to_inline(&mut self, alias: &mut Alias) -> Result<(), CompilerPassError> {
         self.inline_template_params(&mut alias.template_parameters)?;
         self.inline_path(&mut alias.typ.path)?;
         Ok(())
     }
 
-    fn declaration_to_inline<'b>(
-        &'b mut self,
+    fn declaration_to_inline(
+        &mut self,
         declaration: &mut Declaration,
     ) -> Result<(), CompilerPassError> {
         self.inline_template_params(&mut declaration.template_parameters)?;
@@ -308,7 +308,7 @@ impl<'a> Parent<'a> {
         Ok(())
     }
 
-    fn usage_to_inline<'b>(&'b mut self, mut usage: Use) -> Result<(), CompilerPassError> {
+    fn usage_to_inline(&mut self, mut usage: Use) -> Result<(), CompilerPassError> {
         self.inline_path(&mut usage.path)?;
         for arg in usage
             .attributes
@@ -345,7 +345,7 @@ impl<'a> Parent<'a> {
         Ok(())
     }
 
-    fn struct_to_inline<'b>(&'b mut self, strct: &mut Struct) -> Result<(), CompilerPassError> {
+    fn struct_to_inline(&mut self, strct: &mut Struct) -> Result<(), CompilerPassError> {
         self.inline_template_params(&mut strct.template_parameters)?;
         for member in strct.members.iter_mut() {
             self.inline_path(&mut member.typ.path)?;
@@ -361,8 +361,8 @@ impl<'a> Parent<'a> {
         Ok(())
     }
 
-    fn const_assert_to_inline<'b>(
-        &'b mut self,
+    fn const_assert_to_inline(
+        &mut self,
         const_assert: &mut ConstAssert,
     ) -> Result<(), CompilerPassError> {
         self.inline_template_params(&mut const_assert.template_parameters)?;
@@ -370,8 +370,8 @@ impl<'a> Parent<'a> {
         Ok(())
     }
 
-    fn extend_to_inline<'b>(
-        &'b mut self,
+    fn extend_to_inline(
+        &mut self,
         mut extend: ExtendDirective,
     ) -> Result<(), CompilerPassError> {
         for arg in extend
@@ -399,7 +399,7 @@ impl<'a> Parent<'a> {
         }
     }
 
-    fn inline<'b>(&'b mut self) -> Result<(), CompilerPassError> {
+    fn inline(&mut self) -> Result<(), CompilerPassError> {
         match self {
             Parent::Module(m) => {
                 let mut other_directives = vec![];

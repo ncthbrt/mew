@@ -8,12 +8,23 @@ lalrpop_mod!(
 );
 use lalrpop_util::lalrpop_mod;
 
-use crate::{error::SpannedError, lexer::Lexer, syntax};
+use crate::{
+    error::SpannedError,
+    lexer::Lexer,
+    syntax::{self, IdentifierExpression},
+};
 
 #[derive(Debug, Default, Clone, Copy)]
 pub struct Parser;
 
 impl Parser {
+    pub fn parse_path(path: &str) -> Result<IdentifierExpression, SpannedError> {
+        let lexer = Lexer::new(path);
+        let parser = wgsl::EntryPointPathParser::new();
+        let res = parser.parse(lexer);
+        res.map_err(|e| SpannedError::new(e, path))
+    }
+
     pub fn parse_str(source: &str) -> Result<syntax::TranslationUnit, SpannedError> {
         let lexer = Lexer::new(source);
         let parser = wgsl::TranslationUnitParser::new();

@@ -124,6 +124,10 @@ pub TryTemplateList: Span = {
    <l:@L> TokTemplateArgsStart TemplateArgCommaList TokTemplateArgsEnd <r:@R> => l..r,
 };
 
+pub EntryPointPath: IdentifierExpression = {
+    <TemplateElaboratedIdent> => <>.into()
+};
+
 // =====================
 // === Begin grammar ===
 // =====================
