@@ -805,7 +805,13 @@ impl Resolver {
         module_path: ModulePath,
         scope: &mut im::HashMap<String, ScopeMember>,
     ) -> Result<(), CompilerPassError> {
-        Self::relative_path_to_absolute_path(scope.clone(), module_path.clone(), &mut usage.path)?;
+        if !usage.path.is_empty() {
+            Self::relative_path_to_absolute_path(
+                scope.clone(),
+                module_path.clone(),
+                &mut usage.path,
+            )?;
+        }
         match &mut usage.content.value {
             wesl_parse::syntax::UseContent::Item(item) => {
                 if let Some(rename) = item.rename.as_ref() {
