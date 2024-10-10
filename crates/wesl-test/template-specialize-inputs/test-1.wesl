@@ -17,7 +17,7 @@ mod WhatsUp {
 mod My_Lib<A, B, C = Hi> {    
     const x: VertexShader<C>::E = VertexShader<C>::E();
     
-    mod VertexShader<C> {        
+    mod VertexShader<C> {
         mod Types {
             struct VertexOutput {
                 @builtin(position)
@@ -40,10 +40,10 @@ mod My_Lib<A, B, C = Hi> {
         }
         
         @binding(0) @group(0)
-        var<uniform> uniforms: VertexShader<C>::Types::Uniforms;
+        var<uniform> uniforms: Types::Uniforms;
         
         @binding(1) @group(0)
-        var<uniform> camera: VertexShader<C>::Types::Nested;
+        var<uniform> camera: Types::Nested;
     }
 }
 

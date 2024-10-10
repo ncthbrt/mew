@@ -5,7 +5,7 @@ use wesl_parse::{
     span::{Span, Spanned},
     syntax::*,
 };
-use wesl_types::{mangling::mangle_template_args, CompilerPass, CompilerPassError};
+use wesl_types::{mangling::maybe_mangle_template_args_if_needed, CompilerPass, CompilerPassError};
 
 #[derive(Debug, Clone)]
 pub struct Specializer {
@@ -102,7 +102,7 @@ impl OwnedMember {
                     template_args
                         .retain(|x| params.iter().any(|y| Some(&y.name) == x.arg_name.as_ref()));
                 }
-                name.value = mangle_template_args(&with);
+                name.value = maybe_mangle_template_args_if_needed(&with);
             }
         }
 
@@ -436,7 +436,6 @@ impl OwnedMember {
             .drain(..)
             .map(|x| {
                 let name: Option<Spanned<String>> = Some(x.name.clone());
-                println!("{with}");
                 (
                     x,
                     with.template_args
@@ -1175,7 +1174,7 @@ impl<'a> Parent<'a> {
     }
 
     fn find_child<'b>(&'b mut self, path_part: &PathPart) -> Option<BorrowedMember<'b>> {
-        let name = mangle_template_args(path_part);
+        let name = maybe_mangle_template_args_if_needed(path_part);
         match self {
             Parent::TranslationUnit(x) => {
                 for item in x.global_declarations.iter_mut() {
@@ -1210,7 +1209,7 @@ impl<'a> Parent<'a> {
     }
 
     fn remove_child(&mut self, path_part: &PathPart) {
-        let name = mangle_template_args(path_part);
+        let name = maybe_mangle_template_args_if_needed(path_part);
         match self {
             Parent::TranslationUnit(x) => {
                 x.global_declarations
@@ -1237,7 +1236,10 @@ impl<'a> Parent<'a> {
 
     fn add_module(&mut self, path_part: PathPart) -> BorrowedMember<'_> {
         let module = Module {
-            name: Spanned::new(mangle_template_args(&path_part), path_part.name.span()),
+            name: Spanned::new(
+                maybe_mangle_template_args_if_needed(&path_part),
+                path_part.name.span(),
+            ),
             ..Default::default()
         };
 
@@ -1261,7 +1263,10 @@ impl<'a> Parent<'a> {
             })
             .collect();
         Alias {
-            name: Spanned::new(mangle_template_args(path_part), path_part.name.span()),
+            name: Spanned::new(
+                maybe_mangle_template_args_if_needed(path_part),
+                path_part.name.span(),
+            ),
             typ: Spanned::new(
                 TypeExpression {
                     path: Spanned::new(path, span.clone()),

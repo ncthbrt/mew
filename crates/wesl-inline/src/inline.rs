@@ -38,10 +38,7 @@ impl<'a> Parent<'a> {
         Ok(())
     }
 
-    fn inline_expression(
-        &mut self,
-        expression: &mut Expression,
-    ) -> Result<(), CompilerPassError> {
+    fn inline_expression(&mut self, expression: &mut Expression) -> Result<(), CompilerPassError> {
         match expression {
             Expression::Literal(_) => Ok(()),
             Expression::Parenthesized(spanned) => self.inline_expression(spanned),
@@ -91,10 +88,7 @@ impl<'a> Parent<'a> {
         Ok(())
     }
 
-    fn inline_statement(
-        &mut self,
-        statement: &mut Statement,
-    ) -> Result<(), CompilerPassError> {
+    fn inline_statement(&mut self, statement: &mut Statement) -> Result<(), CompilerPassError> {
         match statement {
             Statement::Void => Ok(()),
             Statement::Compound(compound_statement) => {
@@ -370,10 +364,7 @@ impl<'a> Parent<'a> {
         Ok(())
     }
 
-    fn extend_to_inline(
-        &mut self,
-        mut extend: ExtendDirective,
-    ) -> Result<(), CompilerPassError> {
+    fn extend_to_inline(&mut self, mut extend: ExtendDirective) -> Result<(), CompilerPassError> {
         for arg in extend
             .attributes
             .iter_mut()

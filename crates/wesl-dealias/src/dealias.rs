@@ -8,7 +8,7 @@ use wesl_parse::{
         PathPart, Statement, Struct, TranslationUnit, TypeExpression,
     },
 };
-use wesl_types::{builtins, mangling::mangle_template_args, CompilerPass};
+use wesl_types::{builtins, mangling::maybe_mangle_template_args_if_needed, CompilerPass};
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Default)]
 struct AliasPath(im::Vector<PathPart>);
@@ -94,9 +94,7 @@ impl AliasTree {
                         path.0 = new_path.0;
                         true
                     }
-                    AliasEntry::Node(alias_tree) => {
-                        alias_tree.resolve(current, path)
-                    }
+                    AliasEntry::Node(alias_tree) => alias_tree.resolve(current, path),
                 }
             } else {
                 current.0.append(path.0.clone());
@@ -145,7 +143,7 @@ impl AliasPath {
             }
         }
         for p in self.0.iter_mut() {
-            p.name.value = mangle_template_args(p);
+            p.name.value = maybe_mangle_template_args_if_needed(p);
             p.template_args = None;
         }
     }

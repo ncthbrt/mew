@@ -5,11 +5,12 @@ extend ReduceBuffer with {
     const threads: u32 = 10u;
 };
 
+
 struct Sum<N> {
     sum: N::T
 }
 
-mod SumBinaryOp<N>  {
+mod SumBinaryOp<N> {
     alias OpElem = Sum<N>;
     alias LoadElem = Sum<N>;
 

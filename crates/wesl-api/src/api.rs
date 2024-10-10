@@ -142,8 +142,6 @@ impl WeslApi {
         let mut normalizer = wesl_template_normalize::TemplateNormalizer;
         normalizer.apply_mut(&mut result)?;
 
-        println!("{result}");
-
         let mut specializer = wesl_specialize::Specializer {
             entrypoint: Some(path),
         };

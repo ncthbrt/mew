@@ -3,8 +3,9 @@ extend ReduceBuffer<SumBinaryOp<F32>, BlockArea, WorkSize, Threads>;
 mod Sum<N> {
     struct T {
       sum: N::T
-    }
+    }   
 }
+
 
 mod SumBinaryOp<N>  {
     alias OpElem = Sum<N>::T;

@@ -348,7 +348,7 @@ fn template_specialize_wesl_samples() -> Result<(), WeslError> {
         ("test_2", "test_2::main"),
         ("test_3", "test_3::main"),
         ("test_4", "test_4::main"),
-        ("test_5", "test_5::main"),
+        ("test_5", "test_5::My_Lib::Demo::main"),
     ]);
 
     for entry in dir {

@@ -1,10 +1,10 @@
 
 
 @compute
-fn My__Lib_Demo_main() {
-    return My__Lib_Demo_one;
+fn test__5_My__Lib_Demo_main() {
+    return test__5_My__Lib_Demo_one;
 }
 
-const My__Lib_Demo_one = Foo_bar;
+const test__5_My__Lib_Demo_one = test__5_Foo_bar;
 
-const Foo_bar = 1;
+const test__5_Foo_bar = 1;
