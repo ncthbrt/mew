@@ -1,0 +1,1048 @@
+use std::str::FromStr;
+use crate::{error::ParseError, lexer::Token};
+use crate::syntax::*;
+use crate::parser_support::*;
+use crate::span::{Span, S};
+
+// this grammar follows closely the wgsl spec.
+// follwing the spec at this date: https://www.w3.org/TR/2024/WD-WGSL-20240731/
+
+grammar;
+
+extern {
+    type Location = usize;
+    type Error = (usize, ParseError, usize);
+    enum Token {
+        // syntactic tokens
+        // https://www.w3.org/TR/WGSL/#syntactic-tokens
+
+        // BEGIN MEW ADDITIONS
+        ".." => Token::SymDoublePeriod,
+        "::" => Token::SymDoubleColon,
+        // END MEW ADDITIONS
+        "&" => Token::SymAnd,
+        "&&" => Token::SymAndAnd,
+        "->" => Token::SymArrow,
+        "@" => Token::SymAttr,
+        "/" => Token::SymForwardSlash,
+        "!" => Token::SymBang,
+        "[" => Token::SymBracketLeft,
+        "]" => Token::SymBracketRight,
+        "{" => Token::SymBraceLeft,
+        "}" => Token::SymBraceRight,
+        ":" => Token::SymColon,
+        "," => Token::SymComma,
+        "=" => Token::SymEqual,
+        "==" => Token::SymEqualEqual,
+        "!=" => Token::SymNotEqual,
+        ">" => Token::SymGreaterThan,
+        ">=" => Token::SymGreaterThanEqual,
+        ">>" => Token::SymShiftRight,
+        "<" => Token::SymLessThan,
+        "<=" => Token::SymLessThanEqual,
+        "<<" => Token::SymShiftLeft,
+        "%" => Token::SymModulo,
+        "-" => Token::SymMinus,
+        "--" => Token::SymMinusMinus,
+        "." => Token::SymPeriod,
+        "+" => Token::SymPlus,
+        "++" => Token::SymPlusPlus,
+        "|" => Token::SymOr,
+        "||" => Token::SymOrOr,
+        "(" => Token::SymParenLeft,
+        ")" => Token::SymParenRight,
+        ";" => Token::SymSemicolon,
+        "*" => Token::SymStar,
+        "~" => Token::SymTilde,
+        "_" => Token::SymUnderscore,
+        "^" => Token::SymXor,
+        "+=" => Token::SymPlusEqual,
+        "-=" => Token::SymMinusEqual,
+        "*=" => Token::SymTimesEqual,
+        "/=" => Token::SymDivisionEqual,
+        "%=" => Token::SymModuloEqual,
+        "&=" => Token::SymAndEqual,
+        "|=" => Token::SymOrEqual,
+        "^=" => Token::SymXorEqual,
+        ">>=" => Token::SymShiftRightAssign,
+        "<<=" => Token::SymShiftLeftAssign,
+
+        // keywords
+        // https://www.w3.org/TR/WGSL/#keyword-summary
+        "alias" => Token::KwAlias,
+        "break" => Token::KwBreak,
+        "case" => Token::KwCase,
+        "const" => Token::KwConst,
+        "const_assert" => Token::KwConstAssert,
+        "continue" => Token::KwContinue,
+        "continuing" => Token::KwContinuing,
+        "default" => Token::KwDefault,
+        "diagnostic" => Token::KwDiagnostic,
+        "discard" => Token::KwDiscard,
+        "else" => Token::KwElse,
+        "enable" => Token::KwEnable,
+        "false" => Token::KwFalse,
+        "fn" => Token::KwFn,
+        "for" => Token::KwFor,
+        "if" => Token::KwIf,
+        "let" => Token::KwLet,
+        "loop" => Token::KwLoop,
+        "override" => Token::KwOverride,
+        "requires" => Token::KwRequires,
+        "return" => Token::KwReturn,
+        "struct" => Token::KwStruct,
+        "switch" => Token::KwSwitch,
+        "true" => Token::KwTrue,
+        "var" => Token::KwVar,
+        "while" => Token::KwWhile,
+        // BEGIN MEW ADDITIONS
+        "use" => Token::KwUse,
+        "mod" => Token::KwMod,        
+        "extend" => Token::KwExtend,
+        "sig" => Token::KwSig,
+        "as" => Token::KwAs,
+        "with" => Token::KwWith,
+        // END MEW ADDITIONS
+        IdentPatternToken => Token::Ident(<String>),
+        TokAbstractInt => Token::AbstractInt(<i64>),
+        TokAbstractFloat => Token::AbstractFloat(<f64>),
+        TokI32 => Token::I32(<i32>),
+        TokU32 => Token::U32(<u32>),
+        TokF32 => Token::F32(<f32>),
+        TokF16 => Token::F16(<f32>),
+        TokTemplateArgsStart => Token::TemplateArgsStart,
+        TokTemplateArgsEnd => Token::TemplateArgsEnd,
+    }
+}
+
+// the grammar rules are layed out in the same order as in the spec.
+// follwing the spec at this date: https://www.w3.org/TR/2024/WD-WGSL-20240731/
+
+// custom entrypoint called by the lexer when it sees [Token::Ident, Token::SymLessThan].
+// if this parse succeeds, the next token emitted by the lexer will be TokTemplateList.
+pub TryTemplateList: Span = {
+   <l:@L> TokTemplateArgsStart TemplateArgCommaList TokTemplateArgsEnd <r:@R> => l..r,
+};
+
+pub EntryPointPath: IdentifierExpression = {
+    <TemplateElaboratedIdent> => <>.into()
+};
+
+// =====================
+// === Begin grammar ===
+// =====================
+
+// 2. WGSL MODULE
+// https://www.w3.org/TR/WGSL/#wgsl-module
+
+pub TranslationUnit: TranslationUnit = {
+    <global_directives: S<GlobalDirective>*> <global_declarations: S<GlobalDecl>*> => TranslationUnit {<>},
+};
+
+GlobalDecl: GlobalDeclaration = {
+    ";"                        => GlobalDeclaration::Void,
+    <GlobalVariableDecl> ";"   => GlobalDeclaration::Declaration(<>),
+    <GlobalValueDecl> ";"      => GlobalDeclaration::Declaration(<>),
+    <AliasDecl> ";"        => GlobalDeclaration::Alias(<>),
+    <StructDecl>               => GlobalDeclaration::Struct(<>),
+    <FunctionDecl>             => GlobalDeclaration::Function(<>),
+    <ConstAssertStatement> ";" => GlobalDeclaration::ConstAssert(<>),
+    // BEGIN MEW global decls
+    <ModuleDecl> => GlobalDeclaration::Module(<>),
+    // END MEW global decls
+};
+
+// BEGIN MEW ROOT ADDITIONS
+ModuleDecl : Module = {
+    <attributes: S<Attribute>*> "mod" <name: S<Ident>> <templates: TemplateParameters?> "{" <directives: S<ModuleDirective>*> <members: S<ModuleMemberDecl>*> "}"  => Module {
+        name, 
+        members,
+        attributes,
+        directives,
+        template_parameters: templates.unwrap_or_default()
+    }
+};
+
+TemplateParameters: Vec<S<FormalTemplateParameter>> = {
+    TokTemplateArgsStart <TemplateParameterCommaList> TokTemplateArgsEnd
+};
+
+
+TemplateParameterCommaList: Vec<S<FormalTemplateParameter>> = {
+    <mut params: (<S<TemplateParameter>> ",")*> <e: S<TemplateParameter>> ","? => {
+        params.push(e);
+        params
+    },
+    <mut params: (<S<TemplateParameter>> ",")*> <mut optional: (<S<OptionalTemplateParameter>> ",")*> <e: S<OptionalTemplateParameter>> ","? => {
+        params.append(&mut optional);
+        params.push(e);
+        params
+    },
+};
+
+TemplateParameter: FormalTemplateParameter = {
+    <name: S<Ident>> => FormalTemplateParameter { name, default_value: None },
+};
+
+OptionalTemplateParameter: FormalTemplateParameter = {
+    <name: S<Ident>> "=" <rhs: S<Expression>> => FormalTemplateParameter { name, default_value: Some(rhs) }
+};
+
+ModuleDirective: ModuleDirective = {
+    Use => ModuleDirective::Use(<>),
+    Extend => ModuleDirective::Extend(<>)
+};
+
+CompoundDirective: CompoundDirective = {
+    Use => CompoundDirective::Use(<>)
+};
+
+ModuleMemberDecl: ModuleMemberDeclaration = {
+    ";"                        => ModuleMemberDeclaration::Void,
+    <GlobalVariableDecl> ";"   => ModuleMemberDeclaration::Declaration(<>),
+    <ModuleValueDecl> ";"      => ModuleMemberDeclaration::Declaration(<>),
+    <AliasDecl> ";"        => ModuleMemberDeclaration::Alias(<>),
+    <StructDecl>               => ModuleMemberDeclaration::Struct(<>),
+    <FunctionDecl>             => ModuleMemberDeclaration::Function(<>),
+    <ConstAssertStatement> ";" => ModuleMemberDeclaration::ConstAssert(<>),
+    <ModuleDecl> => ModuleMemberDeclaration::Module(<>),
+};
+
+// END MEW ROOT ADDITIONS
+
+DiagnosticRuleName: String = {
+    DiagnosticNameToken,
+    <first: DiagnosticNameToken> "." <last: DiagnosticNameToken> => format!("{first}.{last}"),
+};
+
+// 3. TEXTUAL STRUCTURE
+// https://www.w3.org/TR/WGSL/textual-structure#
+
+// XXX: non-conformant
+// https://www.w3.org/TR/WGSL/#syntax-literal
+Literal: LiteralExpression = {
+    TokAbstractInt   => LiteralExpression::AbstractInt(<>.to_string()),
+    TokAbstractFloat => LiteralExpression::AbstractFloat(<>.to_string()),
+    TokI32           => LiteralExpression::I32(<>),
+    TokU32           => LiteralExpression::U32(<>),
+    TokF32           => LiteralExpression::F32(<>.to_string()),
+    TokF16           => LiteralExpression::F16(<>.to_string()),
+    BoolLiteral,
+};
+
+BoolLiteral: LiteralExpression = {
+    "true"  => LiteralExpression::True,
+    "false" => LiteralExpression::False,
+};
+
+Ident: String = {
+    IdentPatternToken /* _DisambiguateTemplate */ => <>,
+};
+
+MemberIdent: String = {
+    IdentPatternToken => <>,
+};
+
+// TODO: check context-dependent names below.
+
+BuiltinValueName: String = {
+    IdentPatternToken => <>,
+};
+
+DiagnosticNameToken: String = {
+    IdentPatternToken => <>,
+};
+
+SeverityControlName: S<DiagnosticSeverity> = {
+    <l: @L> <ident: IdentPatternToken> <r: @R> =>? {
+        DiagnosticSeverity::from_str(&ident).map_err(|e| lalrpop_util::ParseError::User{ error: (l, e, r) }).map(|x| S::new(x, l..r))
+    },
+};
+
+EnableExtensionName: String = {
+    IdentPatternToken => <>,
+};
+
+SoftwareExtensionName: String = {
+    IdentPatternToken => <>,
+};
+
+InterpolateSamplingName: String = {
+    IdentPatternToken => <>,
+};
+
+SwizzleName: String = {
+    IdentPatternToken => <>,
+};
+
+// BEGIN MEW ADDITIONS
+
+TemplateList: Vec<S<TemplateArg>> = {
+    TokTemplateArgsStart <TemplateArgCommaList> TokTemplateArgsEnd,
+};
+
+TemplateArgCommaList: Vec<S<TemplateArg>> = {
+    <mut args: (<S<TemplateArg>> ",")*> <e: S<TemplateArg>> ","? => {
+        args.push(e);
+        args
+    },
+    <mut args: (<S<TemplateArg>> ",")*> <mut named: (<S<NamedTemplateArg>> ",")*> <e: S<NamedTemplateArg>> ","? => {
+        args.append(&mut named);
+        args.push(e);
+        args
+    },
+};
+
+TemplateArg: TemplateArg = {
+    <expression: S<Expression>> => TemplateArg { expression, arg_name: None },
+};
+
+NamedTemplateArg: TemplateArg = {
+    <lhs: S<Ident>> "=" <rhs: S<Expression>> => TemplateArg { expression: rhs, arg_name: Some(lhs) }
+}
+
+// END MEW ADDITIONS
+
+
+// 4. DIRECTIVES
+// https://www.w3.org/TR/WGSL/#directives
+GlobalDirective: GlobalDirective = {
+    DiagnosticDirective => GlobalDirective::Diagnostic(<>),
+    EnableDirective     => GlobalDirective::Enable(<>),
+    RequiresDirective   => GlobalDirective::Requires(<>),
+    // BEGIN MEW
+    Use => GlobalDirective::Use(<>),
+    Extend => GlobalDirective::Extend(<>)
+    // END MEW
+};
+
+EnableDirective: EnableDirective = {
+    "enable" <extensions: EnableExtensionList> ";" => EnableDirective {
+        extensions
+    },
+};
+
+EnableExtensionList: Vec<S<String>> = {
+    Comma1<EnableExtensionName>,
+};
+
+RequiresDirective: RequiresDirective = {
+    "requires" <extensions: SoftwareExtensionList> ";" => RequiresDirective {
+        extensions
+    },
+};
+
+// BEGIN MEW
+Extend: ExtendDirective = {
+    <attributes: S<Attribute>*> "extend" <ident: S<TemplateElaboratedIdent>> ";" => {
+        let span = ident.span();
+        ExtendDirective {
+            path: S::new(ident.value.path.into_iter().map(|x| x.into()).collect(), span),
+            attributes
+        }
+    }
+};
+
+Use: Use = {
+    "use" <usage: RootUsePath> => usage
+};
+
+RootUsePath: Use = {
+    <l: @L> <path: (<TemplateElaboratedIdentPart> "::")*> <r: @R> <l2: @L><item: ItemUse><r2: @R> ";" => Use {
+        attributes: Vec::new(),
+        path: S::new(path.into_iter().map(|x| x.into()).collect(), l..r), 
+        content: S::new(UseContent::Item(item), l2..r2)
+    },
+    <l: @L> <path: (<TemplateElaboratedIdentPart> "::")*> <r: @R> <l2:@L><collection: UseCollection><r2:@R> => {
+        Use {
+            attributes: Vec::new(),
+            path: S::new(path.into_iter().map(|x| x.into()).collect(), l..r), 
+            content: S::new(UseContent::Collection(collection), l2..r2)
+        }
+    }
+};
+
+
+UsePath: Use = {
+    <l: @L> <path: (<TemplateElaboratedIdentPart> "::")+> <r: @R>  <content: S<UseContent>> => Use {
+        attributes: Vec::new(),
+        path: S::new(path.into_iter().map(|x| x.into()).collect(), l..r), 
+        content
+    },
+    <l: @L><item: ItemUse><r: @R> => Use {
+        attributes: Vec::new(),
+        path: S::new(Default::default(), l..l), 
+        content: S::new(UseContent::Item(item), l..r)
+    },
+};
+
+UseContent: UseContent = {
+    UseCollection => UseContent::Collection(<>),
+    ItemUse => UseContent::Item(<>),
+};
+
+ItemUse: UseItem = {
+    <name: S<Ident>><template_args: TemplateList?><inline_template_args: InlineDeclaration?> <rename: ("as" <S<Ident>>)?> => UseItem {
+        name, rename, template_args, inline_template_args
+    }
+};
+
+UseCollection: Vec<S<Use>> = {
+    "{" <Comma1<UsePath>> "}"
+};
+
+// END MEW
+
+SoftwareExtensionList: Vec<S<String>> = {
+    Comma1<SoftwareExtensionName>,
+};
+
+DiagnosticDirective: DiagnosticDirective = {
+    "diagnostic" <DiagnosticControl> ";" => {
+        let (severity, rule_name) = <>;
+        DiagnosticDirective { severity, rule_name }
+    },
+};
+
+// 5. DECLARATION AND SCOPE
+// https://www.w3.org/TR/WGSL/#declaration-and-scope
+
+// 6. TYPES
+// https://www.w3.org/TR/WGSL/#types
+
+StructDecl: Struct = {
+    "struct" <name: S<Ident>> <template_parameters: TemplateParameters?> <members: StructBodyDecl> => Struct {
+        name, members, template_parameters: template_parameters.unwrap_or_default()
+    },
+};
+
+StructBodyDecl: Vec<S<StructMember>> = {
+    "{" <Comma1<StructMember>> "}",
+};
+
+StructMember: StructMember = {
+    <attributes: S<Attribute>*> <name: S<MemberIdent>> ":" <typ: S<TypeSpecifier>> => StructMember {
+        attributes, name, typ
+    },
+};
+
+AliasDecl: Alias = {
+    "alias" <name: S<Ident>> <templates: TemplateParameters?> "=" <typ: S<TypeSpecifier>> => Alias {
+        name, typ, template_parameters: templates.unwrap_or_default()
+    },
+};
+
+TypeSpecifier: TypeExpression = {
+    TemplateElaboratedIdent => {
+        <>.into()
+    },
+};
+
+
+TemplateElaboratedIdent: TemplateElaboratedIdent = {
+    <l: @L><mut path: (<TemplateElaboratedIdentPart> "::")*> <last: TemplateElaboratedIdentPart><r: @R>  => {
+        path.push(last);
+        TemplateElaboratedIdent {
+            path: S::new(path, l..r)
+        }
+    },
+};
+
+TemplateElaboratedIdentPart: TemplateElaboratedIdentPart = {
+     <name: S<Ident>> <template_args: TemplateList?> <inline_template_args: InlineDeclaration?> => TemplateElaboratedIdentPart {
+        name,
+        template_args,
+        inline_template_args
+     }
+};
+
+InlineDeclaration: InlineTemplateArgs = {
+    "with" "{" <directives: S<ModuleDirective>*> <members: S<ModuleMemberDecl>*> "}" => InlineTemplateArgs { directives, members }
+}
+
+// 7. VARIABLE AND VALUE DECLARATIONS
+// https://www.w3.org/TR/WGSL/#var-and-value
+
+VariableOrValueStatement: Declaration = {
+    VariableDecl,
+    <mut decl: VariableDecl> "=" <initializer: S<Expression>> => {
+        decl.initializer = Some(initializer);
+        decl
+    },
+    <l:@L>"let"<r:@R> <ident: OptionallyTypedIdent> "=" <initializer: S<Expression>> => {
+        let (name, _, typ) = ident;
+        Declaration {
+            attributes: Vec::new(),
+            kind: S::new(DeclarationKind::Let, l..r),
+            template_args: None,
+            name,
+            typ,
+            initializer: Some(initializer),
+            template_parameters: vec![]
+        }
+    },
+    <l:@L>"const"<r:@R> <ident: OptionallyTypedIdent> "=" <initializer: S<Expression>> => {
+        let (name, _, typ) = ident;
+        Declaration {
+            attributes: Vec::new(),
+            kind: S::new(DeclarationKind::Const, l..r),
+            template_args: None,
+            name,
+            typ,
+            initializer: Some(initializer),
+            template_parameters: vec![]
+        }
+    },
+};
+
+VariableDecl: Declaration = {
+    <l:@L>"var"<r:@R> /* DisambiguateTemplate */ <template_args: TemplateList?> <ident: OptionallyTypedIdent> => {
+        let (name, templates, typ) = ident;
+        Declaration {
+            attributes: Vec::new(),
+            kind: S::new(DeclarationKind::Var, l..r),
+            template_args,
+            name,
+            typ,
+            initializer: None,
+            template_parameters: templates.unwrap_or_default()
+        }
+    },
+};
+
+OptionallyTypedIdent: (S<String>, Option<Vec<S<FormalTemplateParameter>>>, Option<S<TypeExpression>>, ) = {
+    <S<Ident>> <TemplateParameters?> <(":" <S<TypeSpecifier>>)?>,
+};
+
+GlobalVariableDecl: Declaration = {
+    <attributes: S<Attribute>*> <mut decl: VariableDecl> <initializer: ("=" <S<Expression>>)?> => {
+        decl.attributes = attributes;
+        decl.initializer = initializer;
+        decl
+    },
+};
+
+// BEGIN MEW MODIFICATIONS
+ModuleValueDecl: Declaration = {
+    <l: @L>"const"<r: @R> <ident: OptionallyTypedIdent> "=" <initializer: S<Expression>> => {
+        let (name, template_parameters, typ) = ident;
+        Declaration {
+            attributes: Vec::new(),
+            kind: S::new(DeclarationKind::Const, l..r),
+            template_args: None,
+            name,
+            typ,
+            initializer: Some(initializer),
+            template_parameters: template_parameters.unwrap_or_default()
+        }
+    },
+};
+
+GlobalValueDecl: Declaration = {
+    <l: @L>"const"<r: @R>  <ident: OptionallyTypedIdent> "=" <initializer: S<Expression>> => {
+        let (name, template_parameters, typ) = ident;
+        Declaration {
+            attributes: Vec::new(),
+            kind: S::new(DeclarationKind::Const, l..r),
+            template_args: None,
+            name,
+            typ,
+            initializer: Some(initializer),
+            template_parameters: template_parameters.unwrap_or_default()
+        }
+    },
+    <attributes: S<Attribute>*> <l: @L>"override"<r: @R> <ident: OptionallyTypedIdent> <initializer: ("=" <S<Expression>>)?> => {
+        let (name, template_parameters, typ) = ident;
+        Declaration {
+            attributes,
+            kind: S::new(DeclarationKind::Override, l..r),
+            template_args: None,
+            name,
+            typ,
+            initializer,
+            template_parameters: template_parameters.unwrap_or_default()
+        }
+    }
+};
+// END MEW MODIFICATIONS
+
+// 8. EXPRESSIONS
+// https://www.w3.org/TR/WGSL/#expressions
+
+// BEGIN MEW MODIFICATIONS
+
+PrimaryExpression: Expression = {
+    <ident: TemplateElaboratedIdent> => {
+        match &ident.path.last().as_ref().unwrap().template_args.is_some() {
+            true => Expression::Type(ident.into()),
+            false => Expression::Identifier(ident.into()),
+        }
+    }, // XXX: not sure about this one, is it type?
+    CallExpression,
+    <S<Literal>> => Expression::Literal(<>),
+    ParenExpression,
+};
+// END MEW MODIFICATIONS
+
+
+CallExpression: Expression = {
+    CallPhrase => Expression::FunctionCall(<>),
+};
+
+CallPhrase: FunctionCallExpression = {
+    <callee: S<TemplateElaboratedIdent>> <arguments: ArgumentExpressionList> => {
+        let span = callee.span();
+        let TemplateElaboratedIdent { path } = callee.value;
+        FunctionCallExpression {
+            path: S::new(path.into_iter().map(|x| x.into()).collect(), span), arguments
+        }
+    },
+};
+
+ParenExpression: Expression = {
+    "(" <S<Expression>> ")" => Expression::Parenthesized(<>.into()),
+};
+
+ArgumentExpressionList: Vec<S<Expression>> = {
+    "(" <ExpressionCommaList?> ")" => <>.unwrap_or_default(),
+};
+
+ExpressionCommaList: Vec<S<Expression>> = {
+    Comma1<Expression>,
+};
+
+// was modified from the spec, but should be equivalent
+ComponentOrSwizzleSpecifier: Vec<Component> = {
+    // "[" Expression "]" ComponentOrSwizzleSpecifier?,
+    // "." MemberIdent ComponentOrSwizzleSpecifier?,
+    // "." SwizzleName ComponentOrSwizzleSpecifier ?,
+    SingleComponentOrSwizzleSpecifier+
+};
+
+SingleComponentOrSwizzleSpecifier: Component = {
+    "[" <S<Expression>> "]" => Component::Index(<>.into()),
+    "." <S<MemberIdent>>       => Component::Named(<>),
+}
+
+UnaryExpression: Expression = {
+    SingularExpression,
+    <l: @L> "-" <r: @R> <operand: S<UnaryExpression>> => Expression::Unary(UnaryExpression {
+        operator: S::new(UnaryOperator::Negation, l..r), operand: operand.into()
+    }),
+    <l: @L> "!" <r: @R> <operand: S<UnaryExpression>> => Expression::Unary(UnaryExpression {
+        operator: S::new(UnaryOperator::LogicalNegation, l..r), operand: operand.into()
+    }),
+    <l: @L> "~" <r: @R> <operand: S<UnaryExpression>> => Expression::Unary(UnaryExpression {
+        operator: S::new(UnaryOperator::BitwiseComplement, l..r), operand: operand.into()
+    }),
+    <l: @L> "*" <r: @R> <operand: S<UnaryExpression>> => Expression::Unary(UnaryExpression {
+        operator: S::new(UnaryOperator::Indirection, l..r), operand: operand.into()
+    }),
+     <l: @L> "&" <r: @R> <operand: S<UnaryExpression>> => Expression::Unary(UnaryExpression {
+        operator: S::new(UnaryOperator::AddressOf, l..r), operand: operand.into()
+    }),
+};
+
+SingularExpression: Expression = {
+    <expr: S<PrimaryExpression>> <components: ComponentOrSwizzleSpecifier?> => match components {
+        Some(components) => apply_components(components, expr).into_inner(),
+        None => expr.into_inner()
+    },
+};
+
+LhsExpression: Expression = {
+    <expr: S<CoreLhsExpression>> <components: ComponentOrSwizzleSpecifier?> => match components {
+        Some(components) => apply_components(components, expr).into_inner(),
+        None => expr.into_inner()
+    },
+    <l:@L>"*"<r:@R> <operand: S<LhsExpression>> => Expression::Unary(UnaryExpression {
+        operator: S::new(UnaryOperator::Indirection, l..r), operand: operand.into()
+    }),
+    <l: @L>"&"<r: @R> <operand: S<LhsExpression>> => Expression::Unary(UnaryExpression {
+        operator: S::new(UnaryOperator::AddressOf, l..r), operand: operand.into()
+    }),
+ };
+
+CoreLhsExpression: Expression = {
+    <ident: TemplateElaboratedIdent> => Expression::Identifier(ident.into()),
+    "(" <S<LhsExpression>> ")" => Expression::Parenthesized(<>.into()),
+};
+
+MultiplicativeExpression: Expression = {
+    UnaryExpression,
+    <left: S<MultiplicativeExpression>> <operator: S<MultiplicativeOperator>> <right: S<UnaryExpression>> => Expression::Binary(BinaryExpression {
+        operator, left: left.into(), right: right.into()
+    }),
+};
+
+MultiplicativeOperator: BinaryOperator = {
+    "*" => BinaryOperator::Multiplication,
+    "/" => BinaryOperator::Division,
+    "%" => BinaryOperator::Remainder,
+};
+ 
+AdditiveExpression: Expression = {
+    MultiplicativeExpression,
+    <left: S<AdditiveExpression>> <operator: S<AdditiveOperator>> <right: S<MultiplicativeExpression>> => Expression::Binary(BinaryExpression {
+        operator, left: left.into(), right: right.into()
+    }),
+};
+
+AdditiveOperator: BinaryOperator = {
+    "+" => BinaryOperator::Addition,
+    "-" => BinaryOperator::Subtraction,
+};
+
+ShiftExpression: Expression = {
+    AdditiveExpression,
+    <l2: @L><left: UnaryExpression><r2: @R> <l: @L>"<<"<r: @R> <right: S<UnaryExpression>> => Expression::Binary(BinaryExpression {
+        operator: S::new(BinaryOperator::ShiftLeft, l..r), left: S::new(left, l2..r2).into(), right: right.into()
+    }),
+    <l2: @L><left: UnaryExpression><r2: @R> <l: @L>">>"<r: @R> <right: S<UnaryExpression>> => Expression::Binary(BinaryExpression {
+        operator: S::new(BinaryOperator::ShiftRight, l..r), left: S::new(left, l2..r2).into(), right: right.into()
+    }),
+};
+
+RelationalExpression: Expression = {
+    ShiftExpression,
+    <left: S<ShiftExpression>> <l: @L> "<" <r: @R> <right: S<ShiftExpression>> => Expression::Binary(BinaryExpression {
+        operator: S::new(BinaryOperator::LessThan, l..r), left: left.into(), right: right.into()
+    }),
+    <left: S<ShiftExpression>> <l: @L> ">"<r: @R> <right: S<ShiftExpression>> => Expression::Binary(BinaryExpression {
+        operator: S::new(BinaryOperator::GreaterThan, l..r), left: left.into(), right: right.into()
+    }),
+    <left: S<ShiftExpression>> <l: @L>"<="<r: @R>  <right: S<ShiftExpression>> => Expression::Binary(BinaryExpression {
+        operator: S::new(BinaryOperator::LessThanEqual, l..r), left: left.into(), right: right.into()
+    }),
+    <left: S<ShiftExpression>>  <l: @L>">="<r: @R>  <right: S<ShiftExpression>> => Expression::Binary(BinaryExpression {
+        operator: S::new(BinaryOperator::GreaterThanEqual, l..r), left: left.into(), right: right.into()
+    }),
+    <left: S<ShiftExpression>>  <l: @L>"=="<r: @R>   <right: S<ShiftExpression>> => Expression::Binary(BinaryExpression {
+        operator: S::new(BinaryOperator::Equality, l..r), left: left.into(), right: right.into()
+    }),
+    <left: S<ShiftExpression>>  <l: @L>"!="<r: @R> <right: S<ShiftExpression>> => Expression::Binary(BinaryExpression {
+        operator: S::new(BinaryOperator::Inequality, l..r), left: left.into(), right: right.into()
+    }),
+};
+
+ShortCircuitAndExpression: Expression = {
+    RelationalExpression,
+    <l2: @L><left: ShortCircuitAndExpression><r2: @R> <l: @L> "&&" <r: @R> <right: S<RelationalExpression>> => Expression::Binary(BinaryExpression {
+        operator: S::new(BinaryOperator::ShortCircuitAnd, l..r), left: S::new(left, l2..r2).into(), right: right.into()
+    }),
+ };
+ 
+ShortCircuitOrExpression: Expression = {
+    RelationalExpression,
+    <l2: @L><left: ShortCircuitOrExpression><r2: @R><l: @L> "||" <r: @R><right: S<RelationalExpression>> => Expression::Binary(BinaryExpression {
+        operator:  S::new(BinaryOperator::ShortCircuitOr, l..r), left: S::new(left, l2..r2).into(), right: right.into()
+    }),
+ };
+ 
+BinaryOrExpression: Expression = {
+    UnaryExpression,
+    <l2: @L><left: BinaryOrExpression><r2: @R> <l: @L> "|" <r: @R> <right: S<UnaryExpression>> => Expression::Binary(BinaryExpression {
+        operator: S::new(BinaryOperator::BitwiseOr, l..r), left: S::new(left, l2..r2).into(), right: right.into()
+    }),
+};
+
+BinaryAndExpression: Expression = {
+    UnaryExpression,
+    <l2: @L><left: BinaryAndExpression><r2: @R> <l: @L>"&"<r: @R> <right: S<UnaryExpression>> => Expression::Binary(BinaryExpression {
+        operator: S::new(BinaryOperator::BitwiseAnd, l..r), left: S::new(left, l2..r2).into(), right: right.into()
+    }),
+};
+
+BinaryXorExpression: Expression = {
+    UnaryExpression,
+    <l2: @L><left: BinaryXorExpression><r2: @R> <l: @L>"^"<r: @R> <right: S<UnaryExpression>> => Expression::Binary(BinaryExpression {
+        operator: S::new(BinaryOperator::BitwiseXor, l..r), left: S::new(left, l2..r2).into(), right: right.into()
+    }),
+};
+
+BitwiseExpression: Expression = {
+    <l2: @L><left: BinaryAndExpression><r2: @R> <l: @L>"&"<r: @R><right: S<UnaryExpression>> => Expression::Binary(BinaryExpression {
+        operator: S::new(BinaryOperator::BitwiseAnd, l..r), left: S::new(left, l2..r2).into(), right: right.into()
+    }),
+    <l2: @L><left: BinaryOrExpression><r2: @R> <l: @L>"|"<r: @R> <right: S<UnaryExpression>> => Expression::Binary(BinaryExpression {
+        operator: S::new(BinaryOperator::BitwiseOr, l..r), left: S::new(left, l2..r2).into(), right: right.into()
+    }),
+    <l2: @L><left: BinaryXorExpression><r2: @R> <l: @L>"^"<r: @R> <right: S<UnaryExpression>> => Expression::Binary(BinaryExpression {
+        operator: S::new(BinaryOperator::BitwiseXor, l..r), left: S::new(left, l2..r2).into(), right: right.into()
+    }),
+};
+
+Expression: Expression = {
+    RelationalExpression,
+    <l2: @L><left: ShortCircuitAndExpression><r2: @R> <l: @L>"||"<r: @R> <right: S<RelationalExpression>> => Expression::Binary(BinaryExpression {
+        operator: S::new(BinaryOperator::ShortCircuitOr, l..r), left: S::new(left, l2..r2).into(), right: right.into()
+    }),
+    <l2: @L><left: ShortCircuitAndExpression><r2: @R> <l: @L>"&&"<r: @R> <right: S<RelationalExpression>> => Expression::Binary(BinaryExpression {
+        operator: S::new(BinaryOperator::ShortCircuitAnd, l..r), left: S::new(left, l2..r2).into(), right: right.into()
+    }),
+    BitwiseExpression,
+};
+
+// 9. STATEMENTS
+// https://www.w3.org/TR/WGSL/#statements
+
+CompoundStatement: CompoundStatement = {
+    <attributes: S<Attribute>*> "{" <directives: S<CompoundDirective>*> <statements: S<Statement>*> "}" => {
+        let mut statement = CompoundStatement {
+            directives,
+            attributes, 
+            statements
+        };
+        statement.construct_scope_tree();
+        statement
+    },
+};
+
+AssignmentStatement: AssignmentStatement = {
+    <lhs: S<LhsExpression>> <l: @L> "="<r: @R> <rhs: S<Expression>> => AssignmentStatement {
+        operator: S::new(AssignmentOperator::Equal, l..r), lhs, rhs
+    },
+    <lhs: S<LhsExpression>> <operator: S<CompoundAssignmentOperator>> <rhs: S<Expression>> => AssignmentStatement {
+        operator, lhs, rhs
+    },
+    <l2: @L> "_" <r2: @R> <l: @L> "=" <r: @R> <rhs: S<Expression>> => {
+        let lhs = S::new(Expression::Identifier(IdentifierExpression { path: S::new(vec![PathPart{ name: S::new("_".to_string(), l2..r2), template_args: None, inline_template_args: None }], l2..r2) }), l2..r2);
+        AssignmentStatement { operator: S::new(AssignmentOperator::Equal, l..r), lhs, rhs }
+    },
+};
+
+CompoundAssignmentOperator: AssignmentOperator = {
+    "+=" => AssignmentOperator::PlusEqual,
+    "-=" => AssignmentOperator::MinusEqual,
+    "*=" => AssignmentOperator::TimesEqual,
+    "/=" => AssignmentOperator::DivisionEqual,
+    "%=" => AssignmentOperator::ModuloEqual,
+    "&=" => AssignmentOperator::AndEqual,
+    "|=" => AssignmentOperator::OrEqual,
+    "^=" => AssignmentOperator::XorEqual,
+    ">>=" => AssignmentOperator::ShiftRightAssign,
+    "<<=" => AssignmentOperator::ShiftLeftAssign,
+};
+
+IncrementStatement: Expression = {
+    <LhsExpression> "++",
+};
+
+DecrementStatement: Expression = {
+    <LhsExpression> "--",
+};
+
+IfStatement: IfStatement = {
+    <attributes: S<Attribute>*> <if_clause: IfClause> <else_if_clauses: ElseIfClause*> <else_clause: ElseClause?> => IfStatement {
+        attributes, if_clause, else_if_clauses, else_clause
+    },
+};
+
+IfClause = "if" <S<Expression>> <S<CompoundStatement>>;
+
+ElseIfClause = "else" "if" <S<Expression>> <S<CompoundStatement>>;
+
+ElseClause = "else" <S<CompoundStatement>>;
+
+SwitchStatement: SwitchStatement = {
+    <attributes: S<Attribute>*> "switch" <expression: S<Expression>> <body: SwitchBody> => {
+        let (body_attributes, clauses) = body;
+        SwitchStatement {
+            attributes, expression, body_attributes, clauses
+        }
+    },
+};
+
+SwitchBody: (Vec<S<Attribute>>, Vec<S<SwitchClause>>) = {
+    <S<Attribute>*> "{" <S<SwitchClause>+> "}",
+};
+
+SwitchClause: SwitchClause = {
+    CaseClause,
+    DefaultAloneClause,
+};
+
+CaseClause: SwitchClause = {
+    "case" <case_selectors: CaseSelectors> ":"? <body: S<CompoundStatement>> => SwitchClause {
+        case_selectors, body
+    },
+};
+
+DefaultAloneClause: SwitchClause = {
+    <l: @L> "default" <r: @R> ":"? <body: S<CompoundStatement>> => SwitchClause {
+        case_selectors: vec![S::new(CaseSelector::Default, l..r)], body
+    },
+};
+
+CaseSelectors: Vec<S<CaseSelector>> = {
+    Comma1<CaseSelector>,
+};
+
+CaseSelector: CaseSelector = {
+    "default" => CaseSelector::Default,
+    Expression => CaseSelector::Expression(<>),
+};
+
+LoopStatement: LoopStatement = {
+    <attributes: S<Attribute>*> "loop" <body_attributes: S<Attribute>*> <l: @L> "{" <directives: S<CompoundDirective>*> <statements: S<Statement>*> <continuing: S<ContinuingStatement>?> "}" <r: @R> => {
+        let body = CompoundStatement { attributes: body_attributes, statements, directives };
+        LoopStatement {
+            attributes, body: S::new(body, l..r), continuing
+        }
+    },
+};
+
+ForStatement: ForStatement = {
+     <attributes: S<Attribute>*> "for" "(" <header: ForHeader> ")" <body: S<CompoundStatement>> => {
+        let (initializer, condition, update) = header;
+        ForStatement {
+            attributes, initializer: initializer.map(|x| x.into()), condition, update: update.map(|x| x.into()), body
+        }
+    },
+};
+
+ForHeader: (Option<S<Statement>>, Option<S<Expression>>, Option<S<Statement>>) = {
+    <S<ForInit>?> ";" <S<Expression>?> ";" <S<ForUpdate>?>,
+};
+
+ForInit: Statement = {
+    S<VariableOrValueStatement>  => Statement::Declaration(DeclarationStatement { declaration: <>, statements: vec![] }),
+    VariableUpdatingStatement => <>,
+    FuncCallStatement         => Statement::FunctionCall(<>),
+};
+
+ForUpdate: Statement = {
+    VariableUpdatingStatement => <>,
+    FuncCallStatement         => Statement::FunctionCall(<>),
+};
+
+WhileStatement: WhileStatement = {
+    <attributes: S<Attribute>*> "while" <condition: S<Expression>> <body: S<CompoundStatement>> => WhileStatement {
+        attributes, condition, body
+    },
+};
+
+BreakStatement: () = {
+    "break",
+};
+
+BreakIfStatement: S<Expression> = {
+    "break" "if" <S<Expression>> ";",
+};
+
+ContinueStatement: () = {
+    "continue",
+};
+
+ContinuingStatement = "continuing" <ContinuingCompoundStatement>;
+
+ContinuingCompoundStatement: ContinuingStatement = {
+    <attributes: S<Attribute>*>  <l: @L> "{" <directives: S<CompoundDirective>*> <statements: S<Statement>*> <break_if: BreakIfStatement?> "}" <r: @R>  => {
+        let body = CompoundStatement { attributes, statements, directives };
+        ContinuingStatement { body: S::new(body, l..r), break_if }
+    },
+};
+
+ReturnStatement: Option<S<Expression>> = {
+    "return" <S<Expression>?>
+};
+
+FuncCallStatement = CallPhrase;
+
+ConstAssertStatement: ConstAssert = {
+    "const_assert" <templates: TemplateParameters?> <expression: S<Expression>> => ConstAssert { expression, template_parameters: templates.unwrap_or_default() },
+};
+
+Statement: Statement = {
+    ";" => Statement::Void,
+    <ReturnStatement> ";" => Statement::Return(<>),
+    <IfStatement> => Statement::If(<>),
+    <SwitchStatement> => Statement::Switch(<>),
+    <LoopStatement> => Statement::Loop(<>),
+    <ForStatement> => Statement::For(<>),
+    <WhileStatement> => Statement::While(<>),
+    <FuncCallStatement> ";" => Statement::FunctionCall(<>),
+    BreakStatement ";" => Statement::Break,
+    ContinueStatement ";" => Statement::Continue,
+    "discard" ";" => Statement::Discard,
+    <VariableUpdatingStatement> ";" => <>,
+    <CompoundStatement> => Statement::Compound(<>),
+    <ConstAssertStatement> ";" => Statement::ConstAssert(<>),
+    <declaration: S<VariableOrValueStatement>> ";" => Statement::Declaration(DeclarationStatement { declaration, statements: vec![] })
+};
+
+VariableUpdatingStatement: Statement = {
+    AssignmentStatement => Statement::Assignment(<>),
+    IncrementStatement => Statement::Increment(<>),
+    DecrementStatement => Statement::Decrement(<>),
+};
+
+// 10. FUNCTIONS
+// https://www.w3.org/TR/WGSL/#functions
+
+FunctionDecl: Function = {
+    <attributes: S<Attribute>*> <header: FunctionHeader> <body: S<CompoundStatement>> => {
+        let (name, parameters, return_attributes, return_type, template_parameters) = header;
+        Function { attributes, name, parameters, return_attributes, return_type, body, template_parameters }
+    },
+};
+
+FunctionHeader: (S<String>, Vec<S<FormalParameter>>, Vec<S<Attribute>>, Option<S<TypeExpression>>, Vec<S<FormalTemplateParameter>>) = {
+    "fn" <name: S<Ident>> <templates: TemplateParameters?>  "(" <parameters: ParamList?> ")" <ret: ("->" <S<Attribute>*> <S<TemplateElaboratedIdent>>)?> => {
+        let (return_attributes, return_type) = ret.map(|(return_attributes, S { value: template_args, span })| {
+            let return_type: S<TypeExpression> = S::new(template_args.into(), span);
+            (return_attributes, Some(return_type))
+        }).unwrap_or_default();
+        let parameters = parameters.unwrap_or_default();
+        (name, parameters, return_attributes, return_type, templates.unwrap_or_default())
+    },
+};
+
+ParamList: Vec<S<FormalParameter>> = {
+    Comma1<Param>,
+};
+
+Param: FormalParameter = {
+    <attributes: S<Attribute>*> <name: S<Ident>> ":" <typ: S<TypeSpecifier>> => FormalParameter {
+        attributes, name, typ
+    },
+};
+
+// 11. ATTRIBUTES
+// https://www.w3.org/TR/WGSL/#attributes
+
+// TODO: maybe parse the well-known attributes.
+Attribute: Attribute = {
+    "@" <name: S<IdentPatternToken>> <arguments: ArgumentExpressionList?> => Attribute {
+        name, arguments
+    }
+};
+
+DiagnosticControl: (S<DiagnosticSeverity>, S<String>) = {
+    "(" <SeverityControlName> "," <S<DiagnosticRuleName>> ","? ")",
+};
+
+// ===================
+// === End grammar ===
+// ===================
+
+// ----------- below: macros -----------
+
+Comma<T>: Vec<S<T>> = {
+    <mut v: (<S<T>> ",")*> <e: S<T>?> => match e {
+        Some(e) => {
+            v.push(e);
+            v
+        }
+        None => v,
+    }
+};
+
+Comma1<T>: Vec<S<T>> = {
+    <mut v: (<S<T>> ",")*> <e: S<T>> ","? => {
+        v.push(e);
+        v
+    }
+};
+
+S<T>: S<T> = <l: @L> <t: T> <r: @R> => S::new(t, l..r);

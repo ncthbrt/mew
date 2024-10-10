@@ -1,24 +1,24 @@
 [workspace]
 members = [
-    "crates/wesl-parse", 
-    "crates/wesl-test", 
-    "crates/wesl-bundle", 
-    "crates/wesl-resolve", 
-    "crates/wesl-inline",
-    "crates/wesl-mangle", 
-    "crates/wesl-flatten", 
-    "crates/wesl-types", 
-    "crates/wesl-dealias", 
-    "crates/wesl-specialize", 
-    "crates/wesl-template-normalize",
-    "crates/wesl-api"
+    "crates/mew-parse", 
+    "crates/mew-test", 
+    "crates/mew-bundle", 
+    "crates/mew-resolve", 
+    "crates/mew-inline",
+    "crates/mew-mangle", 
+    "crates/mew-flatten", 
+    "crates/mew-types", 
+    "crates/mew-dealias", 
+    "crates/mew-specialize", 
+    "crates/mew-template-normalize",
+    "crates/mew-api"
 ]
 
 [workspace.package]
 version = "0.0.2"
 edition = "2021"
 authors = ["Mathis Brossier <mathis.brossier@gmail.com>", "Natalie Cuthbert <natalie@cuthbert.co.za>"]
-repository = "https://github.com/ncthbrt/wesl-rust"
+repository = "https://github.com/ncthbrt/mew-rust"
 license = "MIT"
 
 [workspace.dependencies]
@@ -28,7 +28,7 @@ wgsl-spec = { version = "0.2.0" }
 [package]
 name = "wgsl-rust"
 description = "Various tools to parse, verify, evaluate and modify wgsl shader source."
-documentation = "https://docs.rs/wesl-rust"
+documentation = "https://docs.rs/mew-rust"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
@@ -37,16 +37,16 @@ license.workspace = true
 
 [dependencies]
 clap = { version = "4.5.11", features = ["derive"] }
-wesl-parse = { path = "crates/wesl-parse", version = "0.0.2" }
-wesl-bundle  = { path = "crates/wesl-bundle", version = "0.0.2" }
-wesl-resolve  = { path = "crates/wesl-resolve", version = "0.0.2" }
-wesl-mangle  = { path = "crates/wesl-mangle", version = "0.0.2" }
-wesl-flatten  = { path = "crates/wesl-flatten", version = "0.0.2" }
-wesl-types  = { path = "crates/wesl-types", version = "0.0.2" }
-wesl-dealias  = { path = "crates/wesl-dealias", version = "0.0.2" }
-wesl-specialize = {path = "crates/wesl-specialize", version = "0.0.2" }
-wesl-template-normalize = { path = "crates/wesl-template-normalize", version = "0.0.2" }
-wesl-inline = { path = "crates/wesl-inline", version = "0.0.2" }
-wesl-api = { path = "crates/wesl-api", version = "0.0.2" }
+mew-parse = { path = "crates/mew-parse", version = "0.0.2" }
+mew-bundle  = { path = "crates/mew-bundle", version = "0.0.2" }
+mew-resolve  = { path = "crates/mew-resolve", version = "0.0.2" }
+mew-mangle  = { path = "crates/mew-mangle", version = "0.0.2" }
+mew-flatten  = { path = "crates/mew-flatten", version = "0.0.2" }
+mew-types  = { path = "crates/mew-types", version = "0.0.2" }
+mew-dealias  = { path = "crates/mew-dealias", version = "0.0.2" }
+mew-specialize = {path = "crates/mew-specialize", version = "0.0.2" }
+mew-template-normalize = { path = "crates/mew-template-normalize", version = "0.0.2" }
+mew-inline = { path = "crates/mew-inline", version = "0.0.2" }
+mew-api = { path = "crates/mew-api", version = "0.0.2" }
 tokio = { version="1.40.0", features=["macros", "rt-multi-thread"] }
 

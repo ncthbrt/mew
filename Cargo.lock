@@ -581,6 +581,136 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "78ca9ab1a0babb1e7d5695e3530886289c18cf2f87ec19a575a0abdce112e3a3"
 
 [[package]]
+name = "mew-api"
+version = "0.0.2"
+dependencies = [
+ "async-trait",
+ "im",
+ "mew-bundle",
+ "mew-dealias",
+ "mew-flatten",
+ "mew-inline",
+ "mew-mangle",
+ "mew-parse",
+ "mew-resolve",
+ "mew-specialize",
+ "mew-template-normalize",
+ "mew-types",
+ "naga",
+]
+
+[[package]]
+name = "mew-bundle"
+version = "0.0.2"
+dependencies = [
+ "mew-parse",
+ "mew-types",
+]
+
+[[package]]
+name = "mew-dealias"
+version = "0.0.2"
+dependencies = [
+ "im",
+ "mew-parse",
+ "mew-types",
+]
+
+[[package]]
+name = "mew-flatten"
+version = "0.0.2"
+dependencies = [
+ "mew-parse",
+ "mew-types",
+]
+
+[[package]]
+name = "mew-inline"
+version = "0.0.2"
+dependencies = [
+ "im",
+ "mew-parse",
+ "mew-types",
+]
+
+[[package]]
+name = "mew-mangle"
+version = "0.0.2"
+dependencies = [
+ "im",
+ "mew-parse",
+ "mew-types",
+]
+
+[[package]]
+name = "mew-parse"
+version = "0.0.2"
+dependencies = [
+ "annotate-snippets",
+ "indexmap",
+ "itertools 0.13.0",
+ "lalrpop",
+ "lalrpop-util",
+ "lexical",
+ "logos",
+ "thiserror",
+]
+
+[[package]]
+name = "mew-resolve"
+version = "0.0.2"
+dependencies = [
+ "im",
+ "mew-parse",
+ "mew-types",
+]
+
+[[package]]
+name = "mew-specialize"
+version = "0.0.2"
+dependencies = [
+ "im",
+ "mew-parse",
+ "mew-types",
+]
+
+[[package]]
+name = "mew-template-normalize"
+version = "0.0.2"
+dependencies = [
+ "im",
+ "mew-parse",
+ "mew-types",
+]
+
+[[package]]
+name = "mew-test"
+version = "0.0.2"
+dependencies = [
+ "mew-api",
+ "mew-bundle",
+ "mew-dealias",
+ "mew-flatten",
+ "mew-inline",
+ "mew-mangle",
+ "mew-parse",
+ "mew-resolve",
+ "mew-specialize",
+ "mew-template-normalize",
+ "mew-types",
+ "tokio",
+]
+
+[[package]]
+name = "mew-types"
+version = "0.0.2"
+dependencies = [
+ "im",
+ "mew-parse",
+ "wgsl-spec",
+]
+
+[[package]]
 name = "miniz_oxide"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1019,152 +1149,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9c8d87e72b64a3b4db28d11ce29237c246188f4f51057d65a7eab63b7987e423"
 
 [[package]]
-name = "wesl-api"
-version = "0.0.2"
-dependencies = [
- "async-trait",
- "im",
- "naga",
- "wesl-bundle",
- "wesl-dealias",
- "wesl-flatten",
- "wesl-inline",
- "wesl-mangle",
- "wesl-parse",
- "wesl-resolve",
- "wesl-specialize",
- "wesl-template-normalize",
- "wesl-types",
-]
-
-[[package]]
-name = "wesl-bundle"
-version = "0.0.2"
-dependencies = [
- "wesl-parse",
- "wesl-types",
-]
-
-[[package]]
-name = "wesl-dealias"
-version = "0.0.2"
-dependencies = [
- "im",
- "wesl-parse",
- "wesl-types",
-]
-
-[[package]]
-name = "wesl-flatten"
-version = "0.0.2"
-dependencies = [
- "wesl-parse",
- "wesl-types",
-]
-
-[[package]]
-name = "wesl-inline"
-version = "0.0.2"
-dependencies = [
- "im",
- "wesl-parse",
- "wesl-types",
-]
-
-[[package]]
-name = "wesl-mangle"
-version = "0.0.2"
-dependencies = [
- "im",
- "wesl-parse",
- "wesl-types",
-]
-
-[[package]]
-name = "wesl-parse"
-version = "0.0.2"
-dependencies = [
- "annotate-snippets",
- "indexmap",
- "itertools 0.13.0",
- "lalrpop",
- "lalrpop-util",
- "lexical",
- "logos",
- "thiserror",
-]
-
-[[package]]
-name = "wesl-resolve"
-version = "0.0.2"
-dependencies = [
- "im",
- "wesl-parse",
- "wesl-types",
-]
-
-[[package]]
-name = "wesl-specialize"
-version = "0.0.2"
-dependencies = [
- "im",
- "wesl-parse",
- "wesl-types",
-]
-
-[[package]]
-name = "wesl-template-normalize"
-version = "0.0.2"
-dependencies = [
- "im",
- "wesl-parse",
- "wesl-types",
-]
-
-[[package]]
-name = "wesl-test"
-version = "0.0.2"
-dependencies = [
- "tokio",
- "wesl-api",
- "wesl-bundle",
- "wesl-dealias",
- "wesl-flatten",
- "wesl-inline",
- "wesl-mangle",
- "wesl-parse",
- "wesl-resolve",
- "wesl-specialize",
- "wesl-template-normalize",
- "wesl-types",
-]
-
-[[package]]
-name = "wesl-types"
-version = "0.0.2"
-dependencies = [
- "im",
- "wesl-parse",
- "wgsl-spec",
-]
-
-[[package]]
 name = "wgsl-rust"
 version = "0.0.2"
 dependencies = [
  "clap",
+ "mew-api",
+ "mew-bundle",
+ "mew-dealias",
+ "mew-flatten",
+ "mew-inline",
+ "mew-mangle",
+ "mew-parse",
+ "mew-resolve",
+ "mew-specialize",
+ "mew-template-normalize",
+ "mew-types",
  "tokio",
- "wesl-api",
- "wesl-bundle",
- "wesl-dealias",
- "wesl-flatten",
- "wesl-inline",
- "wesl-mangle",
- "wesl-parse",
- "wesl-resolve",
- "wesl-specialize",
- "wesl-template-normalize",
- "wesl-types",
 ]
 
 [[package]]

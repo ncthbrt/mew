@@ -3,8 +3,8 @@
 //! Very much a work in progress.
 
 use clap::{Args, Parser, Subcommand};
+use mew_parse::Parser as MewParser;
 use std::{fs, path::PathBuf};
-use wesl_parse::Parser as WeslParser;
 
 #[derive(Parser)]
 #[command(version, author, about)]
@@ -46,13 +46,13 @@ async fn main() {
     match &cli.command {
         Command::Check(_) => {
             print!("{} -- ", args.input.display());
-            match WeslParser::parse_str(&source) {
+            match MewParser::parse_str(&source) {
                 Ok(_) => println!("OK"),
                 Err(err) => eprintln!("{err}"),
             };
         }
         Command::Parse(_) => {
-            match WeslParser::parse_str(&source) {
+            match MewParser::parse_str(&source) {
                 Ok(ast) => {
                     println!("{ast}")
                 }
@@ -60,7 +60,7 @@ async fn main() {
             };
         }
         Command::Dump(_) => {
-            match WeslParser::parse_str(&source) {
+            match MewParser::parse_str(&source) {
                 Ok(ast) => println!("{ast:?}"),
                 Err(err) => eprintln!("{err}"),
             };

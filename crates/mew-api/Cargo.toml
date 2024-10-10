@@ -1,0 +1,22 @@
+[package]
+name = "mew-api"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+license.workspace = true
+
+[dependencies]
+async-trait = "0.1.82"
+mew-parse = { path = '../mew-parse' }
+mew-bundle = { path = '../mew-bundle' }
+mew-resolve = { path = '../mew-resolve' }
+mew-types = { path = '../mew-types' }
+mew-mangle = { path = '../mew-mangle' }
+mew-flatten = { path = '../mew-flatten' }
+mew-dealias = { path = '../mew-dealias' }
+mew-specialize = { path = '../mew-specialize' }
+mew-template-normalize = { path = '../mew-template-normalize' }
+mew-inline = { path = '../mew-inline' }
+im = { workspace = true }
+naga = { version = "22.1", features = ["wgsl-in", "wgsl-out"] }

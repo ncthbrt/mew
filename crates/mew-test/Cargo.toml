@@ -1,0 +1,25 @@
+[package]
+name = "mew-test"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+license.workspace = true
+
+
+[features]
+update_expected_output = []
+
+[dependencies]
+mew-parse = { path = '../mew-parse' }
+mew-bundle = { path = '../mew-bundle' }
+mew-resolve = { path = '../mew-resolve' }
+mew-types = { path = '../mew-types' }
+mew-mangle = { path = '../mew-mangle' }
+mew-flatten = { path = '../mew-flatten' }
+mew-dealias = { path = '../mew-dealias' }
+mew-specialize = { path = '../mew-specialize' }
+mew-template-normalize = { path = '../mew-template-normalize' }
+mew-inline = { path = '../mew-inline' }
+mew-api = { path = '../mew-api' }
+tokio = { version="1.40.0", features=["macros", "rt"] }

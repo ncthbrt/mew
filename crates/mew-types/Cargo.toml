@@ -1,0 +1,12 @@
+[package]
+name = "mew-types"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+license.workspace = true
+
+[dependencies]
+mew-parse = { path = '../mew-parse' }
+wgsl-spec = { workspace = true, features = ["include"]  }
+im = { workspace = true }

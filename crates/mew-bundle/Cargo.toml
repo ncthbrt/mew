@@ -1,0 +1,12 @@
+[package]
+name = "mew-bundle"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+license.workspace = true
+
+[dependencies]
+mew-parse = { path = '../mew-parse' }
+mew-types = { path = '../mew-types' }
+

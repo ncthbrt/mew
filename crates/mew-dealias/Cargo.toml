@@ -1,0 +1,12 @@
+[package]
+name = "mew-dealias"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+license.workspace = true
+
+[dependencies]
+mew-parse = { path = '../mew-parse' }
+mew-types = { path = '../mew-types' }
+im = { workspace = true }
