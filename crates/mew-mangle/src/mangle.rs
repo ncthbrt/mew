@@ -6,7 +6,7 @@ use mew_parse::{
         Statement, Struct, TranslationUnit, TypeExpression,
     },
 };
-use mew_types::CompilerPass;
+use mew_types::{mangling::mangle_path, CompilerPass};
 
 #[derive(Debug, Default, Clone, Copy)]
 pub struct Mangler;
@@ -15,45 +15,9 @@ pub struct Mangler;
 struct ModulePath(im::Vector<PathPart>);
 
 impl Mangler {
-    fn mangle_path(path: &mut Vec<PathPart>) {
-        let mut result = Vec::new();
-        let first = path.first();
-        let last = path.last();
-        let mut mangled_span = 0..0;
-        if let (Some(first), Some(last)) = (first, last) {
-            let first_name_span = first.name.span();
-            let last_name_span = last.name.span();
-            let mut end = last_name_span.end;
-            let start = first_name_span.start;
-            if let Some(last) = last.template_args.as_ref().and_then(|x| x.last()) {
-                end = last.span().end;
-            }
-            mangled_span = start..end;
-        };
-        for p in path.iter_mut() {
-            let mut current = String::new();
-            current.push_str(p.name.replace('_', "__").as_str());
-            if let Some(args) = p.template_args.as_mut() {
-                for arg in args.iter_mut() {
-                    current.push_str("__");
-                    Self::mangle_expression(&mut arg.expression);
-                    current.push_str(format!("{}", arg.expression).as_str());
-                }
-            }
-            result.push(current);
-        }
-        let joined = result.join("_");
-        path.clear();
-        path.push(PathPart {
-            name: Spanned::new(joined, mangled_span),
-            template_args: None,
-            inline_template_args: None,
-        });
-    }
-
     fn mangle_name(name: &mut String, path: ModulePath) {
         let mut path: Vec<PathPart> = path.0.into_iter().collect();
-        Self::mangle_path(&mut path);
+        mangle_path(&mut path);
         let mut result = String::new();
         result.push_str(path[0].name.value.as_str());
         if !result.is_empty() {
@@ -168,7 +132,7 @@ impl Mangler {
                 // DO NOTHING
             }
             Statement::FunctionCall(f) => {
-                Self::mangle_path(&mut f.path);
+                mangle_path(&mut f.path);
                 for arg in f.arguments.iter_mut() {
                     Self::mangle_expression(arg);
                 }
@@ -222,7 +186,7 @@ impl Mangler {
                         .contains_key(&f.path[0].name.value.clone());
                 }
                 if mangle_function_path {
-                    Self::mangle_path(&mut f.path);
+                    mangle_path(&mut f.path);
                 } else if let Some(args) = f.path[0].template_args.as_mut() {
                     for arg in args {
                         Self::mangle_expression(&mut arg.expression);
@@ -256,7 +220,7 @@ impl Mangler {
             }
         }
         if mangle_type_path {
-            Self::mangle_path(&mut typ.path);
+            mangle_path(&mut typ.path);
         } else if let Some(args) = typ.path[0].template_args.as_mut() {
             for arg in args {
                 Self::mangle_expression(&mut arg.expression);
@@ -277,7 +241,7 @@ impl Mangler {
             }
         }
         if mangle_type_path {
-            Self::mangle_path(&mut id.path);
+            mangle_path(&mut id.path);
         } else if let Some(args) = id.path[0].template_args.as_mut() {
             for arg in args {
                 Self::mangle_expression(&mut arg.expression);

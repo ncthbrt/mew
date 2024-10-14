@@ -746,7 +746,7 @@ impl Resolver {
                         );
 
                         let name = mangle_inline_arg_name(
-                            &module_path.0.clone().into_iter().collect(),
+                            &module_path.0.clone().into_iter().collect::<Vec<PathPart>>(),
                             &current,
                             &initial_name.value,
                         );
@@ -904,7 +904,7 @@ impl Resolver {
             'outer: while !remaining_path.is_empty() {
                 Self::update_module_scope(&mut module_path, &mut module, &mut scope)?;
                 Self::add_extensions_and_usages_to_scope(
-                    &mut module_path,
+                    &module_path,
                     &mut module.directives,
                     &mut module.members,
                     &mut scope,

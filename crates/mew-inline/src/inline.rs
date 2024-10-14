@@ -18,7 +18,7 @@ enum Parent<'a> {
 }
 
 impl<'a> Parent<'a> {
-    fn inline_path(&mut self, path: &mut Vec<PathPart>) -> Result<(), CompilerPassError> {
+    fn inline_path(&mut self, path: &mut [PathPart]) -> Result<(), CompilerPassError> {
         for p in path.iter_mut() {
             if let Some(mut inline_args) = p.inline_template_args.take() {
                 for directive in inline_args.directives.drain(..) {
@@ -263,7 +263,7 @@ impl<'a> Parent<'a> {
 
     fn inline_template_params(
         &mut self,
-        template_params: &mut Vec<Spanned<FormalTemplateParameter>>,
+        template_params: &mut [Spanned<FormalTemplateParameter>],
     ) -> Result<(), CompilerPassError> {
         for p in template_params.iter_mut() {
             if let Some(def) = p.default_value.as_mut() {

@@ -49,8 +49,8 @@ fn mew_samples() {
     }
 }
 
-#[tokio::test]
-async fn bundle_mew_samples() -> Result<(), CompilerPassError> {
+#[test]
+pub fn bundle_mew_samples() -> Result<(), CompilerPassError> {
     let dir = std::fs::read_dir("mew-samples").expect("missing mew-samples");
     let mut entrypoints: Vec<String> = vec![];
     let mut dir_contents = dir.into_iter().collect::<Vec<_>>();
@@ -349,6 +349,15 @@ fn template_specialize_mew_samples() -> Result<(), MewError> {
         ("test_3", "test_3::main"),
         ("test_4", "test_4::main"),
         ("test_5", "test_5::My_Lib::Demo::main"),
+        (
+            "test_6",
+            r#"test_6::ReduceBuffer with {
+    alias Op = test_6::SumBinaryOp<test_6::F32>;
+    const block_area: u32 = 4u;
+    const work_size: u32 = 18u;
+    const threads: u32 = 10u;
+}::main"#,
+        ),
     ]);
 
     for entry in dir {
@@ -367,6 +376,7 @@ fn template_specialize_mew_samples() -> Result<(), MewError> {
                 .to_str()
                 .unwrap()
                 .replace('-', "_");
+
             api.add_module(ModuleDescriptor {
                 module_name: module_name.as_str(),
                 source: mew_api::Source::Text(&source),

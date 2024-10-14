@@ -11,8 +11,10 @@ members = [
     "crates/mew-dealias", 
     "crates/mew-specialize", 
     "crates/mew-template-normalize",
-    "crates/mew-api"
+    "crates/mew-api",
 ]
+
+resolver = "2"
 
 [workspace.package]
 version = "0.0.2"
@@ -24,29 +26,4 @@ license = "MIT"
 [workspace.dependencies]
 im = "15.1.0" 
 wgsl-spec = { version = "0.2.0" }
-
-[package]
-name = "wgsl-rust"
-description = "Various tools to parse, verify, evaluate and modify wgsl shader source."
-documentation = "https://docs.rs/mew-rust"
-version.workspace = true
-edition.workspace = true
-authors.workspace = true
-repository.workspace = true
-license.workspace = true
-
-[dependencies]
-clap = { version = "4.5.11", features = ["derive"] }
-mew-parse = { path = "crates/mew-parse", version = "0.0.2" }
-mew-bundle  = { path = "crates/mew-bundle", version = "0.0.2" }
-mew-resolve  = { path = "crates/mew-resolve", version = "0.0.2" }
-mew-mangle  = { path = "crates/mew-mangle", version = "0.0.2" }
-mew-flatten  = { path = "crates/mew-flatten", version = "0.0.2" }
-mew-types  = { path = "crates/mew-types", version = "0.0.2" }
-mew-dealias  = { path = "crates/mew-dealias", version = "0.0.2" }
-mew-specialize = {path = "crates/mew-specialize", version = "0.0.2" }
-mew-template-normalize = { path = "crates/mew-template-normalize", version = "0.0.2" }
-mew-inline = { path = "crates/mew-inline", version = "0.0.2" }
-mew-api = { path = "crates/mew-api", version = "0.0.2" }
-tokio = { version="1.40.0", features=["macros", "rt-multi-thread"] }
 

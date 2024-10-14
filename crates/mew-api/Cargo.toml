@@ -7,7 +7,6 @@ repository.workspace = true
 license.workspace = true
 
 [dependencies]
-async-trait = "0.1.82"
 mew-parse = { path = '../mew-parse' }
 mew-bundle = { path = '../mew-bundle' }
 mew-resolve = { path = '../mew-resolve' }

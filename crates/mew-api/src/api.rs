@@ -1,9 +1,12 @@
 use mew_bundle::Bundler;
 use mew_parse::{
-    span::Span,
-    syntax::{FormalTemplateParameter, GlobalDeclaration, PathPart, TranslationUnit},
+    span::{Span, Spanned},
+    syntax::{
+        Alias, FormalTemplateParameter, GlobalDeclaration, PathPart, TranslationUnit,
+        TypeExpression,
+    },
 };
-use mew_types::{CompilerPass, CompilerPassError, InternalCompilerError};
+use mew_types::{mangling::mangle_path, CompilerPass, CompilerPassError, InternalCompilerError};
 
 #[derive(Default, Debug)]
 pub struct MewApi {
@@ -133,8 +136,41 @@ impl MewApi {
             }
         };
 
+        let mut alias_name_path = path.clone();
+        mangle_path(&mut alias_name_path);
+
         let mut resolver = mew_resolve::Resolver;
-        let mut result = resolver.apply(&self.translation_unit)?;
+        let mut result = self.translation_unit.clone();
+
+        let alias = Alias {
+            name: Spanned::new(
+                alias_name_path
+                    .into_iter()
+                    .map(|x| x.name.value)
+                    .collect::<Vec<String>>()
+                    .join("_"),
+                0..0,
+            ),
+            typ: Spanned::new(
+                TypeExpression {
+                    path: Spanned::new(path, 0..0),
+                },
+                0..0,
+            ),
+            template_parameters: vec![],
+        };
+
+        let entry_path = vec![PathPart {
+            name: alias.name.clone(),
+            template_args: None,
+            inline_template_args: None,
+        }];
+
+        result
+            .global_declarations
+            .push(Spanned::new(GlobalDeclaration::Alias(alias), 0..0));
+
+        resolver.apply_mut(&mut result)?;
 
         let mut inliner = mew_inline::Inliner;
         inliner.apply_mut(&mut result)?;
@@ -143,7 +179,7 @@ impl MewApi {
         normalizer.apply_mut(&mut result)?;
 
         let mut specializer = mew_specialize::Specializer {
-            entrypoint: Some(path),
+            entrypoint: Some(entry_path),
         };
 
         specializer.apply_mut(&mut result)?;
@@ -162,7 +198,7 @@ impl MewApi {
         Ok(format!("{result}"))
     }
 
-    pub fn format_error(&self, _: MewError) -> String {
-        todo!();
-    }
+    // pub fn format_error(&self, _: MewError) -> String {
+    //     todo!();
+    // }
 }

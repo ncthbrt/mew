@@ -1208,25 +1208,6 @@ impl<'a> Parent<'a> {
         }
     }
 
-    fn remove_child(&mut self, path_part: &PathPart) {
-        let name = maybe_mangle_template_args_if_needed(path_part);
-        match self {
-            Parent::TranslationUnit(x) => {
-                x.global_declarations
-                    .retain(|x| !matches!(x.name(), Some(n) if n.value == name));
-            }
-            Parent::Module {
-                module,
-                is_initialized,
-            } => {
-                assert!(*is_initialized);
-                module
-                    .members
-                    .retain(|x: &Spanned<ModuleMemberDeclaration>| !matches!(x.name(), Some(n) if n.value == name));
-            }
-        }
-    }
-
     fn is_entry_point(function: &Function) -> bool {
         function
             .attributes
@@ -1287,28 +1268,16 @@ impl<'a> Parent<'a> {
             Parent::TranslationUnit(t) => {
                 let mut entrypoints = vec![];
                 for declaration in t.global_declarations.drain(..) {
-                    if let GlobalDeclaration::Function(f) = declaration.as_ref() {
-                        if Self::is_entry_point(f) && f.template_parameters.is_empty() {
+                    let name = declaration.name();
+                    if name.is_none() {
+                        if declaration.template_parameters().is_none() {
                             entrypoints.push(declaration);
-                            continue;
                         }
-                    } else if let GlobalDeclaration::ConstAssert(assrt) = declaration.as_ref() {
-                        if assrt.template_parameters.is_empty() {
-                            entrypoints.push(declaration);
-                            continue;
-                        }
-                    } else if let GlobalDeclaration::Alias(alias) = declaration.as_ref() {
-                        if alias.template_parameters.is_empty() {
-                            entrypoints.push(declaration);
-                            continue;
-                        }
-                    }
-                    if let Some(name) = declaration.name() {
+                    } else {
+                        let name = name.unwrap();
                         let mut symbol_path = symbol_path.clone();
                         symbol_path.push_back(name.value);
                         symbol_map.insert(symbol_path, OwnedMember::Global(declaration));
-                    } else {
-                        entrypoints.push(declaration);
                     }
                 }
                 t.global_declarations.append(&mut entrypoints);

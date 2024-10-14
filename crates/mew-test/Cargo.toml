@@ -22,4 +22,3 @@ mew-specialize = { path = '../mew-specialize' }
 mew-template-normalize = { path = '../mew-template-normalize' }
 mew-inline = { path = '../mew-inline' }
 mew-api = { path = '../mew-api' }
-tokio = { version="1.40.0", features=["macros", "rt"] }
