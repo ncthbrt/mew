@@ -1,0 +1,5 @@
+module A {
+  fn generic_function<T>(a: T, b: T) -> T  {
+    return a + b;
+  }
+}

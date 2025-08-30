@@ -358,6 +358,7 @@ fn template_specialize_mew_samples() -> Result<(), MewError> {
     const threads: u32 = 10u;
 }::main"#,
         ),
+        ("test_7", r#"test_7::A::generic_function<f32>"#),
     ]);
 
     for entry in dir {
