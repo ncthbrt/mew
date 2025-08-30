@@ -102,6 +102,8 @@ extern {
         "sig" => Token::KwSig,
         "as" => Token::KwAs,
         "with" => Token::KwWith,
+        "where" => Token::KwWhere,
+        "type" => Token::KwType,
         // END MEW ADDITIONS
         IdentPatternToken => Token::Ident(<String>),
         TokAbstractInt => Token::AbstractInt(<i64>),
@@ -143,7 +145,7 @@ GlobalDecl: GlobalDeclaration = {
     ";"                        => GlobalDeclaration::Void,
     <GlobalVariableDecl> ";"   => GlobalDeclaration::Declaration(<>),
     <GlobalValueDecl> ";"      => GlobalDeclaration::Declaration(<>),
-    <AliasDecl> ";"        => GlobalDeclaration::Alias(<>),
+    <AliasDecl> ";"            => GlobalDeclaration::Alias(<>),
     <StructDecl>               => GlobalDeclaration::Struct(<>),
     <FunctionDecl>             => GlobalDeclaration::Function(<>),
     <ConstAssertStatement> ";" => GlobalDeclaration::ConstAssert(<>),
@@ -199,13 +201,13 @@ CompoundDirective: CompoundDirective = {
 
 ModuleMemberDecl: ModuleMemberDeclaration = {
     ";"                        => ModuleMemberDeclaration::Void,
-    <GlobalVariableDecl> ";"   => ModuleMemberDeclaration::Declaration(<>),
+    <ModuleVariableDecl> ";"   => ModuleMemberDeclaration::Declaration(<>),
     <ModuleValueDecl> ";"      => ModuleMemberDeclaration::Declaration(<>),
-    <AliasDecl> ";"        => ModuleMemberDeclaration::Alias(<>),
+    <AliasDecl> ";"            => ModuleMemberDeclaration::Alias(<>),
     <StructDecl>               => ModuleMemberDeclaration::Struct(<>),
     <FunctionDecl>             => ModuleMemberDeclaration::Function(<>),
     <ConstAssertStatement> ";" => ModuleMemberDeclaration::ConstAssert(<>),
-    <ModuleDecl> => ModuleMemberDeclaration::Module(<>),
+    <ModuleDecl>               => ModuleMemberDeclaration::Module(<>),
 };
 
 // END MEW ROOT ADDITIONS
@@ -514,7 +516,9 @@ OptionallyTypedIdent: (S<String>, Option<Vec<S<FormalTemplateParameter>>>, Optio
     <S<Ident>> <TemplateParameters?> <(":" <S<TypeSpecifier>>)?>,
 };
 
-GlobalVariableDecl: Declaration = {
+// BEGIN MEW MODIFICATIONS
+
+VariableDeclWithInitializer: Declaration = {
     <attributes: S<Attribute>*> <mut decl: VariableDecl> <initializer: ("=" <S<Expression>>)?> => {
         decl.attributes = attributes;
         decl.initializer = initializer;
@@ -522,7 +526,9 @@ GlobalVariableDecl: Declaration = {
     },
 };
 
-// BEGIN MEW MODIFICATIONS
+GlobalVariableDecl: Declaration = VariableDeclWithInitializer;
+ModuleVariableDecl: Declaration = VariableDeclWithInitializer;
+
 ModuleValueDecl: Declaration = {
     <l: @L>"const"<r: @R> <ident: OptionallyTypedIdent> "=" <initializer: S<Expression>> => {
         let (name, template_parameters, typ) = ident;

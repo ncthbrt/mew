@@ -1,12 +1,9 @@
-use mew_parse::{
-    span::Spanned,
-    syntax::{
-        Alias, CompoundStatement, ConstAssert, Declaration, Expression, Function,
-        GlobalDeclaration, IdentifierExpression, Module, ModuleMemberDeclaration, PathPart,
-        Statement, Struct, TranslationUnit, TypeExpression,
-    },
+use mew_parse::syntax::{
+    Alias, CompoundStatement, ConstAssert, Declaration, Expression, Function, GlobalDeclaration,
+    IdentifierExpression, Module, ModuleMemberDeclaration, PathPart, Statement, Struct,
+    TranslationUnit, TypeExpression,
 };
-use mew_types::{CompilerPass, mangling::mangle_path};
+use mew_types::{CompilerPass, CompilerPassResult, mangling::mangle_path};
 
 #[derive(Debug, Default, Clone, Copy)]
 pub struct Mangler;
@@ -353,10 +350,7 @@ impl Mangler {
 }
 
 impl CompilerPass for Mangler {
-    fn apply_mut(
-        &mut self,
-        translation_unit: &mut TranslationUnit,
-    ) -> Result<(), mew_types::CompilerPassError> {
+    fn apply_mut(&mut self, translation_unit: &mut TranslationUnit) -> CompilerPassResult {
         self.mangle_mut(translation_unit);
         Ok(())
     }

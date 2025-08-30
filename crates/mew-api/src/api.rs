@@ -45,42 +45,42 @@ pub enum Path {
     Text(String),
 }
 
-type Result<T = ()> = std::result::Result<T, MewError>;
+type Result<T = ()> = std::result::Result<T, Box<MewError>>;
 
-impl From<CompilerPassError> for MewError {
-    fn from(value: CompilerPassError) -> Self {
-        match value {
+impl From<Box<CompilerPassError>> for Box<MewError> {
+    fn from(value: Box<CompilerPassError>) -> Self {
+        Box::new(match value.as_ref() {
             CompilerPassError::SymbolNotFound(vec, range) => MewError {
-                span: Some(range),
+                span: Some(range.clone()),
                 module_name: None,
-                error: MewErrorInner::SymbolNotFound(vec),
+                error: MewErrorInner::SymbolNotFound(vec.clone()),
             },
             CompilerPassError::UnableToResolvePath(vec) => MewError {
                 span: None,
                 module_name: None,
-                error: MewErrorInner::SymbolNotFound(vec),
+                error: MewErrorInner::SymbolNotFound(vec.clone()),
             },
             CompilerPassError::MissingRequiredTemplateArgument(spanned, range) => MewError {
-                span: Some(range),
+                span: Some(range.clone()),
                 module_name: None,
-                error: MewErrorInner::MissingRequiredTemplateArgument(spanned.value),
+                error: MewErrorInner::MissingRequiredTemplateArgument(spanned.value.clone()),
             },
             CompilerPassError::InternalError(internal_compiler_error) => MewError {
                 span: None,
                 module_name: None,
-                error: MewErrorInner::InternalError(internal_compiler_error),
+                error: MewErrorInner::InternalError(internal_compiler_error.clone()),
             },
             CompilerPassError::MalformedTemplateArgument(range) => MewError {
-                span: Some(range),
+                span: Some(range.clone()),
                 module_name: None,
                 error: MewErrorInner::MalformedTemplateArgument,
             },
             CompilerPassError::ParseError(parse_err, span) => MewError {
-                span: Some(span),
+                span: Some(span.clone()),
                 module_name: None,
-                error: MewErrorInner::ParseError(parse_err),
+                error: MewErrorInner::ParseError(parse_err.clone()),
             },
-        }
+        })
     }
 }
 
@@ -99,7 +99,8 @@ impl MewApi {
                 span: None,
                 module_name: Some(module_name.clone()),
                 error: MewErrorInner::ModuleNotFound,
-            })
+            }
+            .into())
         }
     }
 
@@ -130,7 +131,9 @@ impl MewApi {
             Path::Parsed(path) => path.clone(),
             Path::Text(path) => {
                 mew_parse::Parser::parse_path(path)
-                    .map_err(|err| CompilerPassError::ParseError(format!("{}", err), err.span()))?
+                    .map_err(|err| -> Box<CompilerPassError> {
+                        CompilerPassError::ParseError(format!("{}", err), err.span()).into()
+                    })?
                     .path
                     .value
             }
@@ -197,8 +200,4 @@ impl MewApi {
 
         Ok(format!("{result}"))
     }
-
-    // pub fn format_error(&self, _: MewError) -> String {
-    //     todo!();
-    // }
 }

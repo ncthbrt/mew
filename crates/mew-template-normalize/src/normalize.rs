@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 
 use mew_parse::{span::Spanned, syntax::*};
-use mew_types::{CompilerPass, CompilerPassError};
+use mew_types::{CompilerPass, CompilerPassError, CompilerPassResult};
 
 #[derive(Debug, Default, Clone, Copy)]
 pub struct TemplateNormalizer;
@@ -30,10 +30,10 @@ impl<'a> GenericMember<'a> {
 impl TemplateNormalizer {
     fn template_args_to_none_if_empty(path: &mut Spanned<Vec<PathPart>>) {
         for p in path.iter_mut() {
-            if let Some(t) = p.template_args.as_ref() {
-                if t.is_empty() {
-                    p.template_args = None;
-                }
+            if let Some(t) = p.template_args.as_ref()
+                && t.is_empty()
+            {
+                p.template_args = None;
             }
         }
     }
@@ -42,7 +42,7 @@ impl TemplateNormalizer {
         generic_member: &GenericMember,
         path_part: &mut PathPart,
         translation_unit: &TranslationUnit,
-    ) -> Result<(), CompilerPassError> {
+    ) -> CompilerPassResult {
         let mut template_args = path_part.template_args.take().unwrap_or_default();
         let template_params = generic_member.template_params();
         let mut result: Vec<Spanned<TemplateArg>> = vec![];
@@ -83,7 +83,8 @@ impl TemplateNormalizer {
                 return Err(CompilerPassError::MissingRequiredTemplateArgument(
                     param.clone(),
                     path_part.name.span(),
-                ));
+                )
+                .into());
             }
         }
         if let Some(mut args) = path_part.template_args.take() {
@@ -100,7 +101,7 @@ impl TemplateNormalizer {
     fn normalize_path(
         path: &mut Spanned<Vec<PathPart>>,
         translation_unit: &TranslationUnit,
-    ) -> Result<(), CompilerPassError> {
+    ) -> CompilerPassResult {
         assert!(!path.is_empty());
         Self::template_args_to_none_if_empty(path);
 
@@ -153,26 +154,25 @@ impl TemplateNormalizer {
             let mut generic_member = generic_member;
             Self::normalize_path_part(&generic_member, fst, translation_unit)?;
 
-            let process_alias = |a: &Alias,
-                                 mut remaining_path: VecDeque<&mut PathPart>|
-             -> Result<(), CompilerPassError> {
-                let mut remaining_path_with_alias: Spanned<Vec<PathPart>> =
-                    Spanned::new(vec![], a.typ.path.span());
-                remaining_path_with_alias.append(&mut a.typ.path.clone());
+            let process_alias =
+                |a: &Alias, mut remaining_path: VecDeque<&mut PathPart>| -> CompilerPassResult {
+                    let mut remaining_path_with_alias: Spanned<Vec<PathPart>> =
+                        Spanned::new(vec![], a.typ.path.span());
+                    remaining_path_with_alias.append(&mut a.typ.path.clone());
 
-                for p in remaining_path.iter() {
-                    remaining_path_with_alias.push((**p).clone());
-                }
-                Self::normalize_path(&mut remaining_path_with_alias, translation_unit)?;
-                for (part, resultant_part) in remaining_path
-                    .iter_mut()
-                    .zip(remaining_path_with_alias.into_iter().skip(a.typ.path.len()))
-                {
-                    part.template_args = resultant_part.template_args;
-                }
+                    for p in remaining_path.iter() {
+                        remaining_path_with_alias.push((**p).clone());
+                    }
+                    Self::normalize_path(&mut remaining_path_with_alias, translation_unit)?;
+                    for (part, resultant_part) in remaining_path
+                        .iter_mut()
+                        .zip(remaining_path_with_alias.into_iter().skip(a.typ.path.len()))
+                    {
+                        part.template_args = resultant_part.template_args;
+                    }
 
-                Ok(())
-            };
+                    Ok(())
+                };
 
             'outer: while !remaining_path.is_empty() {
                 match &generic_member {
@@ -180,13 +180,15 @@ impl TemplateNormalizer {
                         return Err(CompilerPassError::SymbolNotFound(
                             path.value.clone(),
                             path.span(),
-                        ));
+                        )
+                        .into());
                     }
                     GenericMember::Declaration(_) => {
                         return Err(CompilerPassError::SymbolNotFound(
                             path.value.clone(),
                             path.span(),
-                        ));
+                        )
+                        .into());
                     }
                     GenericMember::Alias(a) => {
                         return process_alias(a, remaining_path);
@@ -195,7 +197,8 @@ impl TemplateNormalizer {
                         return Err(CompilerPassError::SymbolNotFound(
                             path.value.clone(),
                             path.span(),
-                        ));
+                        )
+                        .into());
                     }
                     GenericMember::Module(m) => {
                         for decl in m.members.iter() {
@@ -279,7 +282,8 @@ impl TemplateNormalizer {
                         return Err(CompilerPassError::SymbolNotFound(
                             path.value.clone(),
                             path.span(),
-                        ));
+                        )
+                        .into());
                     }
                 }
             }
@@ -300,7 +304,7 @@ impl TemplateNormalizer {
     fn normalize_template_arguments_from_module(
         module: &mut Module,
         translation_unit: &TranslationUnit,
-    ) -> Result<(), mew_types::CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         for decl in module.directives.iter_mut() {
             match &mut decl.value {
                 ModuleDirective::Import(_) => {
@@ -342,7 +346,7 @@ impl TemplateNormalizer {
     fn normalize_template_arguments_from_expr(
         expr: &mut Expression,
         translation_unit: &TranslationUnit,
-    ) -> Result<(), mew_types::CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         match expr {
             Expression::Literal(_) => {
                 // No action required
@@ -397,7 +401,7 @@ impl TemplateNormalizer {
     fn normalize_template_arguments_from_statement(
         statement: &mut Statement,
         translation_unit: &TranslationUnit,
-    ) -> Result<(), mew_types::CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         match statement {
             Statement::Void => {
                 // No action required
@@ -551,7 +555,7 @@ impl TemplateNormalizer {
     fn normalize_template_arguments_from_type(
         expr: &mut TypeExpression,
         translation_unit: &TranslationUnit,
-    ) -> Result<(), mew_types::CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         Self::normalize_path(&mut expr.path, translation_unit)?;
         Ok(())
     }
@@ -559,7 +563,7 @@ impl TemplateNormalizer {
     fn normalize_template_arguments_from_decl(
         decl: &mut Declaration,
         translation_unit: &TranslationUnit,
-    ) -> Result<(), mew_types::CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         if let Some(init) = decl.initializer.as_mut() {
             Self::normalize_template_arguments_from_expr(init.as_mut(), translation_unit)?;
         }
@@ -574,7 +578,7 @@ impl TemplateNormalizer {
     fn normalize_template_arguments_from_struct(
         strct: &mut Struct,
         translation_unit: &TranslationUnit,
-    ) -> Result<(), mew_types::CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         for m in strct.members.iter_mut() {
             Self::normalize_template_arguments_from_type(&mut m.typ, translation_unit)?;
         }
@@ -584,7 +588,7 @@ impl TemplateNormalizer {
     fn normalize_template_arguments_from_template_params(
         params: &mut Vec<Spanned<FormalTemplateParameter>>,
         translation_unit: &TranslationUnit,
-    ) -> Result<(), mew_types::CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         for p in params {
             if let Some(def) = p.default_value.as_mut() {
                 Self::normalize_template_arguments_from_expr(def, translation_unit)?;
@@ -596,7 +600,7 @@ impl TemplateNormalizer {
     fn normalize_template_arguments_from_compound_statement(
         statement: &mut CompoundStatement,
         translation_unit: &TranslationUnit,
-    ) -> Result<(), mew_types::CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         for statement in statement.statements.iter_mut() {
             Self::normalize_template_arguments_from_statement(
                 statement.as_mut(),
@@ -609,7 +613,7 @@ impl TemplateNormalizer {
     fn normalize_template_arguments_from_function(
         func: &mut Function,
         translation_unit: &TranslationUnit,
-    ) -> Result<(), mew_types::CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         if let Some(r) = func.return_type.as_mut() {
             Self::normalize_template_arguments_from_type(r, translation_unit)?;
         }
@@ -632,14 +636,14 @@ impl TemplateNormalizer {
     fn normalize_template_arguments_from_const_assert(
         assrt: &mut ConstAssert,
         translation_unit: &TranslationUnit,
-    ) -> Result<(), mew_types::CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         Self::normalize_template_arguments_from_expr(&mut assrt.expression, translation_unit)?;
         Ok(())
     }
 
     fn normalize_template_arguments_from_translation_unit(
         translation_unit: &mut TranslationUnit,
-    ) -> Result<(), mew_types::CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         let clone = translation_unit.clone();
         for decl in translation_unit.global_directives.iter_mut() {
             match &mut decl.value {
@@ -687,7 +691,7 @@ impl CompilerPass for TemplateNormalizer {
     fn apply_mut(
         &mut self,
         translation_unit: &mut mew_parse::syntax::TranslationUnit,
-    ) -> Result<(), mew_types::CompilerPassError> {
+    ) -> CompilerPassResult {
         Self::normalize_template_arguments_from_translation_unit(translation_unit)?;
         Ok(())
     }

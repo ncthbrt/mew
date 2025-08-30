@@ -5,7 +5,10 @@ use mew_parse::{
     span::{Span, Spanned},
     syntax::*,
 };
-use mew_types::{CompilerPass, CompilerPassError, mangling::maybe_mangle_template_args_if_needed};
+use mew_types::{
+    CompilerPass, CompilerPassError, CompilerPassResult,
+    mangling::maybe_mangle_template_args_if_needed,
+};
 
 #[derive(Debug, Clone)]
 pub struct Specializer {
@@ -95,15 +98,15 @@ impl OwnedMember {
         }
     }
 
-    fn specialize(&mut self, mut with: PathPart) -> Result<(), CompilerPassError> {
-        if let Some(params) = self.template_parameters().cloned() {
-            if let Some(name) = self.name_mut() {
-                if let Some(template_args) = with.template_args.as_mut() {
-                    template_args
-                        .retain(|x| params.iter().any(|y| Some(&y.name) == x.arg_name.as_ref()));
-                }
-                name.value = maybe_mangle_template_args_if_needed(&with);
+    fn specialize(&mut self, mut with: PathPart) -> Result<(), Box<CompilerPassError>> {
+        if let Some(params) = self.template_parameters().cloned()
+            && let Some(name) = self.name_mut()
+        {
+            if let Some(template_args) = with.template_args.as_mut() {
+                template_args
+                    .retain(|x| params.iter().any(|y| Some(&y.name) == x.arg_name.as_ref()));
             }
+            name.value = maybe_mangle_template_args_if_needed(&with);
         }
 
         match self {
@@ -120,7 +123,7 @@ impl OwnedMember {
     fn specialize_global_declarations(
         decl: &mut GlobalDeclaration,
         path_part: PathPart,
-    ) -> Result<(), CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         match decl {
             GlobalDeclaration::Void => Ok(()),
             GlobalDeclaration::Declaration(declaration) => {
@@ -141,7 +144,7 @@ impl OwnedMember {
     fn specialize_module_member_declarations(
         decl: &mut ModuleMemberDeclaration,
         path_part: PathPart,
-    ) -> Result<(), CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         match decl {
             ModuleMemberDeclaration::Void => Ok(()),
             ModuleMemberDeclaration::Declaration(declaration) => {
@@ -165,7 +168,7 @@ impl OwnedMember {
         expression: &mut Expression,
         name: &String,
         value: &Spanned<TemplateArg>,
-    ) -> Result<(), CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         match expression {
             Expression::Literal(_) => Ok(()),
             Expression::Parenthesized(spanned) => Self::substitute_expression(spanned, name, value),
@@ -211,7 +214,7 @@ impl OwnedMember {
         statement: &mut CompoundStatement,
         name: &String,
         value: &Spanned<TemplateArg>,
-    ) -> Result<(), CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         for arg in statement
             .attributes
             .iter_mut()
@@ -232,7 +235,7 @@ impl OwnedMember {
         statement: &mut Statement,
         name: &String,
         value: &Spanned<TemplateArg>,
-    ) -> Result<(), CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         match statement {
             Statement::Void => Ok(()),
             Statement::Compound(compound_statement) => {
@@ -384,7 +387,7 @@ impl OwnedMember {
         declaration: &mut Declaration,
         name: &String,
         value: &Spanned<TemplateArg>,
-    ) -> Result<(), CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         for arg in declaration
             .attributes
             .iter_mut()
@@ -406,7 +409,7 @@ impl OwnedMember {
         path: &mut Spanned<Vec<PathPart>>,
         name: &String,
         value: &Spanned<TemplateArg>,
-    ) -> Result<(), CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         for part in path.iter_mut() {
             if let Some(args) = part.template_args.as_mut() {
                 for template_arg in args.iter_mut() {
@@ -416,14 +419,13 @@ impl OwnedMember {
         }
         let first_name = path.first().unwrap().name.clone();
 
-        if name == &first_name.value {
-            if let Ok(mut front) =
+        if name == &first_name.value
+            && let Ok(mut front) =
                 TryInto::<Spanned<Vec<PathPart>>>::try_into(value.expression.value.clone())
-            {
-                path.remove(0);
-                front.append(&mut path.value);
-                path.value = front.value;
-            }
+        {
+            path.remove(0);
+            front.append(&mut path.value);
+            path.value = front.value;
         }
         Ok(())
     }
@@ -432,7 +434,7 @@ impl OwnedMember {
         template_params: &mut Vec<Spanned<FormalTemplateParameter>>,
         with: PathPart,
     ) -> Vec<(Spanned<FormalTemplateParameter>, Spanned<TemplateArg>)> {
-        return template_params
+        template_params
             .drain(..)
             .map(|x| {
                 let name: Option<Spanned<String>> = Some(x.name.clone());
@@ -446,10 +448,10 @@ impl OwnedMember {
                         .unwrap_or_else(|| panic!("EXPECTED {:?}", name)),
                 )
             })
-            .collect();
+            .collect()
     }
 
-    fn specialize_alias(alias: &mut Alias, with: PathPart) -> Result<(), CompilerPassError> {
+    fn specialize_alias(alias: &mut Alias, with: PathPart) -> Result<(), Box<CompilerPassError>> {
         for (param, arg) in Self::match_and_drain(&mut alias.template_parameters, with) {
             let name: &String = &param.name.value;
             Self::substitute_path(&mut alias.typ.path, name, &arg)?;
@@ -460,7 +462,7 @@ impl OwnedMember {
     fn specialize_declaration(
         declaration: &mut Declaration,
         with: PathPart,
-    ) -> Result<(), CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         for (param, arg) in Self::match_and_drain(&mut declaration.template_parameters, with) {
             let name = &param.name.value;
             if let Some(typ) = declaration.typ.as_mut() {
@@ -485,7 +487,7 @@ impl OwnedMember {
     fn specialize_const_assert(
         const_assert: &mut ConstAssert,
         with: PathPart,
-    ) -> Result<(), CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         for (param, arg) in Self::match_and_drain(&mut const_assert.template_parameters, with) {
             let name = &param.name.value;
             Self::substitute_expression(&mut const_assert.expression, name, &arg)?;
@@ -497,7 +499,7 @@ impl OwnedMember {
     fn specialize_function(
         function: &mut Function,
         with: PathPart,
-    ) -> Result<(), CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         for (param, arg) in Self::match_and_drain(&mut function.template_parameters, with) {
             let name: &String = &param.name.value;
             Self::substitute_compound_statement(&mut function.body, name, &arg)?;
@@ -528,7 +530,7 @@ impl OwnedMember {
         Ok(())
     }
 
-    fn specialize_struct(strct: &mut Struct, with: PathPart) -> Result<(), CompilerPassError> {
+    fn specialize_struct(strct: &mut Struct, with: PathPart) -> Result<(), Box<CompilerPassError>> {
         for (param, arg) in Self::match_and_drain(&mut strct.template_parameters, with) {
             let name: &String = &param.name.value;
             for member in strct.members.iter_mut() {
@@ -547,7 +549,7 @@ impl OwnedMember {
         Ok(())
     }
 
-    fn push_down(&mut self) -> Result<(), CompilerPassError> {
+    fn push_down(&mut self) -> Result<(), Box<CompilerPassError>> {
         assert!(self.requires_push_down());
         let module = match self {
             OwnedMember::Global(Spanned {
@@ -643,7 +645,7 @@ impl<'a> BorrowedMember<'a> {
         }
     }
 
-    fn collect_usages(&self, usages: &mut Usages) -> Result<(), CompilerPassError> {
+    fn collect_usages(&self, usages: &mut Usages) -> Result<(), Box<CompilerPassError>> {
         match self {
             BorrowedMember::Global {
                 declaration: decl,
@@ -667,7 +669,7 @@ impl<'a> BorrowedMember<'a> {
     fn collect_usages_from_global_decl(
         decl: &GlobalDeclaration,
         usages: &mut Usages,
-    ) -> Result<(), CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         match decl {
             GlobalDeclaration::Void => {}
             GlobalDeclaration::Declaration(declaration) => {
@@ -698,7 +700,7 @@ impl<'a> BorrowedMember<'a> {
     fn collect_usages_from_module_member_decl(
         decl: &ModuleMemberDeclaration,
         usages: &mut Usages,
-    ) -> Result<(), CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         match decl {
             ModuleMemberDeclaration::Void => {}
             ModuleMemberDeclaration::Declaration(declaration) => {
@@ -733,7 +735,7 @@ impl<'a> BorrowedMember<'a> {
     fn collect_usages_from_struct(
         strct: &Struct,
         usages: &mut Usages,
-    ) -> Result<(), CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         for member in strct.members.iter() {
             Self::collect_usages_from_type(&member.typ, usages)?;
         }
@@ -753,7 +755,7 @@ impl<'a> BorrowedMember<'a> {
     fn collect_usages_from_function(
         function: &Function,
         usages: &mut Usages,
-    ) -> Result<(), CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         for attr in function
             .attributes
             .iter()
@@ -785,7 +787,7 @@ impl<'a> BorrowedMember<'a> {
     fn collect_usages_from_type(
         typ: &TypeExpression,
         usages: &mut Usages,
-    ) -> Result<(), CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         Self::collect_usages_from_path(&typ.path, usages)?;
         Ok(())
     }
@@ -793,7 +795,7 @@ impl<'a> BorrowedMember<'a> {
     fn collect_usages_from_path(
         path: &[PathPart],
         usages: &mut Usages,
-    ) -> Result<(), CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         for part in path.iter() {
             if let Some(args) = part.template_args.as_ref() {
                 for arg in args.iter() {
@@ -808,7 +810,7 @@ impl<'a> BorrowedMember<'a> {
     fn collect_usages_from_declaration(
         declaration: &Declaration,
         usages: &mut Usages,
-    ) -> Result<(), CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         for attribute in declaration.attributes.iter() {
             for arg in attribute.arguments.iter().flatten() {
                 Self::collect_usages_from_expression(arg, usages)?;
@@ -829,7 +831,7 @@ impl<'a> BorrowedMember<'a> {
     fn collect_usages_from_alias(
         alias: &Alias,
         usages: &mut Usages,
-    ) -> Result<(), CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         Self::collect_usages_from_type(&alias.typ, usages)?;
         Ok(())
     }
@@ -837,7 +839,7 @@ impl<'a> BorrowedMember<'a> {
     fn collect_usages_from_const_assert(
         const_assert: &ConstAssert,
         usages: &mut Usages,
-    ) -> Result<(), CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         Self::collect_usages_from_expression(&const_assert.expression, usages)?;
         Ok(())
     }
@@ -845,7 +847,7 @@ impl<'a> BorrowedMember<'a> {
     fn collect_usages_from_expression(
         expression: &Expression,
         usages: &mut Usages,
-    ) -> Result<(), CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         match expression {
             Expression::Literal(_) => Ok(()),
             Expression::Parenthesized(spanned) => {
@@ -886,7 +888,7 @@ impl<'a> BorrowedMember<'a> {
     fn collect_usages_from_statement(
         statement: &Statement,
         usages: &mut Usages,
-    ) -> Result<(), CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         match statement {
             Statement::Void => Ok(()),
             Statement::Compound(compound_statement) => {
@@ -1036,7 +1038,7 @@ impl<'a> BorrowedMember<'a> {
     fn collect_usages_from_compound_statement(
         compound_statement: &CompoundStatement,
         usages: &mut Usages,
-    ) -> Result<(), CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         for attribute in compound_statement.attributes.iter() {
             for arg in attribute.arguments.iter().flatten() {
                 Self::collect_usages_from_expression(arg, usages)?;
@@ -1208,13 +1210,6 @@ impl<'a> Parent<'a> {
         }
     }
 
-    fn is_entry_point(function: &Function) -> bool {
-        function
-            .attributes
-            .iter()
-            .any(|x| matches!(x.name.as_ref().as_str(), "vertex" | "fragment" | "compute"))
-    }
-
     fn add_module(&mut self, path_part: PathPart) -> BorrowedMember<'_> {
         let module = Module {
             name: Spanned::new(
@@ -1263,7 +1258,7 @@ impl<'a> Parent<'a> {
         symbol_path: ConcreteSymbolPath,
         symbol_map: &mut SymbolMap,
         usages: &mut Usages,
-    ) -> Result<(), CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         match self {
             Parent::TranslationUnit(t) => {
                 let mut entrypoints = vec![];
@@ -1290,7 +1285,7 @@ impl<'a> Parent<'a> {
                     member.collect_usages(usages)?;
                 }
 
-                Ok(())
+                Result::<(), Box<CompilerPassError>>::Ok(())
             }
             Parent::Module {
                 module,
@@ -1327,7 +1322,7 @@ impl Specializer {
     fn specialize_translation_unit<'a>(
         &self,
         translation_unit: &'a mut TranslationUnit,
-    ) -> Result<(), CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         let mut symbol_map: SymbolMap = HashMap::new();
         let mut usages: Usages = Usages::new();
         if let Some(entrypoint) = self.entrypoint.as_ref() {
@@ -1356,7 +1351,7 @@ impl Specializer {
         parent: &'a mut Parent<'b>,
         mut remaining_path: im::Vector<PathPart>,
         concrete_path: ConcreteSymbolPath,
-    ) -> Result<(), CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         assert!(!remaining_path.is_empty());
         let part: PathPart = remaining_path.pop_front().unwrap();
         let current: BorrowedMember<'_>;
@@ -1386,7 +1381,7 @@ impl Specializer {
         symbol_map: &mut SymbolMap,
         mut remaining_path: im::Vector<PathPart>,
         mut current_path: ConcreteSymbolPath,
-    ) -> Result<Option<ConcreteSymbolPath>, CompilerPassError> {
+    ) -> Result<Option<ConcreteSymbolPath>, Box<CompilerPassError>> {
         assert!(parent.is_initialized());
         if remaining_path.is_empty() {
             return Ok(None);
@@ -1439,7 +1434,7 @@ impl Specializer {
                 {
                     return Ok(Some(current_path));
                 }
-                return Err(CompilerPassError::UnableToResolvePath(
+                Err(CompilerPassError::UnableToResolvePath(
                     current_path
                         .iter()
                         .cloned()
@@ -1451,17 +1446,15 @@ impl Specializer {
                         .take(current_path.len() - 1)
                         .chain(remaining_path.clone())
                         .collect(),
-                ));
+                )
+                .into())
             }
         }
     }
 }
 
 impl CompilerPass for Specializer {
-    fn apply_mut(
-        &mut self,
-        translation_unit: &mut TranslationUnit,
-    ) -> Result<(), CompilerPassError> {
+    fn apply_mut(&mut self, translation_unit: &mut TranslationUnit) -> CompilerPassResult {
         self.specialize_translation_unit(translation_unit)?;
         Ok(())
     }

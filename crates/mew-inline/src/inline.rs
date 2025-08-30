@@ -7,7 +7,7 @@ use mew_parse::{
         Statement, Struct, TranslationUnit, TypeExpression,
     },
 };
-use mew_types::{CompilerPass, CompilerPassError};
+use mew_types::{CompilerPass, CompilerPassError, CompilerPassResult};
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Default)]
 pub struct Inliner;
@@ -18,7 +18,7 @@ enum Parent<'a> {
 }
 
 impl<'a> Parent<'a> {
-    fn inline_path(&mut self, path: &mut [PathPart]) -> Result<(), CompilerPassError> {
+    fn inline_path(&mut self, path: &mut [PathPart]) -> Result<(), Box<CompilerPassError>> {
         for p in path.iter_mut() {
             if let Some(mut inline_args) = p.inline_template_args.take() {
                 for directive in inline_args.directives.drain(..) {
@@ -38,7 +38,10 @@ impl<'a> Parent<'a> {
         Ok(())
     }
 
-    fn inline_expression(&mut self, expression: &mut Expression) -> Result<(), CompilerPassError> {
+    fn inline_expression(
+        &mut self,
+        expression: &mut Expression,
+    ) -> Result<(), Box<CompilerPassError>> {
         match expression {
             Expression::Literal(_) => Ok(()),
             Expression::Parenthesized(spanned) => self.inline_expression(spanned),
@@ -71,7 +74,7 @@ impl<'a> Parent<'a> {
     fn inline_compound_statement(
         &mut self,
         statement: &mut CompoundStatement,
-    ) -> Result<(), CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         for arg in statement
             .attributes
             .iter_mut()
@@ -88,7 +91,10 @@ impl<'a> Parent<'a> {
         Ok(())
     }
 
-    fn inline_statement(&mut self, statement: &mut Statement) -> Result<(), CompilerPassError> {
+    fn inline_statement(
+        &mut self,
+        statement: &mut Statement,
+    ) -> Result<(), Box<CompilerPassError>> {
         match statement {
             Statement::Void => Ok(()),
             Statement::Compound(compound_statement) => {
@@ -232,7 +238,7 @@ impl<'a> Parent<'a> {
         }
     }
 
-    fn function_to_inline(&mut self, func: &mut Function) -> Result<(), CompilerPassError> {
+    fn function_to_inline(&mut self, func: &mut Function) -> Result<(), Box<CompilerPassError>> {
         self.inline_template_params(&mut func.template_parameters)?;
         self.inline_compound_statement(&mut func.body)?;
 
@@ -264,7 +270,7 @@ impl<'a> Parent<'a> {
     fn inline_template_params(
         &mut self,
         template_params: &mut [Spanned<FormalTemplateParameter>],
-    ) -> Result<(), CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         for p in template_params.iter_mut() {
             if let Some(def) = p.default_value.as_mut() {
                 self.inline_expression(&mut def.value)?;
@@ -273,7 +279,7 @@ impl<'a> Parent<'a> {
         Ok(())
     }
 
-    fn alias_to_inline(&mut self, alias: &mut Alias) -> Result<(), CompilerPassError> {
+    fn alias_to_inline(&mut self, alias: &mut Alias) -> Result<(), Box<CompilerPassError>> {
         self.inline_template_params(&mut alias.template_parameters)?;
         self.inline_path(&mut alias.typ.path)?;
         Ok(())
@@ -282,7 +288,7 @@ impl<'a> Parent<'a> {
     fn declaration_to_inline(
         &mut self,
         declaration: &mut Declaration,
-    ) -> Result<(), CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         self.inline_template_params(&mut declaration.template_parameters)?;
         if let Some(typ) = declaration.typ.as_mut() {
             self.inline_path(&mut typ.path)?;
@@ -302,7 +308,7 @@ impl<'a> Parent<'a> {
         Ok(())
     }
 
-    fn usage_to_inline(&mut self, mut usage: Import) -> Result<(), CompilerPassError> {
+    fn usage_to_inline(&mut self, mut usage: Import) -> Result<(), Box<CompilerPassError>> {
         self.inline_path(&mut usage.path)?;
         for arg in usage
             .attributes
@@ -339,7 +345,7 @@ impl<'a> Parent<'a> {
         Ok(())
     }
 
-    fn struct_to_inline(&mut self, strct: &mut Struct) -> Result<(), CompilerPassError> {
+    fn struct_to_inline(&mut self, strct: &mut Struct) -> Result<(), Box<CompilerPassError>> {
         self.inline_template_params(&mut strct.template_parameters)?;
         for member in strct.members.iter_mut() {
             self.inline_path(&mut member.typ.path)?;
@@ -358,13 +364,16 @@ impl<'a> Parent<'a> {
     fn const_assert_to_inline(
         &mut self,
         const_assert: &mut ConstAssert,
-    ) -> Result<(), CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         self.inline_template_params(&mut const_assert.template_parameters)?;
         self.inline_expression(&mut const_assert.expression)?;
         Ok(())
     }
 
-    fn extend_to_inline(&mut self, mut extend: ExtendDirective) -> Result<(), CompilerPassError> {
+    fn extend_to_inline(
+        &mut self,
+        mut extend: ExtendDirective,
+    ) -> Result<(), Box<CompilerPassError>> {
         for arg in extend
             .attributes
             .iter_mut()
@@ -390,7 +399,7 @@ impl<'a> Parent<'a> {
         }
     }
 
-    fn inline(&mut self) -> Result<(), CompilerPassError> {
+    fn inline(&mut self) -> Result<(), Box<CompilerPassError>> {
         match self {
             Parent::Module(m) => {
                 let mut other_directives = vec![];
@@ -504,7 +513,7 @@ impl CompilerPass for Inliner {
     fn apply_mut(
         &mut self,
         translation_unit: &mut mew_parse::syntax::TranslationUnit,
-    ) -> Result<(), CompilerPassError> {
+    ) -> CompilerPassResult {
         let mut parent: Parent<'_> = Parent::TranslationUnit(translation_unit);
         parent.inline()?;
         Ok(())

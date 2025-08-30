@@ -86,7 +86,7 @@ pub fn mangle_path(path: &mut Vec<PathPart>) {
         if let Some(args) = p.template_args.as_mut() {
             for arg in args.iter_mut() {
                 current.push_str("__");
-                mangle_expression(&mut arg.expression);
+                mangle_expression(&arg.expression);
                 current.push_str(format!("{}", arg.expression).as_str());
             }
         }

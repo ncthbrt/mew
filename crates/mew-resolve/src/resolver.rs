@@ -11,7 +11,7 @@ use mew_parse::{
     },
 };
 use mew_types::{
-    CompilerPass, CompilerPassError,
+    CompilerPass, CompilerPassError, CompilerPassResult,
     builtins::{get_builtin_functions, get_builtin_tokens},
     mangling::mangle_inline_arg_name,
 };
@@ -39,7 +39,7 @@ impl Resolver {
         statement: &mut CompoundStatement,
         module_path: ModulePath,
         mut scope: im::HashMap<String, ScopeMember>,
-    ) -> Result<(), CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         for CompoundDirective::Import(usage) in
             statement.directives.iter_mut().map(|x| &mut x.value)
         {
@@ -55,7 +55,7 @@ impl Resolver {
         statement: &mut Statement,
         module_path: ModulePath,
         mut scope: im::HashMap<String, ScopeMember>,
-    ) -> Result<(), CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         match statement {
             Statement::Void => {
                 // No action required
@@ -255,7 +255,7 @@ impl Resolver {
         expression: &mut Expression,
         module_path: ModulePath,
         scope: im::HashMap<String, ScopeMember>,
-    ) -> Result<(), CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         match expression {
             Expression::Literal(_) => {}
             Expression::Parenthesized(p) => {
@@ -302,7 +302,7 @@ impl Resolver {
         module: &mut Module,
         mut module_path: ModulePath,
         mut scope: im::HashMap<String, ScopeMember>,
-    ) -> Result<(), CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         Self::update_module_scope(&mut module_path, module, &mut scope)?;
         Self::add_extensions_and_usages_to_scope(
             &module_path,
@@ -342,7 +342,7 @@ impl Resolver {
     fn append_from_scope(
         mut scope: im::HashMap<String, ScopeMember>,
         path: &mut Spanned<Vec<PathPart>>,
-    ) -> Result<(), CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         if path.is_empty() {
             return Ok(());
         }
@@ -365,10 +365,10 @@ impl Resolver {
                     }
                     ScopeMember::UseDeclaration(module_path, template_args) => {
                         let mut new_path = module_path.0.iter().cloned().collect::<Vec<PathPart>>();
-                        if let Some(template_args) = template_args {
-                            if !template_args.is_empty() {
-                                path.first_mut().unwrap().template_args = Some(template_args);
-                            }
+                        if let Some(template_args) = template_args
+                            && !template_args.is_empty()
+                        {
+                            path.first_mut().unwrap().template_args = Some(template_args);
                         }
                         new_path.extend(path.iter().skip(1).cloned());
                         path.value = new_path;
@@ -392,7 +392,8 @@ impl Resolver {
                 return Err(CompilerPassError::SymbolNotFound(
                     path.value.clone().to_owned(),
                     path.span(),
-                ));
+                )
+                .into());
             }
         }
         Ok(())
@@ -402,7 +403,7 @@ impl Resolver {
         mut scope: im::HashMap<String, ScopeMember>,
         module_path: ModulePath,
         path: &mut Spanned<Vec<PathPart>>,
-    ) -> Result<(), CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         Self::inline_template_args_to_absolute_path(&module_path, path, &mut scope)?;
         Self::append_from_scope(scope, path)?;
         Ok(())
@@ -412,7 +413,7 @@ impl Resolver {
         typ: &mut TypeExpression,
         module_path: ModulePath,
         scope: im::HashMap<String, ScopeMember>,
-    ) -> Result<(), CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         Self::relative_path_to_absolute_path(scope.clone(), module_path, &mut typ.path)?;
         Ok(())
     }
@@ -421,7 +422,7 @@ impl Resolver {
         strct: &mut Struct,
         module_path: ModulePath,
         mut scope: im::HashMap<String, ScopeMember>,
-    ) -> Result<(), CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         Self::struct_template_parameters_to_absolute_path(module_path.clone(), strct, &mut scope)?;
         for m in strct.members.iter_mut() {
             Self::type_to_absolute_path(&mut m.typ, module_path.clone(), scope.clone())?;
@@ -433,7 +434,7 @@ impl Resolver {
         declaration: &mut Declaration,
         module_path: ModulePath,
         mut scope: im::HashMap<String, ScopeMember>,
-    ) -> Result<(), CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         Self::decl_template_parameters_to_absolute_path(
             module_path.clone(),
             declaration,
@@ -452,7 +453,7 @@ impl Resolver {
         func: &mut Function,
         module_path: ModulePath,
         mut scope: im::HashMap<String, ScopeMember>,
-    ) -> Result<(), CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         Self::function_template_parameters_to_absolute_path(module_path.clone(), func, &mut scope)?;
         if let Some(r) = func.return_type.as_mut() {
             Self::relative_path_to_absolute_path(scope.clone(), module_path.clone(), &mut r.path)?;
@@ -493,7 +494,7 @@ impl Resolver {
         module_path: &mut ModulePath,
         module: &mut Module,
         scope: &mut im::HashMap<String, ScopeMember>,
-    ) -> Result<(), CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         let mut template_args = vec![];
         for param in module.template_parameters.iter_mut() {
             let old_name = param.name.value.clone();
@@ -559,7 +560,7 @@ impl Resolver {
         module_path: ModulePath,
         function: &mut Function,
         scope: &mut im::HashMap<String, ScopeMember>,
-    ) -> Result<(), CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         for param in function.template_parameters.iter_mut() {
             if let Some(default_value) = param.default_value.as_mut() {
                 Self::expression_to_absolute_paths(
@@ -585,7 +586,7 @@ impl Resolver {
         module_path: ModulePath,
         alias: &mut Alias,
         scope: &mut im::HashMap<String, ScopeMember>,
-    ) -> Result<(), CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         for param in alias.template_parameters.iter_mut() {
             if let Some(default_value) = param.default_value.as_mut() {
                 Self::expression_to_absolute_paths(
@@ -611,7 +612,7 @@ impl Resolver {
         module_path: ModulePath,
         const_assert: &mut ConstAssert,
         scope: &mut im::HashMap<String, ScopeMember>,
-    ) -> Result<(), CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         for param in const_assert.template_parameters.iter_mut() {
             if let Some(default_value) = param.default_value.as_mut() {
                 Self::expression_to_absolute_paths(
@@ -630,7 +631,7 @@ impl Resolver {
         module_path: ModulePath,
         declaration: &mut Declaration,
         scope: &mut im::HashMap<String, ScopeMember>,
-    ) -> Result<(), CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         for param in declaration.template_parameters.iter_mut() {
             if let Some(default_value) = param.default_value.as_mut() {
                 Self::expression_to_absolute_paths(
@@ -656,7 +657,7 @@ impl Resolver {
         module_path: ModulePath,
         strct: &mut Struct,
         scope: &mut im::HashMap<String, ScopeMember>,
-    ) -> Result<(), CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         for param in strct.template_parameters.iter_mut() {
             if let Some(default_value) = param.default_value.as_mut() {
                 Self::expression_to_absolute_paths(
@@ -682,7 +683,7 @@ impl Resolver {
         assrt: &mut ConstAssert,
         module_path: ModulePath,
         mut scope: im::HashMap<String, ScopeMember>,
-    ) -> Result<(), CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         Self::const_assert_template_parameters_to_absolute_path(
             module_path.clone(),
             assrt,
@@ -696,7 +697,7 @@ impl Resolver {
         alias: &mut Alias,
         module_path: ModulePath,
         mut scope: im::HashMap<String, ScopeMember>,
-    ) -> Result<(), CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         Self::alias_template_parameters_to_absolute_path(module_path.clone(), alias, &mut scope)?;
 
         Self::type_to_absolute_path(&mut alias.typ, module_path, scope)?;
@@ -707,7 +708,7 @@ impl Resolver {
         module_path: &ModulePath,
         path: &mut Spanned<Vec<PathPart>>,
         scope: &mut im::HashMap<String, ScopeMember>,
-    ) -> Result<(), CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         let mut current = Spanned::new(Vec::new(), path.span());
 
         let inner_scope = scope.clone();
@@ -817,7 +818,7 @@ impl Resolver {
         usage: &mut Import,
         module_path: ModulePath,
         scope: &mut im::HashMap<String, ScopeMember>,
-    ) -> Result<(), CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         if !usage.path.is_empty() {
             Self::relative_path_to_absolute_path(
                 scope.clone(),
@@ -871,7 +872,7 @@ impl Resolver {
         decl: &DeclarationStatement,
         module_path: ModulePath,
         scope: &mut im::HashMap<String, ScopeMember>,
-    ) -> Result<(), CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         scope.insert(
             decl.declaration.name.value.clone(),
             ScopeMember::LocalDeclaration,
@@ -891,7 +892,7 @@ impl Resolver {
     fn find_module_and_scope(
         mut scope: im::HashMap<String, ScopeMember>,
         path: &Spanned<Vec<PathPart>>,
-    ) -> Result<(Module, im::HashMap<String, ScopeMember>), CompilerPassError> {
+    ) -> Result<(Module, im::HashMap<String, ScopeMember>), Box<CompilerPassError>> {
         assert!(!path.is_empty());
         let mut module_path = ModulePath(im::Vector::new());
         let mut remaining_path: im::Vector<PathPart> = path.value.clone().into();
@@ -919,25 +920,21 @@ impl Resolver {
                         &mut scope,
                     )?;
                     for decl in module.members.iter_mut() {
-                        if let ModuleMemberDeclaration::Module(m) = decl.as_mut() {
-                            if m.name == remaining_path.head().as_ref().unwrap().name {
-                                let _ = remaining_path.pop_front().unwrap();
-                                module = m.clone();
-                                continue 'outer;
-                            }
+                        if let ModuleMemberDeclaration::Module(m) = decl.as_mut()
+                            && m.name == remaining_path.head().as_ref().unwrap().name
+                        {
+                            let _ = remaining_path.pop_front().unwrap();
+                            module = m.clone();
+                            continue 'outer;
                         }
                     }
-                    return Err(CompilerPassError::SymbolNotFound(
-                        path.value.clone(),
-                        path.span(),
-                    ));
+                    return Err(
+                        CompilerPassError::SymbolNotFound(path.value.clone(), path.span()).into(),
+                    );
                 }
                 Ok((module.clone(), scope))
             }
-            _ => Err(CompilerPassError::SymbolNotFound(
-                path.value.clone(),
-                path.span(),
-            )),
+            _ => Err(CompilerPassError::SymbolNotFound(path.value.clone(), path.span()).into()),
         }
     }
 
@@ -945,7 +942,7 @@ impl Resolver {
         module_path: &mut ModulePath,
         module: &mut Module,
         scope: &mut im::HashMap<String, ScopeMember>,
-    ) -> Result<(), CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         Self::module_template_parameters_to_absolute_path(module_path, module, scope)?;
         for decl in module.members.iter() {
             if let Some(name) = decl.name() {
@@ -963,7 +960,7 @@ impl Resolver {
         directives: &mut Vec<Spanned<ModuleDirective>>,
         members: &mut Vec<Spanned<ModuleMemberDeclaration>>,
         scope: &mut im::HashMap<String, ScopeMember>,
-    ) -> Result<(), CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         let mut other_dirs: Vec<Spanned<ModuleDirective>> = vec![];
         let mut extend_dirs = vec![];
         for dir in directives.drain(..) {
@@ -1010,7 +1007,7 @@ impl Resolver {
         extend: &mut Spanned<ExtendDirective>,
         module_path: &ModulePath,
         scope: &mut im::HashMap<String, ScopeMember>,
-    ) -> Result<Vec<Alias>, CompilerPassError> {
+    ) -> Result<Vec<Alias>, Box<CompilerPassError>> {
         let (mut module, module_scope) = Self::find_module_and_scope(scope.clone(), &extend.path)?;
 
         let mut extend_path = extend.path.clone();
@@ -1071,7 +1068,7 @@ impl Resolver {
 
     fn translation_unit_to_absolute_path(
         translation_unit: &mut TranslationUnit,
-    ) -> Result<(), CompilerPassError> {
+    ) -> CompilerPassResult {
         let module_path = ModulePath(im::Vector::new());
         let mut scope = im::HashMap::new();
         let mut other_directives: Vec<Spanned<GlobalDirective>> = vec![];
@@ -1165,20 +1162,14 @@ impl Resolver {
         Ok(())
     }
 
-    pub fn resolve_mut(
-        &self,
-        translation_unit: &mut TranslationUnit,
-    ) -> Result<(), CompilerPassError> {
+    pub fn resolve_mut(&self, translation_unit: &mut TranslationUnit) -> CompilerPassResult {
         Self::translation_unit_to_absolute_path(translation_unit)?;
         Ok(())
     }
 }
 
 impl CompilerPass for Resolver {
-    fn apply_mut(
-        &mut self,
-        translation_unit: &mut TranslationUnit,
-    ) -> Result<(), CompilerPassError> {
+    fn apply_mut(&mut self, translation_unit: &mut TranslationUnit) -> CompilerPassResult {
         self.resolve_mut(translation_unit)
     }
 }

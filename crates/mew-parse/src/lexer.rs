@@ -9,17 +9,17 @@ fn maybe_template_end(
     current: Token,
     lookahead: Option<Token>,
 ) -> Token {
-    if let Some(depth) = lex.extras.template_depths.last() {
-        if lex.extras.depth == *depth {
-            // found a ">" on the same nesting level as the opening "<"
-            lex.extras.template_depths.pop();
-            if lookahead == Some(Token::SymGreaterThan) && !lex.extras.template_depths.is_empty() {
-                lex.extras.lookahead = Some(Token::TemplateArgsEnd); // <-- basically the same fix as yours, but also checks the template depth.
-            } else {
-                lex.extras.lookahead = lookahead;
-            }
-            return Token::TemplateArgsEnd;
+    if let Some(depth) = lex.extras.template_depths.last()
+        && lex.extras.depth == *depth
+    {
+        // found a ">" on the same nesting level as the opening "<"
+        lex.extras.template_depths.pop();
+        if lookahead == Some(Token::SymGreaterThan) && !lex.extras.template_depths.is_empty() {
+            lex.extras.lookahead = Some(Token::TemplateArgsEnd); // <-- basically the same fix as yours, but also checks the template depth.
+        } else {
+            lex.extras.lookahead = lookahead;
         }
+        return Token::TemplateArgsEnd;
     }
 
     current
@@ -28,10 +28,10 @@ fn maybe_template_end(
 // operators && and || have lower precedence than < and >.
 // therefore, this is not a template: a < b || c > d
 fn maybe_fail_template(lex: &mut logos::Lexer<Token>) -> bool {
-    if let Some(depth) = lex.extras.template_depths.last() {
-        if lex.extras.depth == *depth {
-            return false;
-        }
+    if let Some(depth) = lex.extras.template_depths.last()
+        && lex.extras.depth == *depth
+    {
+        return false;
     }
     true
 }
@@ -328,6 +328,10 @@ pub enum Token {
     KwAs,
     #[token("with")]
     KwWith,
+    #[token("type")]
+    KwType,
+    #[token("where")]
+    KwWhere,
     // END MEW KEYWORDS
 
     // XXX: should we also register reserved words as tokens?
@@ -548,6 +552,8 @@ impl Display for Token {
             Token::KwTrue => f.write_str("true"),
             Token::KwVar => f.write_str("var"),
             Token::KwWhile => f.write_str("while"),
+            Token::KwType => f.write_str("type"),
+            Token::KwWhere => f.write_str("where"),
             Token::KwImport => f.write_str("import"),
             Token::KwAs => f.write_str("as"),
             Token::KwModule => f.write_str("module"),
@@ -621,7 +627,6 @@ impl<'s> Lexer<'s> {
 /// assert_eq!(recognize_template_list("<SumBinaryOp<F32>>"), true);
 /// assert_eq!(recognize_template_list("<SumBinaryOp with { module F32 { alias T = f32; } }>"), true);
 /// assert_eq!(recognize_template_list("<SumBinaryOp<8,F32<16>>::v>>>"), true);
-
 /// // false cases
 /// assert_eq!(recognize_template_list("<d]>"), false);
 /// assert_eq!(recognize_template_list(""), false);
@@ -667,17 +672,16 @@ impl<'s> Iterator for Lexer<'s> {
             None => self.token_stream.next(),
         };
 
-        if let (Some((Ok(cur_tok), _)), Some((Ok(next_tok), span))) = (cur_token, &mut next_token) {
-            if (matches!(cur_tok, Token::Ident(_)) || cur_tok.is_keyword())
-                && *next_tok == Token::SymLessThan
-            {
-                let source = &self.source[span.start..];
-                if recognize_template_list(source) {
-                    *next_tok = Token::TemplateArgsStart;
-                    let cur_depth = self.token_stream.extras.depth;
-                    self.token_stream.extras.template_depths.push(cur_depth);
-                    self.opened_templates += 1;
-                }
+        if let (Some((Ok(cur_tok), _)), Some((Ok(next_tok), span))) = (cur_token, &mut next_token)
+            && (matches!(cur_tok, Token::Ident(_)) || cur_tok.is_keyword())
+            && *next_tok == Token::SymLessThan
+        {
+            let source = &self.source[span.start..];
+            if recognize_template_list(source) {
+                *next_tok = Token::TemplateArgsStart;
+                let cur_depth = self.token_stream.extras.depth;
+                self.token_stream.extras.template_depths.push(cur_depth);
+                self.opened_templates += 1;
             }
         }
 

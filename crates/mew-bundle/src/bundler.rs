@@ -14,7 +14,7 @@ impl<'a> CompilerPass for Bundler<'a> {
     fn apply_mut(
         &mut self,
         translation_unit: &mut TranslationUnit,
-    ) -> Result<(), mew_types::CompilerPassError> {
+    ) -> mew_types::CompilerPassResult {
         let mut result: TranslationUnit = TranslationUnit::default();
 
         let mut ws: String = String::new();

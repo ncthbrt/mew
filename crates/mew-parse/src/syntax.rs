@@ -170,6 +170,15 @@ pub struct Module {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Default, Hash)]
+pub struct ModuleTypeSignature {
+    pub attributes: Vec<S<Attribute>>,
+    pub name: S<String>,
+    pub directives: Vec<S<ModuleDirective>>,
+    pub members: Vec<S<ModuleTypeSignatureMemberDeclaration>>,
+    pub template_parameters: Vec<S<FormalTemplateParameter>>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Default, Hash)]
 pub struct FormalTemplateParameter {
     pub name: S<String>,
     pub default_value: Option<S<Expression>>,
@@ -187,6 +196,17 @@ pub struct TemplateElaboratedIdentPart {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ModuleMemberDeclaration {
+    Void,
+    Declaration(Declaration),
+    Alias(Alias),
+    Struct(Struct),
+    Function(Function),
+    ConstAssert(ConstAssert),
+    Module(Module),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum ModuleTypeSignatureMemberDeclaration {
     Void,
     Declaration(Declaration),
     Alias(Alias),

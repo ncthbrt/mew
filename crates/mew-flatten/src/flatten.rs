@@ -44,7 +44,7 @@ impl CompilerPass for Flattener {
     fn apply_mut(
         &mut self,
         translation_unit: &mut TranslationUnit,
-    ) -> Result<(), mew_types::CompilerPassError> {
+    ) -> mew_types::CompilerPassResult {
         self.flatten_mut(translation_unit);
         Ok(())
     }

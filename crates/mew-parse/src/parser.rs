@@ -18,14 +18,18 @@ use crate::{
 pub struct Parser;
 
 impl Parser {
-    pub fn parse_path(path: &str) -> Result<IdentifierExpression, SpannedError> {
+    pub fn parse_path<'source>(
+        path: &'source str,
+    ) -> Result<IdentifierExpression, SpannedError<'source>> {
         let lexer = Lexer::new(path);
         let parser = wgsl::EntryPointPathParser::new();
         let res = parser.parse(lexer);
         res.map_err(|e| SpannedError::new(e, path))
     }
 
-    pub fn parse_str(source: &str) -> Result<syntax::TranslationUnit, SpannedError> {
+    pub fn parse_str<'source>(
+        source: &'source str,
+    ) -> Result<syntax::TranslationUnit, SpannedError<'source>> {
         let lexer = Lexer::new(source);
         let parser = wgsl::TranslationUnitParser::new();
         let res = parser.parse(lexer);

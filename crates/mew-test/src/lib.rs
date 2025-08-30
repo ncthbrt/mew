@@ -3,7 +3,7 @@
 use mew_api::{MewError, ModuleDescriptor, Path};
 use mew_bundle::Bundler;
 use mew_parse::syntax::TranslationUnit;
-use mew_types::{CompilerPass, CompilerPassError};
+use mew_types::CompilerPass;
 use std::{collections::HashMap, fs, path::PathBuf};
 
 #[test]
@@ -50,7 +50,7 @@ fn mew_samples() {
 }
 
 #[test]
-pub fn bundle_mew_samples() -> Result<(), CompilerPassError> {
+pub fn bundle_mew_samples() -> Result<(), Box<MewError>> {
     let dir = std::fs::read_dir("mew-samples").expect("missing mew-samples");
     let mut entrypoints: Vec<String> = vec![];
     let mut dir_contents = dir.into_iter().collect::<Vec<_>>();
@@ -126,7 +126,7 @@ pub fn bundle_mew_samples() -> Result<(), CompilerPassError> {
 }
 
 #[test]
-fn resolve_mew_samples() -> Result<(), CompilerPassError> {
+fn resolve_mew_samples() -> Result<(), Box<MewError>> {
     let dir =
         std::fs::read_dir("expected-bundle-outputs").expect("missing expected-bundle-outputs");
 
@@ -168,7 +168,7 @@ fn resolve_mew_samples() -> Result<(), CompilerPassError> {
 }
 
 #[test]
-fn mangle_mew_samples() -> Result<(), CompilerPassError> {
+fn mangle_mew_samples() -> Result<(), Box<MewError>> {
     let dir =
         std::fs::read_dir("expected-resolver-outputs").expect("missing expected-resolver-outputs");
 
@@ -210,7 +210,7 @@ fn mangle_mew_samples() -> Result<(), CompilerPassError> {
 }
 
 #[test]
-fn flatten_mew_samples() -> Result<(), CompilerPassError> {
+fn flatten_mew_samples() -> Result<(), Box<MewError>> {
     let dir =
         std::fs::read_dir("expected-mangler-outputs").expect("missing expected-mangler-outputs");
 
@@ -253,7 +253,7 @@ fn flatten_mew_samples() -> Result<(), CompilerPassError> {
 }
 
 #[test]
-fn extend_mew_samples() -> Result<(), CompilerPassError> {
+fn extend_mew_samples() -> Result<(), Box<MewError>> {
     let dir = std::fs::read_dir("extend-inputs").expect("missing expected-test-inputs");
 
     for entry in dir {
@@ -294,7 +294,7 @@ fn extend_mew_samples() -> Result<(), CompilerPassError> {
 }
 
 #[test]
-fn dealias_mew_samples() -> Result<(), CompilerPassError> {
+fn dealias_mew_samples() -> Result<(), Box<MewError>> {
     let dir = std::fs::read_dir("dealias-inputs").expect("missing expected-test-inputs");
 
     for entry in dir {
@@ -339,7 +339,7 @@ fn dealias_mew_samples() -> Result<(), CompilerPassError> {
 }
 
 #[test]
-fn template_specialize_mew_samples() -> Result<(), MewError> {
+fn template_specialize_mew_samples() -> Result<(), Box<MewError>> {
     let dir =
         std::fs::read_dir("template-specialize-inputs").expect("missing expected-test-inputs");
 

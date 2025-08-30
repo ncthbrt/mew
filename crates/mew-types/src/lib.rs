@@ -27,16 +27,12 @@ pub enum InternalCompilerError {
     UnexpectedMember,
 }
 
-pub trait CompilerPass {
-    fn apply_mut(
-        &mut self,
-        translation_unit: &mut TranslationUnit,
-    ) -> Result<(), CompilerPassError>;
+pub type CompilerPassResult<T = ()> = std::result::Result<T, Box<CompilerPassError>>;
 
-    fn apply(
-        &mut self,
-        translation_unit: &TranslationUnit,
-    ) -> Result<TranslationUnit, CompilerPassError> {
+pub trait CompilerPass {
+    fn apply_mut(&mut self, translation_unit: &mut TranslationUnit) -> CompilerPassResult;
+
+    fn apply(&mut self, translation_unit: &TranslationUnit) -> CompilerPassResult<TranslationUnit> {
         let mut clone = translation_unit.clone();
         self.apply_mut(&mut clone)?;
         Ok(clone)

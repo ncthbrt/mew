@@ -46,31 +46,35 @@ impl<'s> std::error::Error for SpannedError<'s> {}
 impl<'s> Display for SpannedError<'s> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let err = &self.inner;
-        let source = &self.source;
+        let source = self.source;
         let renderer = Renderer::styled();
         match err {
             LalrError::InvalidToken { location } => {
                 let end = (*location + 1..)
                     .find(|e| source.is_char_boundary(*e))
                     .unwrap_or(*location);
-                let message = Level::Error.title("invalid token").snippet(
-                    Snippet::source(source).fold(true).annotation(
-                        Level::Error
-                            .span(*location..end)
-                            .label("this token is unknown"),
-                    ),
-                );
-                write!(f, "{}", renderer.render(message))
+                let message = Group::with_title(Level::ERROR.primary_title("invalid token"))
+                    .element(
+                        Snippet::source(source).fold(true).annotation(
+                            AnnotationKind::Context
+                                .span(*location..end)
+                                .label("this token is unknown"),
+                        ),
+                    );
+                write!(f, "{}", renderer.render(&[message]))
             }
             LalrError::UnrecognizedEof { location, expected } => {
                 let annot = format!("expected {}", expected.iter().format(", "));
-                let message = Level::Error.title("unexpected end of file").snippet(
-                    Snippet::source(source)
-                        .fold(true)
-                        .annotation(Level::Error.span(*location..*location).label(&annot)),
-                );
-                let rendered = renderer.render(message);
-                write!(f, "{}", rendered)
+                let message =
+                    Group::with_title(Level::ERROR.primary_title("unexpected end of file"))
+                        .element(
+                            Snippet::source(source).fold(true).annotation(
+                                AnnotationKind::Context
+                                    .span(*location..*location)
+                                    .label(&annot),
+                            ),
+                        );
+                write!(f, "{}", renderer.render(&[message]))
             }
             LalrError::UnrecognizedToken { token, expected } => {
                 let title = format!("unexpected token `{}`", &source[token.0..token.2]);
@@ -79,38 +83,35 @@ impl<'s> Display for SpannedError<'s> {
                     expected.iter().format(", "),
                     token.1
                 );
-                let message = Level::Error.title(&title).snippet(
+                let message = Group::with_title(Level::ERROR.primary_title(&title)).element(
                     Snippet::source(source)
                         .fold(true)
-                        .annotation(Level::Error.span(token.0..token.2).label(&annot)),
+                        .annotation(AnnotationKind::Context.span(token.0..token.2).label(&annot)),
                 );
-                let rendered = renderer.render(message);
-                write!(f, "{}", rendered)
+                write!(f, "{}", renderer.render(&[message]))
             }
             LalrError::ExtraToken { token } => {
                 let title = format!("extra token `{}`", &source[token.0..token.2]);
                 let annot = format!("extra {} here", token.1);
-                let message = Level::Error.title(&title).snippet(
+                let message = Group::with_title(Level::ERROR.primary_title(&title)).element(
                     Snippet::source(source)
                         .fold(true)
-                        .annotation(Level::Error.span(token.0..token.2).label(&annot)),
+                        .annotation(AnnotationKind::Context.span(token.0..token.2).label(&annot)),
                 );
-                let rendered = renderer.render(message);
-                write!(f, "{}", rendered)
+                write!(f, "{}", renderer.render(&[message]))
             }
             LalrError::User {
                 error: (start, error, end),
             } => {
                 let title = error.to_string();
-                let message = Level::Error.title(&title).snippet(
+                let message = Group::with_title(Level::ERROR.primary_title(&title)).element(
                     Snippet::source(source).fold(true).annotation(
-                        Level::Error
+                        AnnotationKind::Context
                             .span(*start..*end)
                             .label("while parsing this token"),
                     ),
                 );
-                let rendered = renderer.render(message);
-                write!(f, "{}", rendered)
+                write!(f, "{}", renderer.render(&[message]))
             }
         }
     }

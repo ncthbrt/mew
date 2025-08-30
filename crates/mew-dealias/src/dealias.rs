@@ -8,7 +8,9 @@ use mew_parse::{
         PathPart, Statement, Struct, TranslationUnit, TypeExpression,
     },
 };
-use mew_types::{CompilerPass, builtins, mangling::maybe_mangle_template_args_if_needed};
+use mew_types::{
+    CompilerPass, CompilerPassError, builtins, mangling::maybe_mangle_template_args_if_needed,
+};
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Default)]
 struct AliasPath(im::Vector<PathPart>);
@@ -197,7 +199,7 @@ impl Dealiaser {
     fn populate_aliases_from_translation_unit(
         translation_unit: &mut TranslationUnit,
         tree: &mut AliasTree,
-    ) -> Result<(), mew_types::CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         let module_path = ModulePath(im::Vector::new());
         let mut others = vec![];
         for decl in translation_unit.global_declarations.drain(..) {
@@ -222,7 +224,7 @@ impl Dealiaser {
     fn replace_alias_usages_from_module(
         module: &mut Module,
         tree: &AliasTree,
-    ) -> Result<(), mew_types::CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         for decl in module.members.iter_mut() {
             match decl.as_mut() {
                 ModuleMemberDeclaration::Void => {
@@ -254,7 +256,7 @@ impl Dealiaser {
     fn replace_alias_usages_from_expr(
         expr: &mut Expression,
         tree: &AliasTree,
-    ) -> Result<(), mew_types::CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         match expr {
             Expression::Literal(_) => {
                 // No action required
@@ -294,7 +296,7 @@ impl Dealiaser {
     fn replace_alias_usages_from_statement(
         statement: &mut Statement,
         tree: &AliasTree,
-    ) -> Result<(), mew_types::CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         match statement {
             Statement::Void => {
                 // No action required
@@ -400,7 +402,7 @@ impl Dealiaser {
     fn replace_path_with_alias(
         mutable_path: &mut Spanned<Vec<PathPart>>,
         tree: &AliasTree,
-    ) -> Result<(), mew_types::CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         let mut path = AliasPath(mutable_path.value.drain(..).collect());
         path.normalize();
         for p in path.0.iter_mut() {
@@ -418,7 +420,7 @@ impl Dealiaser {
     fn replace_alias_usages_from_type(
         expr: &mut TypeExpression,
         tree: &AliasTree,
-    ) -> Result<(), mew_types::CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         Self::replace_path_with_alias(&mut expr.path, tree)?;
         Ok(())
     }
@@ -426,7 +428,7 @@ impl Dealiaser {
     fn replace_alias_usages_from_decl(
         decl: &mut Declaration,
         tree: &AliasTree,
-    ) -> Result<(), mew_types::CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         if let Some(init) = decl.initializer.as_mut() {
             Self::replace_alias_usages_from_expr(init.as_mut(), tree)?;
         }
@@ -441,7 +443,7 @@ impl Dealiaser {
     fn replace_alias_usages_from_struct(
         strct: &mut Struct,
         tree: &AliasTree,
-    ) -> Result<(), mew_types::CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         for m in strct.members.iter_mut() {
             Self::replace_alias_usages_from_type(&mut m.typ, tree)?;
         }
@@ -451,7 +453,7 @@ impl Dealiaser {
     fn replace_alias_usages_from_template_params(
         params: &mut Vec<Spanned<FormalTemplateParameter>>,
         tree: &AliasTree,
-    ) -> Result<(), mew_types::CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         for p in params {
             if let Some(def) = p.default_value.as_mut() {
                 Self::replace_alias_usages_from_expr(def, tree)?;
@@ -463,7 +465,7 @@ impl Dealiaser {
     fn replace_alias_usages_from_compound_statement(
         statement: &mut CompoundStatement,
         tree: &AliasTree,
-    ) -> Result<(), mew_types::CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         for statement in statement.statements.iter_mut() {
             Self::replace_alias_usages_from_statement(statement.as_mut(), tree)?;
         }
@@ -473,7 +475,7 @@ impl Dealiaser {
     fn replace_alias_usages_from_function(
         func: &mut Function,
         tree: &AliasTree,
-    ) -> Result<(), mew_types::CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         if let Some(r) = func.return_type.as_mut() {
             Self::replace_alias_usages_from_type(r, tree)?;
         }
@@ -494,7 +496,7 @@ impl Dealiaser {
     fn replace_alias_usages_from_const_assert(
         assrt: &mut ConstAssert,
         tree: &AliasTree,
-    ) -> Result<(), mew_types::CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         Self::replace_alias_usages_from_expr(&mut assrt.expression, tree)?;
         Ok(())
     }
@@ -502,7 +504,7 @@ impl Dealiaser {
     fn replace_alias_usages_from_translation_unit(
         translation_unit: &mut TranslationUnit,
         tree: &AliasTree,
-    ) -> Result<(), mew_types::CompilerPassError> {
+    ) -> Result<(), Box<CompilerPassError>> {
         for decl in translation_unit.global_declarations.iter_mut() {
             match decl.as_mut() {
                 GlobalDeclaration::Void => {
@@ -536,7 +538,7 @@ impl CompilerPass for Dealiaser {
     fn apply_mut(
         &mut self,
         translation_unit: &mut mew_parse::syntax::TranslationUnit,
-    ) -> Result<(), mew_types::CompilerPassError> {
+    ) -> mew_types::CompilerPassResult {
         let mut tree = AliasTree::default();
         Self::populate_aliases_from_translation_unit(translation_unit, &mut tree)?;
         Self::replace_alias_usages_from_translation_unit(translation_unit, &tree)?;
