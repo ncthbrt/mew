@@ -1,8 +1,8 @@
-mod Hey {
+module Hey {
     alias T = vec4f;
 }
 
-mod Hi {
+module Hi {
     alias T = Camera<mat4x4f>;
 }
 
@@ -10,15 +10,15 @@ struct Camera<Mat> {
     viewProjectionMatrix: Mat
 }
 
-mod WhatsUp {
+module WhatsUp {
     alias T = f32;
 }
 
-mod My_Lib<A, B, C = Hi> {
+module My_Lib<A, B, C = Hi> {
     const x: VertexShader<C>::E = VertexShader<C>::E();
 
-    mod VertexShader<C> {
-        mod Types {
+    module VertexShader<C> {
+        module Types {
             struct VertexOutput {
                 @builtin(position)
                 Position: vec4f,
@@ -35,7 +35,7 @@ mod My_Lib<A, B, C = Hi> {
 
         alias E = C::T;
 
-        mod Frog {
+        module Frog {
             const y: C::T = 0f;
         }
 

@@ -1,13 +1,13 @@
 extend ReduceBuffer<SumBinaryOp<F32>, BlockArea, WorkSize, Threads>;
 
-mod Sum<N> {
+module Sum<N> {
     struct T {
       sum: N::T
     }
 }
 
 
-mod SumBinaryOp<N>  {
+module SumBinaryOp<N>  {
     alias OpElem = Sum<N>::T;
     alias LoadElem = Sum<N>::T;
 
@@ -24,7 +24,7 @@ mod SumBinaryOp<N>  {
     }
 }
 
-mod F32 {
+module F32 {
   alias T = f32;
 
   fn add(a: T, b: T) -> T {
@@ -36,14 +36,14 @@ mod F32 {
   }
 }
 
-mod U32 {
+module U32 {
   alias T = u32;
 }
 
-// Here we don't care about the exact generic mod values
+// Here we don't care about the exact generic module values
 // passed to BinaryOp as we can extract the underlying types from the module
 // members
-mod ReduceWorkgroup<Op, WorkSize, Threads> {
+module ReduceWorkgroup<Op, WorkSize, Threads> {
     var <workgroup> work: array<Op::OpElem, WorkSize::value>;
     fn reduceWorkgroup(localId: u32) {
         let workDex = localId << 1u;
@@ -57,7 +57,7 @@ mod ReduceWorkgroup<Op, WorkSize, Threads> {
 }
 
 // Same here
-mod ReduceBuffer<Op, BlockArea, WorkSize, Threads> {
+module ReduceBuffer<Op, BlockArea, WorkSize, Threads> {
   // extend brings the module members into the namespace
   extend ReduceWorkgroup<Op, WorkSize, Threads>;
 
@@ -135,14 +135,14 @@ mod ReduceBuffer<Op, BlockArea, WorkSize, Threads> {
 }
 
 // To actually realize a concrete ReduceBuffer module, we need concrete const values
-mod BlockArea {
+module BlockArea {
   const value: u32 = 4u;
 }
 
-mod WorkSize {
+module WorkSize {
   const value: u32 = 18u;
 }
 
-mod Threads {
+module Threads {
   const value: u32 = 10u;
 }

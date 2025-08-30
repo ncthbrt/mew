@@ -1,26 +1,26 @@
 
 
-mod MyLib {
+module MyLib {
     import MyLib::util::my_fn as x;
-    
-    mod Types2 {
+
+    module Types2 {
         struct Uniforms {
             modelMatrix: array<mat4x4f, 5>
         }
-        
+
         struct Camera {
             viewProjectionMatrix: mat4x4f
         }
-        
+
         const x: MyLib::Types2::Camera = MyLib::Types2::Camera();
     }
-    
+
     @binding(0) @group(0)
     var<uniform> uniforms: MyLib::Types2::Uniforms;
-    
+
     @binding(1) @group(0)
     var<uniform> camera: MyLib::Camera;
-    
+
     @vertex
     fn main2(@builtin(instance_index) instanceIdx: u32, @location(0) position: vec4f, @location(1) color: vec4f) -> MyLib::VertexOutput {
         import MyLib::Types2::{ MyLib::Types2::Uniforms, MyLib::Types2::x as y }
@@ -30,33 +30,33 @@ mod MyLib {
         output.fragColor = color / vec4<f32>(MyLib::Types2::x);
         return output;
     }
-    
+
     struct Uniforms {
         modelMatrix: array<mat4x4f, 5>
     }
-    
+
     struct Camera {
         viewProjectionMatrix: mat4x4f
     }
-    
+
     @fragment
     fn util_main() -> u32 {
         return MyLib::util::my_fn();
     }
-    
-    mod util {
+
+    module util {
         fn my_fn() -> u32 {
             return 42;
         }
     }
-    
+
     struct VertexOutput {
         @builtin(position)
         Position: vec4f,
         @location(0)
         fragColor: vec4f
     }
-    
+
     @vertex
     fn main(@builtin(instance_index) instanceIdx: u32, @location(0) position: vec4f, @location(1) color: vec4f) -> MyLib::VertexOutput {
         var output: MyLib::VertexOutput;

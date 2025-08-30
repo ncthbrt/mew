@@ -1,14 +1,14 @@
 import util::my_fn as x;
 
-mod Types2 {
+module Types2 {
     struct Types2_Uniforms {
         modelMatrix: array<mat4x4f, 5>
     }
-    
+
     struct Types2_Camera {
         viewProjectionMatrix: mat4x4f
     }
-    
+
     const Types2_x: Types2_Camera = Types2_Camera();
 }
 
@@ -41,7 +41,7 @@ fn util__main() -> u32 {
     return util_my__fn();
 }
 
-mod util {
+module util {
     fn util_my__fn() -> u32 {
         return 42;
     }

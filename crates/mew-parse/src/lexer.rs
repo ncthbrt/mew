@@ -318,8 +318,8 @@ pub enum Token {
     // BEGIN MEW KEYWORDS
     #[token("import")]
     KwImport,
-    #[token("mod")]
-    KwMod,
+    #[token("module")]
+    KwModule,
     #[token("extend")]
     KwExtend,
     #[token("sig")]
@@ -452,7 +452,7 @@ impl Token {
                 | Token::KwVar
                 | Token::KwWhile
                 | Token::KwImport
-                | Token::KwMod
+                | Token::KwModule
                 | Token::KwExtend
                 | Token::KwSig
                 | Token::KwAs
@@ -550,7 +550,7 @@ impl Display for Token {
             Token::KwWhile => f.write_str("while"),
             Token::KwImport => f.write_str("import"),
             Token::KwAs => f.write_str("as"),
-            Token::KwMod => f.write_str("mod"),
+            Token::KwModule => f.write_str("module"),
             Token::KwExtend => f.write_str("extend"),
             Token::KwSig => f.write_str("sig"),
             Token::KwWith => f.write_str("with"),
@@ -619,7 +619,7 @@ impl<'s> Lexer<'s> {
 /// assert_eq!(recognize_template_list("<(B==C)>"), true);
 /// assert_eq!(recognize_template_list("<F<SumBinaryOp<F32>>>"), true);
 /// assert_eq!(recognize_template_list("<SumBinaryOp<F32>>"), true);
-/// assert_eq!(recognize_template_list("<SumBinaryOp with { mod F32 { alias T = f32; } }>"), true);
+/// assert_eq!(recognize_template_list("<SumBinaryOp with { module F32 { alias T = f32; } }>"), true);
 /// assert_eq!(recognize_template_list("<SumBinaryOp<8,F32<16>>::v>>>"), true);
 
 /// // false cases

@@ -1,10 +1,10 @@
 extend My_Lib<Hey, WhatsUp>::VertexShader<Hi>;
 
-mod Hey {
+module Hey {
     alias T = vec4f;
 }
 
-mod Hi {
+module Hi {
     alias T = Camera<mat4x4f>;
 }
 
@@ -12,41 +12,41 @@ struct Camera<Mat> {
     viewProjectionMatrix: Mat
 }
 
-mod WhatsUp {
+module WhatsUp {
     alias T = f32;
 }
 
-mod My_Lib<A, B, C = Hi> {
-    
+module My_Lib<A, B, C = Hi> {
+
     const x: VertexShader<C>::E = VertexShader<C>::E();
-    
-    mod VertexShader<C> {
+
+    module VertexShader<C> {
         extend Frog;
-        
-        mod Types {
+
+        module Types {
             struct VertexOutput {
                 @builtin(position)
                 Position: vec4f,
                 @location(0)
                 fragColor: A::T
             }
-            
+
             struct Uniforms {
                 modelMatrix: C::T
             }
-            
+
             alias Nested = E;
         }
-        
+
         alias E = C::T;
-        
-        mod Frog {
+
+        module Frog {
             const y: C::T = 0f;
         }
-        
+
         @binding(0) @group(0)
         var<uniform> uniforms: VertexShader<C>::Types::Uniforms;
-        
+
         @binding(1) @group(0)
         var<uniform> camera: Types::Nested;
 

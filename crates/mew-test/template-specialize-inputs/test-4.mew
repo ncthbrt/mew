@@ -9,7 +9,7 @@ struct Sum<N> {
     sum: N::T
 }
 
-mod SumBinaryOp<N> {
+module SumBinaryOp<N> {
     alias OpElem = Sum<N>;
     alias LoadElem = Sum<N>;
 
@@ -26,7 +26,7 @@ mod SumBinaryOp<N> {
     }
 }
 
-mod Intrinsic<N> {
+module Intrinsic<N> {
     alias T = N;
 
     fn add(a: T, b: T) -> T {
@@ -40,7 +40,7 @@ mod Intrinsic<N> {
 
 alias F32 = Intrinsic<f32>;
 
-mod ReduceWorkgroup<Op, work_size, threads> {
+module ReduceWorkgroup<Op, work_size, threads> {
     var <workgroup> work: array<Op::OpElem, work_size>;
     fn reduceWorkgroup(localId: u32) {
         let workDex = localId << 1u;
@@ -54,7 +54,7 @@ mod ReduceWorkgroup<Op, work_size, threads> {
 }
 
 // Same here
-mod ReduceBuffer<Op, block_area, work_size, threads> {
+module ReduceBuffer<Op, block_area, work_size, threads> {
   // extend brings the module members into the namespace
   extend ReduceWorkgroup<Op, work_size, threads>;
 

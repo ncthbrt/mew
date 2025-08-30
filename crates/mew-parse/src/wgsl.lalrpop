@@ -97,7 +97,7 @@ extern {
         "while" => Token::KwWhile,
         // BEGIN MEW ADDITIONS
         "import" => Token::KwImport,
-        "mod" => Token::KwMod,
+        "module" => Token::KwModule,
         "extend" => Token::KwExtend,
         "sig" => Token::KwSig,
         "as" => Token::KwAs,
@@ -154,7 +154,7 @@ GlobalDecl: GlobalDeclaration = {
 
 // BEGIN MEW ROOT ADDITIONS
 ModuleDecl : Module = {
-    <attributes: S<Attribute>*> "mod" <name: S<Ident>> <templates: TemplateParameters?> "{" <directives: S<ModuleDirective>*> <members: S<ModuleMemberDecl>*> "}"  => Module {
+    <attributes: S<Attribute>*> "module" <name: S<Ident>> <templates: TemplateParameters?> "{" <directives: S<ModuleDirective>*> <members: S<ModuleMemberDecl>*> "}"  => Module {
         name,
         members,
         attributes,

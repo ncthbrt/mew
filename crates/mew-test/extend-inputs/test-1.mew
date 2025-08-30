@@ -1,13 +1,13 @@
 extend My_Lib::VertexShader;
 
-mod My_Lib {
+module My_Lib {
     import VertexShader::Types::Camera;
     const x: VertexShader::Types::Camera = Camera();
 
-    mod VertexShader {
+    module VertexShader {
         extend Frog;
 
-        mod Types {
+        module Types {
             struct VertexOutput {
                 @builtin(position) Position : vec4f,
                 @location(0) fragColor : vec4f,
@@ -20,7 +20,7 @@ mod My_Lib {
             }
         }
 
-        mod Frog {
+        module Frog {
             const y: f32 = 0f;
         }
 

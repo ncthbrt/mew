@@ -5,6 +5,6 @@ fn util_main() -> u32 {
     return x();
 }
 
-mod util {
+module util {
     fn my_fn() -> u32 { return 42; }
 }

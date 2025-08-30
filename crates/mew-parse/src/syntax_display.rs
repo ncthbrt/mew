@@ -678,7 +678,7 @@ impl Display for Module {
         }
         write!(
             f,
-            "{}{}mod {}{} {{\n{}\n}}",
+            "{}{}module {}{} {{\n{}\n}}",
             attrs,
             if attrs.is_empty() { "" } else { " " },
             self.name,

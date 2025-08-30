@@ -1,45 +1,45 @@
 extend My_Lib::VertexShader;
 
 
-mod My_Lib {
+module My_Lib {
     import My_Lib::VertexShader::Types::Camera;
-    
+
     const x: My_Lib::VertexShader::Types::Camera = My_Lib::VertexShader::Types::Camera();
-    
-    mod VertexShader {
+
+    module VertexShader {
         extend My_Lib::VertexShader::Frog;
-        
-        mod Types {
+
+        module Types {
             struct VertexOutput {
                 @builtin(position)
                 Position: vec4f,
                 @location(0)
                 fragColor: vec4f
             }
-            
+
             struct Uniforms {
                 modelMatrix: array<mat4x4f, 5>
             }
-            
+
             struct Camera {
                 viewProjectionMatrix: mat4x4f
             }
         }
-        
-        mod Frog {
+
+        module Frog {
             const y: f32 = 0f;
         }
-        
+
         @binding(0) @group(0)
         var<uniform> uniforms: My_Lib::VertexShader::Types::Uniforms;
-        
+
         @binding(1) @group(0)
         var<uniform> camera: My_Lib::VertexShader::Types::Camera;
-        
+
         @vertex
         fn main(@builtin(instance_index) instanceIdx: u32, @location(0) position: vec4f, @location(1) color: vec4f) -> My_Lib::VertexShader::Types::VertexOutput {
             import My_Lib::VertexShader::Types::{ My_Lib::VertexShader::Types::Uniforms }
-            
+
             import My_Lib::x as z;
             let uni = My_Lib::VertexShader::Types::Uniforms();
             var output: My_Lib::VertexShader::Types::VertexOutput;
@@ -47,7 +47,7 @@ mod My_Lib {
             output.fragColor = color / vec4<f32>(My_Lib::x * My_Lib::VertexShader::y);
             return output;
         }
-        
+
         alias y = My_Lib::VertexShader::Frog::y;
     }
 }

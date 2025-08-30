@@ -10,7 +10,7 @@ pub struct TemplateNormalizer;
 enum GenericMember<'a> {
     Func(&'a Function),
     Struct(&'a Struct),
-    Mod(&'a Module),
+    Module(&'a Module),
     Alias(&'a Alias),
     Declaration(&'a Declaration),
 }
@@ -19,7 +19,7 @@ impl<'a> GenericMember<'a> {
     fn template_params(&self) -> &Vec<Spanned<FormalTemplateParameter>> {
         match self {
             GenericMember::Func(function) => function.template_parameters.as_ref(),
-            GenericMember::Mod(module) => module.template_parameters.as_ref(),
+            GenericMember::Module(module) => module.template_parameters.as_ref(),
             GenericMember::Struct(strct) => strct.template_parameters.as_ref(),
             GenericMember::Alias(alias) => alias.template_parameters.as_ref(),
             GenericMember::Declaration(decl) => decl.template_parameters.as_ref(),
@@ -114,7 +114,7 @@ impl TemplateNormalizer {
                 .find_map(|x| match x.as_ref() {
                     GlobalDeclaration::Module(m) => {
                         if m.name == fst.name {
-                            Some(GenericMember::Mod(m))
+                            Some(GenericMember::Module(m))
                         } else {
                             None
                         }
@@ -197,7 +197,7 @@ impl TemplateNormalizer {
                             path.span(),
                         ));
                     }
-                    GenericMember::Mod(m) => {
+                    GenericMember::Module(m) => {
                         for decl in m.members.iter() {
                             match decl.as_ref() {
                                 ModuleMemberDeclaration::Module(inner) => {
@@ -206,7 +206,7 @@ impl TemplateNormalizer {
                                     {
                                         let path_part: &mut PathPart =
                                             remaining_path.pop_front().unwrap();
-                                        generic_member = GenericMember::Mod(inner);
+                                        generic_member = GenericMember::Module(inner);
                                         Self::normalize_path_part(
                                             &generic_member,
                                             path_part,

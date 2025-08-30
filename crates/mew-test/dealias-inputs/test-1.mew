@@ -1,10 +1,10 @@
-mod My_Lib {
+module My_Lib {
     alias Camera = VertexShader::Types::Camera;
     const x: VertexShader::C = Camera();
 
-    mod VertexShader {
+    module VertexShader {
 
-        mod Types {
+        module Types {
             struct VertexOutput {
                 @builtin(position) Position : vec4f,
                 @location(0) fragColor : vec4f,
@@ -21,7 +21,7 @@ mod My_Lib {
 
         alias C = Types::Camera;
 
-        mod Frog {
+        module Frog {
             const y: f32 = 0f;
         }
 
