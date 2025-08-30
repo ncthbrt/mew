@@ -11,9 +11,9 @@ use mew_parse::{
     },
 };
 use mew_types::{
+    CompilerPass, CompilerPassError,
     builtins::{get_builtin_functions, get_builtin_tokens},
     mangling::mangle_inline_arg_name,
-    CompilerPass, CompilerPassError,
 };
 
 #[derive(Debug, Default, Clone, Copy)]
@@ -346,51 +346,54 @@ impl Resolver {
         if path.is_empty() {
             return Ok(());
         }
-        if let Some(symbol) = scope.remove(path.first().as_ref().unwrap().name.as_str()) {
-            match symbol {
-                ScopeMember::LocalDeclaration => {
-                    // No action required
-                }
-                ScopeMember::ModuleMemberDeclaration(module_path, _) => {
-                    let mut new_path = module_path.0.iter().cloned().collect::<Vec<PathPart>>();
-                    new_path.extend(path.iter().cloned());
-                    path.value = new_path;
-                }
-                ScopeMember::GlobalDeclaration(_) => {
-                    // No action required
-                }
-                ScopeMember::FormalFunctionParameter => {
-                    // No action required
-                }
-                ScopeMember::UseDeclaration(module_path, template_args) => {
-                    let mut new_path = module_path.0.iter().cloned().collect::<Vec<PathPart>>();
-                    if let Some(template_args) = template_args {
-                        if !template_args.is_empty() {
-                            path.first_mut().unwrap().template_args = Some(template_args);
-                        }
+        match scope.remove(path.first().as_ref().unwrap().name.as_str()) {
+            Some(symbol) => {
+                match symbol {
+                    ScopeMember::LocalDeclaration => {
+                        // No action required
                     }
-                    new_path.extend(path.iter().skip(1).cloned());
-                    path.value = new_path;
-                }
-                ScopeMember::BuiltIn => {
-                    // No action required
-                }
-                ScopeMember::TemplateParam(new_name) => {
-                    let fst = path.value.first_mut().unwrap();
-                    fst.name.value = new_name;
-                    // No action required
-                }
-                ScopeMember::Inline(module_path) => {
-                    let mut new_path = module_path.0.iter().cloned().collect::<Vec<PathPart>>();
-                    new_path.extend(path.iter().skip(1).cloned());
-                    path.value = new_path;
+                    ScopeMember::ModuleMemberDeclaration(module_path, _) => {
+                        let mut new_path = module_path.0.iter().cloned().collect::<Vec<PathPart>>();
+                        new_path.extend(path.iter().cloned());
+                        path.value = new_path;
+                    }
+                    ScopeMember::GlobalDeclaration(_) => {
+                        // No action required
+                    }
+                    ScopeMember::FormalFunctionParameter => {
+                        // No action required
+                    }
+                    ScopeMember::UseDeclaration(module_path, template_args) => {
+                        let mut new_path = module_path.0.iter().cloned().collect::<Vec<PathPart>>();
+                        if let Some(template_args) = template_args {
+                            if !template_args.is_empty() {
+                                path.first_mut().unwrap().template_args = Some(template_args);
+                            }
+                        }
+                        new_path.extend(path.iter().skip(1).cloned());
+                        path.value = new_path;
+                    }
+                    ScopeMember::BuiltIn => {
+                        // No action required
+                    }
+                    ScopeMember::TemplateParam(new_name) => {
+                        let fst = path.value.first_mut().unwrap();
+                        fst.name.value = new_name;
+                        // No action required
+                    }
+                    ScopeMember::Inline(module_path) => {
+                        let mut new_path = module_path.0.iter().cloned().collect::<Vec<PathPart>>();
+                        new_path.extend(path.iter().skip(1).cloned());
+                        path.value = new_path;
+                    }
                 }
             }
-        } else {
-            return Err(CompilerPassError::SymbolNotFound(
-                path.value.clone().to_owned(),
-                path.span(),
-            ));
+            _ => {
+                return Err(CompilerPassError::SymbolNotFound(
+                    path.value.clone().to_owned(),
+                    path.span(),
+                ));
+            }
         }
         Ok(())
     }
@@ -893,45 +896,48 @@ impl Resolver {
         let mut module_path = ModulePath(im::Vector::new());
         let mut remaining_path: im::Vector<PathPart> = path.value.clone().into();
         let fst: PathPart = remaining_path.pop_front().unwrap();
-        if let Some(scope_member) = scope.get(fst.name.as_ref()).cloned() {
-            let m = match scope_member {
-                ScopeMember::ModuleMemberDeclaration(_, ModuleMemberDeclaration::Module(m)) => m,
-                ScopeMember::GlobalDeclaration(GlobalDeclaration::Module(m)) => m,
-                _ => {
-                    panic!(
-                        "INVARIANT FAILURE: UNEXPECTED SCOPE MEMBER IN THIS STAGE OF PROCESSING"
-                    );
-                }
-            };
-            let mut module = m;
-            'outer: while !remaining_path.is_empty() {
-                Self::update_module_scope(&mut module_path, &mut module, &mut scope)?;
-                Self::add_extensions_and_usages_to_scope(
-                    &module_path,
-                    &mut module.directives,
-                    &mut module.members,
-                    &mut scope,
-                )?;
-                for decl in module.members.iter_mut() {
-                    if let ModuleMemberDeclaration::Module(m) = decl.as_mut() {
-                        if m.name == remaining_path.head().as_ref().unwrap().name {
-                            let _ = remaining_path.pop_front().unwrap();
-                            module = m.clone();
-                            continue 'outer;
+        match scope.get(fst.name.as_ref()).cloned() {
+            Some(scope_member) => {
+                let m = match scope_member {
+                    ScopeMember::ModuleMemberDeclaration(_, ModuleMemberDeclaration::Module(m)) => {
+                        m
+                    }
+                    ScopeMember::GlobalDeclaration(GlobalDeclaration::Module(m)) => m,
+                    _ => {
+                        panic!(
+                            "INVARIANT FAILURE: UNEXPECTED SCOPE MEMBER IN THIS STAGE OF PROCESSING"
+                        );
+                    }
+                };
+                let mut module = m;
+                'outer: while !remaining_path.is_empty() {
+                    Self::update_module_scope(&mut module_path, &mut module, &mut scope)?;
+                    Self::add_extensions_and_usages_to_scope(
+                        &module_path,
+                        &mut module.directives,
+                        &mut module.members,
+                        &mut scope,
+                    )?;
+                    for decl in module.members.iter_mut() {
+                        if let ModuleMemberDeclaration::Module(m) = decl.as_mut() {
+                            if m.name == remaining_path.head().as_ref().unwrap().name {
+                                let _ = remaining_path.pop_front().unwrap();
+                                module = m.clone();
+                                continue 'outer;
+                            }
                         }
                     }
+                    return Err(CompilerPassError::SymbolNotFound(
+                        path.value.clone(),
+                        path.span(),
+                    ));
                 }
-                return Err(CompilerPassError::SymbolNotFound(
-                    path.value.clone(),
-                    path.span(),
-                ));
+                Ok((module.clone(), scope))
             }
-            Ok((module.clone(), scope))
-        } else {
-            Err(CompilerPassError::SymbolNotFound(
+            _ => Err(CompilerPassError::SymbolNotFound(
                 path.value.clone(),
                 path.span(),
-            ))
+            )),
         }
     }
 

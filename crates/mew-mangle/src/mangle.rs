@@ -6,7 +6,7 @@ use mew_parse::{
         Statement, Struct, TranslationUnit, TypeExpression,
     },
 };
-use mew_types::{mangling::mangle_path, CompilerPass};
+use mew_types::{CompilerPass, mangling::mangle_path};
 
 #[derive(Debug, Default, Clone, Copy)]
 pub struct Mangler;

@@ -1,15 +1,15 @@
 [workspace]
 members = [
-    "crates/mew-parse", 
-    "crates/mew-test", 
-    "crates/mew-bundle", 
-    "crates/mew-resolve", 
+    "crates/mew-parse",
+    "crates/mew-test",
+    "crates/mew-bundle",
+    "crates/mew-resolve",
     "crates/mew-inline",
-    "crates/mew-mangle", 
-    "crates/mew-flatten", 
-    "crates/mew-types", 
-    "crates/mew-dealias", 
-    "crates/mew-specialize", 
+    "crates/mew-mangle",
+    "crates/mew-flatten",
+    "crates/mew-types",
+    "crates/mew-dealias",
+    "crates/mew-specialize",
     "crates/mew-template-normalize",
     "crates/mew-api",
 ]
@@ -18,12 +18,14 @@ resolver = "2"
 
 [workspace.package]
 version = "0.0.2"
-edition = "2021"
-authors = ["Mathis Brossier <mathis.brossier@gmail.com>", "Natalie Cuthbert <natalie@cuthbert.co.za>"]
+edition = "2024"
+authors = [
+    "Mathis Brossier <mathis.brossier@gmail.com>",
+    "Natalie Cuthbert <natalie@cuthbert.co.za>",
+]
 repository = "https://github.com/ncthbrt/mew-rust"
 license = "MIT"
 
 [workspace.dependencies]
-im = "15.1.0" 
+im = "15.1.0"
 wgsl-spec = { version = "0.2.0" }
-

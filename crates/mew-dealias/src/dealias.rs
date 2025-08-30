@@ -8,7 +8,7 @@ use mew_parse::{
         PathPart, Statement, Struct, TranslationUnit, TypeExpression,
     },
 };
-use mew_types::{builtins, mangling::maybe_mangle_template_args_if_needed, CompilerPass};
+use mew_types::{CompilerPass, builtins, mangling::maybe_mangle_template_args_if_needed};
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Default)]
 struct AliasPath(im::Vector<PathPart>);

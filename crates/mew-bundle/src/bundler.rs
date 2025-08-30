@@ -26,8 +26,8 @@ impl<'a> CompilerPass for Bundler<'a> {
             ws.extend((0..file_len).map(|_| ' '));
             let mut local_translation_unit = mew_parse::Parser::parse_str(&file_with_starting_ws)
                 .map_err(|err| {
-                    mew_types::CompilerPassError::ParseError(format!("{}", err), err.span())
-                })?;
+                mew_types::CompilerPassError::ParseError(format!("{}", err), err.span())
+            })?;
             result
                 .global_declarations
                 .append(&mut local_translation_unit.global_declarations);

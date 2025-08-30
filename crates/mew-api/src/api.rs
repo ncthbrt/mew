@@ -6,7 +6,7 @@ use mew_parse::{
         TypeExpression,
     },
 };
-use mew_types::{mangling::mangle_path, CompilerPass, CompilerPassError, InternalCompilerError};
+use mew_types::{CompilerPass, CompilerPassError, InternalCompilerError, mangling::mangle_path};
 
 #[derive(Default, Debug)]
 pub struct MewApi {

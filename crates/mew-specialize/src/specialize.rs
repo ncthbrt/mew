@@ -5,7 +5,7 @@ use mew_parse::{
     span::{Span, Spanned},
     syntax::*,
 };
-use mew_types::{mangling::maybe_mangle_template_args_if_needed, CompilerPass, CompilerPassError};
+use mew_types::{CompilerPass, CompilerPassError, mangling::maybe_mangle_template_args_if_needed};
 
 #[derive(Debug, Clone)]
 pub struct Specializer {

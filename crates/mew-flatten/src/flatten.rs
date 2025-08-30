@@ -1,9 +1,9 @@
-use std::convert::Into;
 use mew_parse::{
     span::Spanned,
     syntax::{GlobalDeclaration, Module, ModuleMemberDeclaration, TranslationUnit},
 };
 use mew_types::CompilerPass;
+use std::convert::Into;
 
 #[derive(Debug, Default, Clone, Copy)]
 pub struct Flattener;
