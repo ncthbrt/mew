@@ -5,8 +5,9 @@ use mew_parse::{
     syntax::{
         Alias, CompoundDirective, CompoundStatement, ConstAssert, Declaration,
         DeclarationStatement, Expression, ExtendDirective, Function, GlobalDeclaration,
-        GlobalDirective, IdentifierExpression, Module, ModuleDirective, ModuleMemberDeclaration,
-        PathPart, Statement, Struct, TemplateArg, TranslationUnit, TypeExpression, Use,
+        GlobalDirective, IdentifierExpression, Import, Module, ModuleDirective,
+        ModuleMemberDeclaration, PathPart, Statement, Struct, TemplateArg, TranslationUnit,
+        TypeExpression,
     },
 };
 use mew_types::{
@@ -39,7 +40,9 @@ impl Resolver {
         module_path: ModulePath,
         mut scope: im::HashMap<String, ScopeMember>,
     ) -> Result<(), CompilerPassError> {
-        for CompoundDirective::Use(usage) in statement.directives.iter_mut().map(|x| &mut x.value) {
+        for CompoundDirective::Import(usage) in
+            statement.directives.iter_mut().map(|x| &mut x.value)
+        {
             Self::add_usage_to_scope(usage, module_path.clone(), &mut scope)?;
         }
         for c in statement.statements.iter_mut() {
@@ -127,7 +130,7 @@ impl Resolver {
             }
             Statement::Loop(l) => {
                 for usage in l.body.directives.iter_mut() {
-                    let CompoundDirective::Use(usage) = &mut usage.value;
+                    let CompoundDirective::Import(usage) = &mut usage.value;
                     Self::add_usage_to_scope(usage, module_path.clone(), &mut scope)?;
                 }
                 Self::compound_statement_to_absolute_paths(
@@ -148,7 +151,7 @@ impl Resolver {
                 if let Some(cont) = l.continuing.as_mut() {
                     // Unfortunate asymmetry (and redundant work) AGAIN as the break_if expr is in the same scope
                     for usage in cont.body.directives.iter_mut() {
-                        let CompoundDirective::Use(usage) = &mut usage.value;
+                        let CompoundDirective::Import(usage) = &mut usage.value;
                         Self::add_usage_to_scope(usage, module_path.clone(), &mut scope)?;
                     }
                     Self::compound_statement_to_absolute_paths(
@@ -808,7 +811,7 @@ impl Resolver {
     }
 
     fn add_usage_to_scope(
-        usage: &mut Use,
+        usage: &mut Import,
         module_path: ModulePath,
         scope: &mut im::HashMap<String, ScopeMember>,
     ) -> Result<(), CompilerPassError> {
@@ -820,7 +823,7 @@ impl Resolver {
             )?;
         }
         match &mut usage.content.value {
-            mew_parse::syntax::UseContent::Item(item) => {
+            mew_parse::syntax::ImportContent::Item(item) => {
                 let mut usage_path = usage.path.clone();
                 usage_path.push(PathPart {
                     name: item.name.clone(),
@@ -850,7 +853,7 @@ impl Resolver {
                     );
                 }
             }
-            mew_parse::syntax::UseContent::Collection(c) => {
+            mew_parse::syntax::ImportContent::Collection(c) => {
                 for c in c.iter_mut() {
                     c.value.path.value.extend(usage.path.iter().cloned());
                     Self::add_usage_to_scope(c, module_path.clone(), scope)?;
@@ -960,9 +963,9 @@ impl Resolver {
         for dir in directives.drain(..) {
             let span = dir.span();
             match dir.into_inner() {
-                ModuleDirective::Use(mut usage) => {
+                ModuleDirective::Import(mut usage) => {
                     Self::add_usage_to_scope(&mut usage, module_path.clone(), scope)?;
-                    other_dirs.push(Spanned::new(ModuleDirective::Use(usage), span));
+                    other_dirs.push(Spanned::new(ModuleDirective::Import(usage), span));
                 }
                 ModuleDirective::Extend(extend) => {
                     extend_dirs.push(Spanned::new(extend, span));
@@ -1094,9 +1097,9 @@ impl Resolver {
         for dir in translation_unit.global_directives.drain(..) {
             let span = dir.span();
             match dir.value {
-                GlobalDirective::Use(mut usage) => {
+                GlobalDirective::Import(mut usage) => {
                     Self::add_usage_to_scope(&mut usage, module_path.clone(), &mut scope)?;
-                    other_directives.push(Spanned::new(GlobalDirective::Use(usage), span));
+                    other_directives.push(Spanned::new(GlobalDirective::Import(usage), span));
                 }
                 GlobalDirective::Extend(extend) => {
                     extend_directives.push(Spanned::new(extend.clone(), span));

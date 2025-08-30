@@ -316,8 +316,8 @@ pub enum Token {
     KwWhile,
 
     // BEGIN MEW KEYWORDS
-    #[token("use")]
-    KwUse,
+    #[token("import")]
+    KwImport,
     #[token("mod")]
     KwMod,
     #[token("extend")]
@@ -451,7 +451,7 @@ impl Token {
                 | Token::KwTrue
                 | Token::KwVar
                 | Token::KwWhile
-                | Token::KwUse
+                | Token::KwImport
                 | Token::KwMod
                 | Token::KwExtend
                 | Token::KwSig
@@ -548,7 +548,7 @@ impl Display for Token {
             Token::KwTrue => f.write_str("true"),
             Token::KwVar => f.write_str("var"),
             Token::KwWhile => f.write_str("while"),
-            Token::KwUse => f.write_str("use"),
+            Token::KwImport => f.write_str("import"),
             Token::KwAs => f.write_str("as"),
             Token::KwMod => f.write_str("mod"),
             Token::KwExtend => f.write_str("extend"),

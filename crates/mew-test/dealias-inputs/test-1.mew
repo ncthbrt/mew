@@ -1,9 +1,9 @@
 mod My_Lib {
     alias Camera = VertexShader::Types::Camera;
     const x: VertexShader::C = Camera();
-    
+
     mod VertexShader {
-        
+
         mod Types {
             struct VertexOutput {
                 @builtin(position) Position : vec4f,
@@ -34,8 +34,8 @@ mod My_Lib {
         @location(0) position : vec4f,
         @location(1) color : vec4f
         ) -> Types::VertexOutput {
-            use Types::{U}
-            use My_Lib::x as y;
+            import Types::{U}
+            import My_Lib::x as y;
             let uni = U();
             var output : Types::VertexOutput;
             output.Position = camera.viewProjectionMatrix * uniforms.modelMatrix[instanceIdx] * position;
@@ -44,4 +44,3 @@ mod My_Lib {
         }
     }
 }
-

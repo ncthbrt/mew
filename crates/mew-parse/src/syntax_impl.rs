@@ -249,7 +249,7 @@ impl TryInto<S<ModuleDirective>> for S<GlobalDirective> {
             GlobalDirective::Requires(requires_directive) => {
                 Err(S::new(GlobalDirective::Requires(requires_directive), span))
             }
-            GlobalDirective::Use(usage) => Ok(S::new(ModuleDirective::Use(usage), span)),
+            GlobalDirective::Import(usage) => Ok(S::new(ModuleDirective::Import(usage), span)),
             GlobalDirective::Extend(extend_directive) => {
                 Ok(S::new(ModuleDirective::Extend(extend_directive), span))
             }

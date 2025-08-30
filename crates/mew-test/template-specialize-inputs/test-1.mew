@@ -14,9 +14,9 @@ mod WhatsUp {
     alias T = f32;
 }
 
-mod My_Lib<A, B, C = Hi> {    
+mod My_Lib<A, B, C = Hi> {
     const x: VertexShader<C>::E = VertexShader<C>::E();
-    
+
     mod VertexShader<C> {
         mod Types {
             struct VertexOutput {
@@ -25,23 +25,23 @@ mod My_Lib<A, B, C = Hi> {
                 @location(0)
                 fragColor: A::T
             }
-            
+
             struct Uniforms {
                 modelMatrix: C::T
             }
-            
+
             alias Nested = E;
         }
-        
+
         alias E = C::T;
-        
+
         mod Frog {
             const y: C::T = 0f;
         }
-        
+
         @binding(0) @group(0)
         var<uniform> uniforms: Types::Uniforms;
-        
+
         @binding(1) @group(0)
         var<uniform> camera: Types::Nested;
     }
@@ -49,7 +49,7 @@ mod My_Lib<A, B, C = Hi> {
 
 @vertex
 fn main(@builtin(instance_index) instanceIdx: u32, @location(0) position: vec4<f32>, @location(1) color: vec4f) -> My_Lib<Hey, WhatsUp>::VertexShader<Hi>::Types::VertexOutput {
-    use My_Lib<Hey, WhatsUp>::VertexShader<Hi> as V;
+    import My_Lib<Hey, WhatsUp>::VertexShader<Hi> as V;
     let uni = V::Types::Nested();
     var output: V::Types::VertexOutput;
     output.Position = V::camera.viewProjectionMatrix * V::uniforms.modelMatrix.viewProjectionMatrix[instanceIdx] * position;

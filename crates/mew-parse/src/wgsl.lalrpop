@@ -96,8 +96,8 @@ extern {
         "var" => Token::KwVar,
         "while" => Token::KwWhile,
         // BEGIN MEW ADDITIONS
-        "use" => Token::KwUse,
-        "mod" => Token::KwMod,        
+        "import" => Token::KwImport,
+        "mod" => Token::KwMod,
         "extend" => Token::KwExtend,
         "sig" => Token::KwSig,
         "as" => Token::KwAs,
@@ -155,7 +155,7 @@ GlobalDecl: GlobalDeclaration = {
 // BEGIN MEW ROOT ADDITIONS
 ModuleDecl : Module = {
     <attributes: S<Attribute>*> "mod" <name: S<Ident>> <templates: TemplateParameters?> "{" <directives: S<ModuleDirective>*> <members: S<ModuleMemberDecl>*> "}"  => Module {
-        name, 
+        name,
         members,
         attributes,
         directives,
@@ -189,12 +189,12 @@ OptionalTemplateParameter: FormalTemplateParameter = {
 };
 
 ModuleDirective: ModuleDirective = {
-    Use => ModuleDirective::Use(<>),
+    Import => ModuleDirective::Import(<>),
     Extend => ModuleDirective::Extend(<>)
 };
 
 CompoundDirective: CompoundDirective = {
-    Use => CompoundDirective::Use(<>)
+    Import => CompoundDirective::Import(<>)
 };
 
 ModuleMemberDecl: ModuleMemberDeclaration = {
@@ -311,7 +311,7 @@ GlobalDirective: GlobalDirective = {
     EnableDirective     => GlobalDirective::Enable(<>),
     RequiresDirective   => GlobalDirective::Requires(<>),
     // BEGIN MEW
-    Use => GlobalDirective::Use(<>),
+    Import => GlobalDirective::Import(<>),
     Extend => GlobalDirective::Extend(<>)
     // END MEW
 };
@@ -343,42 +343,42 @@ Extend: ExtendDirective = {
     }
 };
 
-Use: Use = {
-    "use" <usage: RootUsePath> => usage
+Import: Import = {
+    "import" <usage: RootUsePath> => usage
 };
 
-RootUsePath: Use = {
-    <l: @L> <path: (<TemplateElaboratedIdentPart> "::")*> <r: @R> <l2: @L><item: ItemUse><r2: @R> ";" => Use {
+RootUsePath: Import = {
+    <l: @L> <path: (<TemplateElaboratedIdentPart> "::")*> <r: @R> <l2: @L><item: ItemUse><r2: @R> ";" => Import {
         attributes: Vec::new(),
-        path: S::new(path.into_iter().map(|x| x.into()).collect(), l..r), 
-        content: S::new(UseContent::Item(item), l2..r2)
+        path: S::new(path.into_iter().map(|x| x.into()).collect(), l..r),
+        content: S::new(ImportContent::Item(item), l2..r2)
     },
     <l: @L> <path: (<TemplateElaboratedIdentPart> "::")*> <r: @R> <l2:@L><collection: UseCollection><r2:@R> => {
-        Use {
+        Import {
             attributes: Vec::new(),
-            path: S::new(path.into_iter().map(|x| x.into()).collect(), l..r), 
-            content: S::new(UseContent::Collection(collection), l2..r2)
+            path: S::new(path.into_iter().map(|x| x.into()).collect(), l..r),
+            content: S::new(ImportContent::Collection(collection), l2..r2)
         }
     }
 };
 
 
-UsePath: Use = {
-    <l: @L> <path: (<TemplateElaboratedIdentPart> "::")+> <r: @R>  <content: S<UseContent>> => Use {
+UsePath: Import = {
+    <l: @L> <path: (<TemplateElaboratedIdentPart> "::")+> <r: @R>  <content: S<ImportContent>> => Import {
         attributes: Vec::new(),
-        path: S::new(path.into_iter().map(|x| x.into()).collect(), l..r), 
+        path: S::new(path.into_iter().map(|x| x.into()).collect(), l..r),
         content
     },
-    <l: @L><item: ItemUse><r: @R> => Use {
+    <l: @L><item: ItemUse><r: @R> => Import {
         attributes: Vec::new(),
-        path: S::new(Default::default(), l..l), 
-        content: S::new(UseContent::Item(item), l..r)
+        path: S::new(Default::default(), l..l),
+        content: S::new(ImportContent::Item(item), l..r)
     },
 };
 
-UseContent: UseContent = {
-    UseCollection => UseContent::Collection(<>),
-    ItemUse => UseContent::Item(<>),
+ImportContent: ImportContent = {
+    UseCollection => ImportContent::Collection(<>),
+    ItemUse => ImportContent::Item(<>),
 };
 
 ItemUse: UseItem = {
@@ -387,7 +387,7 @@ ItemUse: UseItem = {
     }
 };
 
-UseCollection: Vec<S<Use>> = {
+UseCollection: Vec<S<Import>> = {
     "{" <Comma1<UsePath>> "}"
 };
 
@@ -680,7 +680,7 @@ MultiplicativeOperator: BinaryOperator = {
     "/" => BinaryOperator::Division,
     "%" => BinaryOperator::Remainder,
 };
- 
+
 AdditiveExpression: Expression = {
     MultiplicativeExpression,
     <left: S<AdditiveExpression>> <operator: S<AdditiveOperator>> <right: S<MultiplicativeExpression>> => Expression::Binary(BinaryExpression {
@@ -731,14 +731,14 @@ ShortCircuitAndExpression: Expression = {
         operator: S::new(BinaryOperator::ShortCircuitAnd, l..r), left: S::new(left, l2..r2).into(), right: right.into()
     }),
  };
- 
+
 ShortCircuitOrExpression: Expression = {
     RelationalExpression,
     <l2: @L><left: ShortCircuitOrExpression><r2: @R><l: @L> "||" <r: @R><right: S<RelationalExpression>> => Expression::Binary(BinaryExpression {
         operator:  S::new(BinaryOperator::ShortCircuitOr, l..r), left: S::new(left, l2..r2).into(), right: right.into()
     }),
  };
- 
+
 BinaryOrExpression: Expression = {
     UnaryExpression,
     <l2: @L><left: BinaryOrExpression><r2: @R> <l: @L> "|" <r: @R> <right: S<UnaryExpression>> => Expression::Binary(BinaryExpression {
@@ -790,7 +790,7 @@ CompoundStatement: CompoundStatement = {
     <attributes: S<Attribute>*> "{" <directives: S<CompoundDirective>*> <statements: S<Statement>*> "}" => {
         let mut statement = CompoundStatement {
             directives,
-            attributes, 
+            attributes,
             statements
         };
         statement.construct_scope_tree();

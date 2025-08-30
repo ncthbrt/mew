@@ -37,10 +37,12 @@ impl Display for GlobalDirective {
             GlobalDirective::Diagnostic(print) => write!(f, "{}", print),
             GlobalDirective::Enable(print) => write!(f, "{}", print),
             GlobalDirective::Requires(print) => write!(f, "{}", print),
-            GlobalDirective::Use(print) if matches!(print.content.value, UseContent::Item(_)) => {
-                write!(f, "use {};", print)
+            GlobalDirective::Import(print)
+                if matches!(print.content.value, ImportContent::Item(_)) =>
+            {
+                write!(f, "import {};", print)
             }
-            GlobalDirective::Use(print) => write!(f, "use {}", print),
+            GlobalDirective::Import(print) => write!(f, "import {}", print),
             GlobalDirective::Extend(print) => write!(f, "{}", print),
         }
     }
@@ -426,11 +428,13 @@ impl Display for Statement {
 impl Display for CompoundDirective {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            CompoundDirective::Use(usage) if matches!(usage.content.value, UseContent::Item(_)) => {
-                writeln!(f, "use {usage};")?;
+            CompoundDirective::Import(usage)
+                if matches!(usage.content.value, ImportContent::Item(_)) =>
+            {
+                writeln!(f, "import {usage};")?;
             }
-            CompoundDirective::Use(usage) => {
-                writeln!(f, "use {usage}")?;
+            CompoundDirective::Import(usage) => {
+                writeln!(f, "import {usage}")?;
             }
         }
         Ok(())
@@ -440,11 +444,13 @@ impl Display for CompoundDirective {
 impl Display for ModuleDirective {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            ModuleDirective::Use(usage) if matches!(usage.content.value, UseContent::Item(_)) => {
-                writeln!(f, "use {usage};\n")?;
+            ModuleDirective::Import(usage)
+                if matches!(usage.content.value, ImportContent::Item(_)) =>
+            {
+                writeln!(f, "import {usage};\n")?;
             }
-            ModuleDirective::Use(usage) => {
-                writeln!(f, "use {usage}\n")?;
+            ModuleDirective::Import(usage) => {
+                writeln!(f, "import {usage}\n")?;
             }
             ModuleDirective::Extend(extend) => {
                 writeln!(f, "{extend}")?;
@@ -682,10 +688,10 @@ impl Display for Module {
     }
 }
 
-impl Display for UseContent {
+impl Display for ImportContent {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            UseContent::Item(UseItem {
+            ImportContent::Item(UseItem {
                 name,
                 rename,
                 template_args,
@@ -706,7 +712,7 @@ impl Display for UseContent {
                     write!(f, "{name}{args}")
                 }
             }
-            UseContent::Collection(c) => {
+            ImportContent::Collection(c) => {
                 write!(f, "{{ {} }}", c.iter().map(|x| format!("{x}")).join(", "))
             }
         }
@@ -727,7 +733,7 @@ impl Display for InlineTemplateArgs {
     }
 }
 
-impl Display for Use {
+impl Display for Import {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let attrs = fmt_attrs(&self.attributes, false);
         let path = self.path.iter().format("::").to_string();

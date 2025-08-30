@@ -1,4 +1,4 @@
-use util::my_fn as x;
+import util::my_fn as x;
 
 @fragment
 fn util_main() -> u32 {

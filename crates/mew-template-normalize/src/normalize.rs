@@ -303,8 +303,8 @@ impl TemplateNormalizer {
     ) -> Result<(), mew_types::CompilerPassError> {
         for decl in module.directives.iter_mut() {
             match &mut decl.value {
-                ModuleDirective::Use(_) => {
-                    panic!("USE SHOULD HAVE ALREADY BEEN REMOVED");
+                ModuleDirective::Import(_) => {
+                    panic!("IMPORT SHOULD HAVE ALREADY BEEN REMOVED");
                 }
                 ModuleDirective::Extend(extend_directive) => {
                     Self::normalize_path(&mut extend_directive.path, translation_unit)?;
@@ -646,8 +646,8 @@ impl TemplateNormalizer {
                 GlobalDirective::Diagnostic(_) => {}
                 GlobalDirective::Enable(_) => {}
                 GlobalDirective::Requires(_) => {}
-                GlobalDirective::Use(_) => {
-                    panic!("USE SHOULD HAVE ALREADY BEEN REMOVED");
+                GlobalDirective::Import(_) => {
+                    panic!("IMPORT SHOULD HAVE ALREADY BEEN REMOVED");
                 }
                 GlobalDirective::Extend(extend_directive) => {
                     Self::normalize_path(&mut extend_directive.path, &clone)?;

@@ -1,6 +1,6 @@
-use Foo as X;
+import Foo as X;
 
-mod Foo { 
+mod Foo {
     const bar = 1;
 }
 
@@ -13,4 +13,3 @@ mod My_Lib {
     }
   }
 }
-

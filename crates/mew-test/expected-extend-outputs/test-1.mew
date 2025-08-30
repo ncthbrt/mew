@@ -2,7 +2,7 @@ extend My_Lib::VertexShader;
 
 
 mod My_Lib {
-    use My_Lib::VertexShader::Types::Camera;
+    import My_Lib::VertexShader::Types::Camera;
     
     const x: My_Lib::VertexShader::Types::Camera = My_Lib::VertexShader::Types::Camera();
     
@@ -38,9 +38,9 @@ mod My_Lib {
         
         @vertex
         fn main(@builtin(instance_index) instanceIdx: u32, @location(0) position: vec4f, @location(1) color: vec4f) -> My_Lib::VertexShader::Types::VertexOutput {
-            use My_Lib::VertexShader::Types::{ My_Lib::VertexShader::Types::Uniforms }
+            import My_Lib::VertexShader::Types::{ My_Lib::VertexShader::Types::Uniforms }
             
-            use My_Lib::x as z;
+            import My_Lib::x as z;
             let uni = My_Lib::VertexShader::Types::Uniforms();
             var output: My_Lib::VertexShader::Types::VertexOutput;
             output.Position = My_Lib::VertexShader::camera.viewProjectionMatrix * My_Lib::VertexShader::uniforms.modelMatrix[instanceIdx] * position;

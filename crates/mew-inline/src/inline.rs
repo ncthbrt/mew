@@ -3,8 +3,8 @@ use mew_parse::{
     syntax::{
         Alias, CaseSelector, CompoundStatement, ConstAssert, Declaration, Expression,
         ExtendDirective, FormalTemplateParameter, Function, GlobalDeclaration, GlobalDirective,
-        IdentifierExpression, Module, ModuleDirective, ModuleMemberDeclaration, PathPart,
-        Statement, Struct, TranslationUnit, TypeExpression, Use,
+        IdentifierExpression, Import, Module, ModuleDirective, ModuleMemberDeclaration, PathPart,
+        Statement, Struct, TranslationUnit, TypeExpression,
     },
 };
 use mew_types::{CompilerPass, CompilerPassError};
@@ -23,7 +23,7 @@ impl<'a> Parent<'a> {
             if let Some(mut inline_args) = p.inline_template_args.take() {
                 for directive in inline_args.directives.drain(..) {
                     match directive.value {
-                        ModuleDirective::Use(usage) => self.usage_to_inline(usage)?,
+                        ModuleDirective::Import(usage) => self.usage_to_inline(usage)?,
                         ModuleDirective::Extend(extend_directive) => {
                             self.extend_to_inline(extend_directive)?;
                         }
@@ -302,7 +302,7 @@ impl<'a> Parent<'a> {
         Ok(())
     }
 
-    fn usage_to_inline(&mut self, mut usage: Use) -> Result<(), CompilerPassError> {
+    fn usage_to_inline(&mut self, mut usage: Import) -> Result<(), CompilerPassError> {
         self.inline_path(&mut usage.path)?;
         for arg in usage
             .attributes
@@ -313,11 +313,11 @@ impl<'a> Parent<'a> {
             self.inline_expression(&mut arg.value)?;
         }
         match usage.content.as_mut() {
-            mew_parse::syntax::UseContent::Item(use_item) => {
+            mew_parse::syntax::ImportContent::Item(use_item) => {
                 if let Some(mut args) = use_item.inline_template_args.take() {
                     for directive in args.directives.drain(..) {
                         match directive.value {
-                            ModuleDirective::Use(usage) => self.usage_to_inline(usage)?,
+                            ModuleDirective::Import(usage) => self.usage_to_inline(usage)?,
                             ModuleDirective::Extend(extend_directive) => {
                                 self.extend_to_inline(extend_directive)?;
                             }
@@ -329,7 +329,7 @@ impl<'a> Parent<'a> {
                     }
                 }
             }
-            mew_parse::syntax::UseContent::Collection(vec) => {
+            mew_parse::syntax::ImportContent::Collection(vec) => {
                 for item in vec.drain(..) {
                     self.usage_to_inline(item.value)?;
                 }
@@ -401,7 +401,7 @@ impl<'a> Parent<'a> {
                 {
                     let mut parent: Parent<'_> = Parent::Module(m);
                     match value {
-                        ModuleDirective::Use(usage) => {
+                        ModuleDirective::Import(usage) => {
                             parent.usage_to_inline(usage)?;
                         }
                         ModuleDirective::Extend(extend_directive) => {
@@ -452,7 +452,7 @@ impl<'a> Parent<'a> {
                     let mut parent: Parent<'_> = Parent::TranslationUnit(t);
 
                     match value {
-                        GlobalDirective::Use(usage) => {
+                        GlobalDirective::Import(usage) => {
                             parent.usage_to_inline(usage)?;
                         }
                         GlobalDirective::Extend(extend_directive) => {
