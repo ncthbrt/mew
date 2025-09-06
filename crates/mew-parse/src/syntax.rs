@@ -107,13 +107,13 @@ pub enum GlobalDirective {
     Diagnostic(DiagnosticDirective),
     Enable(EnableDirective),
     Requires(RequiresDirective),
-    Import(UseDirective),
+    Import(ImportDirective),
     Extend(ExtendDirective),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ModuleDirective {
-    Import(UseDirective),
+    Import(ImportDirective),
     Extend(ExtendDirective),
 }
 
@@ -123,7 +123,7 @@ pub struct ExtendDirective {
     pub path: S<Vec<PathPart>>,
 }
 
-type UseDirective = Import;
+type ImportDirective = Import;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct DiagnosticDirective {
@@ -258,7 +258,7 @@ pub struct StructMember {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum CompoundDirective {
-    Import(UseDirective),
+    Import(ImportDirective),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -549,12 +549,12 @@ pub struct Import {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ImportContent {
-    Item(UseItem),
+    Item(ImportItem),
     Collection(Vec<S<Import>>),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct UseItem {
+pub struct ImportItem {
     pub name: S<String>,
     pub rename: Option<S<String>>,
     pub template_args: Option<Vec<S<TemplateArg>>>,

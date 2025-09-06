@@ -346,16 +346,16 @@ Extend: ExtendDirective = {
 };
 
 Import: Import = {
-    "import" <usage: RootUsePath> => usage
+    "import" <usage: RootImportPath> => usage
 };
 
-RootUsePath: Import = {
-    <l: @L> <path: (<TemplateElaboratedIdentPart> "::")*> <r: @R> <l2: @L><item: ItemUse><r2: @R> ";" => Import {
+RootImportPath: Import = {
+    <l: @L> <path: (<TemplateElaboratedIdentPart> "::")*> <r: @R> <l2: @L><item: ItemImport><r2: @R> ";" => Import {
         attributes: Vec::new(),
         path: S::new(path.into_iter().map(|x| x.into()).collect(), l..r),
         content: S::new(ImportContent::Item(item), l2..r2)
     },
-    <l: @L> <path: (<TemplateElaboratedIdentPart> "::")*> <r: @R> <l2:@L><collection: UseCollection><r2:@R> => {
+    <l: @L> <path: (<TemplateElaboratedIdentPart> "::")*> <r: @R> <l2:@L><collection: ImportCollection><r2:@R> => {
         Import {
             attributes: Vec::new(),
             path: S::new(path.into_iter().map(|x| x.into()).collect(), l..r),
@@ -365,13 +365,13 @@ RootUsePath: Import = {
 };
 
 
-UsePath: Import = {
+ImportPath: Import = {
     <l: @L> <path: (<TemplateElaboratedIdentPart> "::")+> <r: @R>  <content: S<ImportContent>> => Import {
         attributes: Vec::new(),
         path: S::new(path.into_iter().map(|x| x.into()).collect(), l..r),
         content
     },
-    <l: @L><item: ItemUse><r: @R> => Import {
+    <l: @L><item: ItemImport><r: @R> => Import {
         attributes: Vec::new(),
         path: S::new(Default::default(), l..l),
         content: S::new(ImportContent::Item(item), l..r)
@@ -379,18 +379,18 @@ UsePath: Import = {
 };
 
 ImportContent: ImportContent = {
-    UseCollection => ImportContent::Collection(<>),
-    ItemUse => ImportContent::Item(<>),
+    ImportCollection => ImportContent::Collection(<>),
+    ItemImport => ImportContent::Item(<>),
 };
 
-ItemUse: UseItem = {
-    <name: S<Ident>><template_args: TemplateList?><inline_template_args: InlineDeclaration?> <rename: ("as" <S<Ident>>)?> => UseItem {
+ItemImport: ImportItem = {
+    <name: S<Ident>><template_args: TemplateList?><inline_template_args: InlineDeclaration?> <rename: ("as" <S<Ident>>)?> => ImportItem {
         name, rename, template_args, inline_template_args
     }
 };
 
-UseCollection: Vec<S<Import>> = {
-    "{" <Comma1<UsePath>> "}"
+ImportCollection: Vec<S<Import>> = {
+    "{" <Comma1<ImportPath>> "}"
 };
 
 // END MEW

@@ -691,7 +691,7 @@ impl Display for Module {
 impl Display for ImportContent {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            ImportContent::Item(UseItem {
+            ImportContent::Item(ImportItem {
                 name,
                 rename,
                 template_args,
