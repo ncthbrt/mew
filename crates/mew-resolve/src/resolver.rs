@@ -27,7 +27,7 @@ enum ScopeMember {
     LocalDeclaration,
     BuiltIn,
     ModuleMemberDeclaration(ModulePath, ModuleMemberDeclaration),
-    UseDeclaration(ModulePath, Option<Vec<Spanned<TemplateArg>>>),
+    ImportDeclaration(ModulePath, Option<Vec<Spanned<TemplateArg>>>),
     GlobalDeclaration(GlobalDeclaration),
     FormalFunctionParameter,
     TemplateParam(String),
@@ -363,7 +363,7 @@ impl Resolver {
                     ScopeMember::FormalFunctionParameter => {
                         // No action required
                     }
-                    ScopeMember::UseDeclaration(module_path, template_args) => {
+                    ScopeMember::ImportDeclaration(module_path, template_args) => {
                         let mut new_path = module_path.0.iter().cloned().collect::<Vec<PathPart>>();
                         if let Some(template_args) = template_args
                             && !template_args.is_empty()
@@ -842,7 +842,7 @@ impl Resolver {
                 if let Some(rename) = item.rename.as_ref() {
                     scope.insert(
                         rename.value.clone(),
-                        ScopeMember::UseDeclaration(
+                        ScopeMember::ImportDeclaration(
                             ModulePath(im::Vector::from(usage_path.value)),
                             item.template_args.clone(),
                         ),
@@ -850,7 +850,7 @@ impl Resolver {
                 } else {
                     scope.insert(
                         item.name.value.clone(),
-                        ScopeMember::UseDeclaration(
+                        ScopeMember::ImportDeclaration(
                             ModulePath(im::Vector::from(usage_path.value)),
                             item.template_args.clone(),
                         ),
