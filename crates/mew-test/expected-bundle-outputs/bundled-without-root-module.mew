@@ -1,5 +1,16 @@
 import util::my_fn as x;
 
+@fragment
+fn util_main() -> u32 {
+    return x();
+}
+
+module util {
+    fn my_fn() -> u32 {
+        return 42;
+    }
+}
+
 module Types2 {
     struct Uniforms {
         modelMatrix: array<mat4x4f, 5>
@@ -34,17 +45,6 @@ struct Uniforms {
 
 struct Camera {
     viewProjectionMatrix: mat4x4f
-}
-
-@fragment
-fn util_main() -> u32 {
-    return x();
-}
-
-module util {
-    fn my_fn() -> u32 {
-        return 42;
-    }
 }
 
 struct VertexOutput {

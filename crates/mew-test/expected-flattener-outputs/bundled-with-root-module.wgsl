@@ -1,5 +1,14 @@
 
 
+@fragment
+fn MyLib_util__main() -> u32 {
+    return MyLib_util_my__fn();
+}
+
+fn MyLib_util_my__fn() -> u32 {
+    return 42;
+}
+
 struct MyLib_Types2_Uniforms {
     modelMatrix: array<mat4x4f, 5>
 }
@@ -32,15 +41,6 @@ struct MyLib_Uniforms {
 
 struct MyLib_Camera {
     viewProjectionMatrix: mat4x4f
-}
-
-@fragment
-fn MyLib_util__main() -> u32 {
-    return MyLib_util_my__fn();
-}
-
-fn MyLib_util_my__fn() -> u32 {
-    return 42;
 }
 
 struct MyLib_VertexOutput {

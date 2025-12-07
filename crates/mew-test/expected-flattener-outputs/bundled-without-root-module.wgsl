@@ -1,5 +1,10 @@
 import util::my_fn as x;
 
+@fragment
+fn util__main() -> u32 {
+    return util_my__fn();
+}
+
 @binding(0) @group(0)
 var<uniform> uniforms: Types2_Uniforms;
 
@@ -24,11 +29,6 @@ struct Camera {
     viewProjectionMatrix: mat4x4f
 }
 
-@fragment
-fn util__main() -> u32 {
-    return util_my__fn();
-}
-
 struct VertexOutput {
     @builtin(position)
     Position: vec4f,
@@ -44,6 +44,10 @@ fn main(@builtin(instance_index) instanceIdx: u32, @location(0) position: vec4f,
     return output;
 }
 
+fn util_my__fn() -> u32 {
+    return 42;
+}
+
 struct Types2_Uniforms {
     modelMatrix: array<mat4x4f, 5>
 }
@@ -53,7 +57,3 @@ struct Types2_Camera {
 }
 
 const Types2_x: Types2_Camera = Types2_Camera();
-
-fn util_my__fn() -> u32 {
-    return 42;
-}

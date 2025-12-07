@@ -12,7 +12,11 @@ impl<T: Display> Display for Indent<T> {
         let inner_display = self.0.to_string();
         let fmt = inner_display
             .lines()
-            .map(|l| format!("{}{}", indent, l))
+            .map(|l| if l.is_empty() {
+                "".to_owned()
+            } else {
+                format!("{}{}", indent, l)
+            })
             .format("\n");
         write!(f, "{}", fmt)?;
         Ok(())
